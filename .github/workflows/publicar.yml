@@ -1,0 +1,57 @@
+# Em todo push e pull request: harness de conformidade NBR 5410, lint, build e testes no
+# navegador (Playwright). Em push na main, publica o build no GitHub Pages.
+# Para ativar a publicação: Settings → Pages → Source: "GitHub Actions".
+name: Verificar e publicar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Conformidade NBR 5410 (harness de QA)
+        run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Testes no navegador
+        run: npm run e2e
+        env:
+          CI: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  publicar:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verificar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publicacao.outputs.page_url }}
+    steps:
+      - id: publicacao
+        uses: actions/deploy-pages@v4

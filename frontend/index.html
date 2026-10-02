@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#d9772e" />
+    <meta
+      name="description"
+      content="Fio Certo — calculadora gratuita de dimensionamento de instalações elétricas residenciais com base na ABNT NBR 5410."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <title>Fio Certo — dimensionamento elétrico residencial</title>
+    <script>
+      (function () {
+        try {
+          var tema = localStorage.getItem('fio-certo:tema')
+          if (tema === 'claro') document.documentElement.setAttribute('data-theme', 'light')
+          else if (tema === 'escuro') document.documentElement.setAttribute('data-theme', 'dark')
+        } catch {
+          // localStorage indisponível — cai no prefers-color-scheme do dispositivo.
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

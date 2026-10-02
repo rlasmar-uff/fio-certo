@@ -1,0 +1,12 @@
+{
+  "name": "Fio Certo — dimensionamento elétrico residencial",
+  "short_name": "Fio Certo",
+  "description": "Calculadora de instalações elétricas residenciais com base na ABNT NBR 5410. Funciona offline.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a56db",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
