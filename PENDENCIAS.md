@@ -6,8 +6,8 @@ Coisas que dependem de você, não do código. Atualizado a cada sprint. Marque 
 
 - [x] **Criar o repositório no GitHub** e enviar o projeto — feito em 02/10/2026: [github.com/rlasmar-uff/fio-certo](https://github.com/rlasmar-uff/fio-certo). `NBR-5410.pdf` e `GP do Projeto de Extensão.pdf` ficaram de fora (adicionados ao `.gitignore`, nunca entraram no histórico).
   - Atenção: o Git deste computador estava autenticado no GitHub como `rl-tiecia` (conta profissional), sem permissão no repositório `rlasmar-uff`. Foi preciso apagar a credencial salva (`git credential reject`) para forçar um novo login antes do push dar certo. Se isso acontecer de novo em outra máquina, é o mesmo problema.
-- [ ] **Ligar o GitHub Pages:** no repositório, abra Settings → Pages → Source e escolha **GitHub Actions**. O workflow `.github/workflows/publicar.yml` já roda o harness, o lint, o build e o Playwright, e publica o site — mas sem esse passo o site não fica no ar, mesmo com o workflow passando.
-- [ ] Depois que o Pages estiver ligado e o primeiro deploy sair, me confirme a **URL do site publicado** (algo como `https://rlasmar-uff.github.io/fio-certo/`), para eu conferir se links compartilhados e rotas abrem certo e colocar o link na página Sobre.
+- [x] **Ligar o GitHub Pages** — já estava em Settings → Pages → Source → **GitHub Actions**.
+- [x] **Site publicado e verificado** em 02/10/2026: [rlasmar-uff.github.io/fio-certo](https://rlasmar-uff.github.io/fio-certo/) (HTTP 200; JS, CSS e favicon carregando; branding novo confirmado no HTML servido). No caminho, o primeiro deploy falhou de verdade por 2 motivos sem relação com o Pages em si — corrigidos e já publicados (commit `75a3085`): um teste com valor de demanda desatualizado (2,46 kW → 2,58 kW, o certo) e uma regressão onde o popover ⓘ duplicava o texto do checklist e confundia os testes de navegador.
 
 ## Conteúdo que só você tem
 
