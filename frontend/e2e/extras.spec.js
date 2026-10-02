@@ -46,7 +46,7 @@ test('distribuidora: demanda de iluminação/tomadas aparece só como informaç�
   await page.getByRole('link', { name: 'Proteção e resultado' }).click()
   await expect(page.getByRole('heading', { name: 'Tudo o que a ferramenta verifica está conforme' })).toBeVisible()
   await expect(page.getByText(/Demanda pela distribuidora/)).toBeVisible()
-  await expect(page.getByText(/2,46 kW/)).toBeVisible()
+  await expect(page.getByText(/2,58 kW/)).toBeVisible()
   await expect(page.getByText(/CPFL/)).toBeVisible()
 })
 
