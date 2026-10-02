@@ -4,13 +4,10 @@ Coisas que dependem de você, não do código. Atualizado a cada sprint. Marque 
 
 ## Publicação (GitHub)
 
-- [ ] **Criar o repositório no GitHub** e enviar o projeto (`git init`, `git add .`, `git commit`, `git push`).
-  - Antes do primeiro commit, confira que o `NBR-5410.pdf` **não** entrou (`git status` não pode listá-lo). O `.gitignore` da raiz já o exclui, mas vale checar. É um exemplar licenciado da ABNT e não pode ficar num repositório público.
-  - Decida se o `GP do Projeto de Extensão.pdf` (guia da disciplina) vai para o repositório. Ele não está no `.gitignore`. Se não quiser publicá-lo, acrescente-o ao `.gitignore`.
-- [ ] **Ligar o GitHub Pages:** no repositório, abra Settings → Pages → Source e escolha **GitHub Actions**. O workflow `.github/workflows/publicar.yml` já roda o harness, o lint, o build e o Playwright, e publica o site.
-- [ ] Depois do primeiro deploy, me passe:
-  - a **URL do repositório**, para eu colocar o link na página Sobre;
-  - a **URL do site publicado**, para conferir se links compartilhados e rotas abrem certo.
+- [x] **Criar o repositório no GitHub** e enviar o projeto — feito em 02/10/2026: [github.com/rlasmar-uff/fio-certo](https://github.com/rlasmar-uff/fio-certo). `NBR-5410.pdf` e `GP do Projeto de Extensão.pdf` ficaram de fora (adicionados ao `.gitignore`, nunca entraram no histórico).
+  - Atenção: o Git deste computador estava autenticado no GitHub como `rl-tiecia` (conta profissional), sem permissão no repositório `rlasmar-uff`. Foi preciso apagar a credencial salva (`git credential reject`) para forçar um novo login antes do push dar certo. Se isso acontecer de novo em outra máquina, é o mesmo problema.
+- [ ] **Ligar o GitHub Pages:** no repositório, abra Settings → Pages → Source e escolha **GitHub Actions**. O workflow `.github/workflows/publicar.yml` já roda o harness, o lint, o build e o Playwright, e publica o site — mas sem esse passo o site não fica no ar, mesmo com o workflow passando.
+- [ ] Depois que o Pages estiver ligado e o primeiro deploy sair, me confirme a **URL do site publicado** (algo como `https://rlasmar-uff.github.io/fio-certo/`), para eu conferir se links compartilhados e rotas abrem certo e colocar o link na página Sobre.
 
 ## Conteúdo que só você tem
 
