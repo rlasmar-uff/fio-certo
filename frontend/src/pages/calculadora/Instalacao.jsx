@@ -18,6 +18,7 @@ import {
 } from '../../calculations/constantes.js'
 import { DISTRIBUIDORAS } from '../../calculations/distribuidoras.js'
 import { ROUTES } from '../../routes.js'
+import InstalacaoDocumento from './InstalacaoDocumento.jsx'
 
 export default function Instalacao() {
   const {
@@ -26,7 +27,6 @@ export default function Instalacao() {
     setTipoInstalacao,
     setTensaoFaseNeutro,
     setComprimentoRamalEntrada,
-    setMetodoInstalacaoAlimentador,
     setIsolacaoAlimentador,
     setTemperaturaSoloC,
     setResistividadeTermicaSoloKmW,
@@ -353,19 +353,6 @@ export default function Instalacao() {
       <details className="detalhes-calculo">
         <summary>Alimentador: condições de instalação (avançado)</summary>
         <div className="grade-campos">
-          <Campo label="Método de instalação" ajuda={METODOS_INSTALACAO[projeto.metodoInstalacaoAlimentador].descricao}>
-            <select
-              className="campo"
-              value={projeto.metodoInstalacaoAlimentador}
-              onChange={(evento) => setMetodoInstalacaoAlimentador(evento.target.value)}
-            >
-              {Object.entries(METODOS_INSTALACAO).map(([chave, metodo]) => (
-                <option key={chave} value={chave}>
-                  {metodo.label}
-                </option>
-              ))}
-            </select>
-          </Campo>
           <Campo label="Isolação" ajuda="Tabela 36 (PVC) ou 37 (EPR/XLPE).">
             <select
               className="campo"
@@ -459,6 +446,8 @@ export default function Instalacao() {
           </label>
         )}
       </details>
+
+      <InstalacaoDocumento />
 
       <AcoesEtapa avancar={ROUTES.comodos} rotuloAvancar="Avançar para cômodos" />
     </EtapaCalculadora>

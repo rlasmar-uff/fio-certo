@@ -1,6 +1,7 @@
 import { avaliarTrilhaSecao, escolherDisjuntor } from './condutores.js'
 import { calcularQuedaAlimentadorFasorial, calcularQuedaPercentual } from './quedaDeTensao.js'
 import { propagarIcc, verificarCurtoCircuito } from './curtoCircuito.js'
+import { correnteNeutroHarmonica } from './condutorProtecao.js'
 import {
   CURVA_DISJUNTOR_PADRAO,
   IDR_CORRENTES_PADRONIZADAS,
@@ -26,8 +27,8 @@ import {
 
 // NBR 5410 — coordenação disjuntor/condutor (Ib ≤ In ≤ Iz), mesmo critério já usado nos
 // circuitos terminais, aplicado agora à corrente total de entrada da instalação.
-export function dimensionarDisjuntorGeral(correnteEntradaA) {
-  return escolherDisjuntor(correnteEntradaA)
+export function dimensionarDisjuntorGeral(correnteEntradaA, correntes) {
+  return escolherDisjuntor(correnteEntradaA, correntes)
 }
 
 // NBR 5410 §5.1.3.2.2 — DR de alta sensibilidade (≤ 30 mA) obrigatório para circuitos de
@@ -59,15 +60,21 @@ export function dimensionarIDR(correnteDisjuntorGeralA, numeroFases) {
 // Os 3 fatos são declarações do usuário sobre a instalação real (mapas isocerâunicos INMET/INPE
 // são públicos) — nunca inferidos automaticamente.
 export function recomendarDPS(tensaoFaseNeutro, opcoes = {}) {
-  const { alimentacaoAerea = false, regiaoAltoIndiceDescargas = false, exposicaoDescargaDireta = false } = opcoes
-  const exigidaPelaNorma = alimentacaoAerea && regiaoAltoIndiceDescargas
+  // `classeAQ` (Tabela 15): AQ1 = sem exigência; AQ2 = mais de 25 dias de trovoada por ano; AQ3 = exposição direta
+  // dos componentes. `regiaoAltoIndiceDescargas` (antigo booleano) equivale a AQ2.
+  const { alimentacaoAerea = false, regiaoAltoIndiceDescargas = false, exposicaoDescargaDireta = false, classeAQ = 'AQ1' } = opcoes
+  const aq2 = classeAQ === 'AQ2' || regiaoAltoIndiceDescargas
+  const aq3 = classeAQ === 'AQ3'
+  const exigidaPelaNorma = (alimentacaoAerea && aq2) || aq3
 
   return {
     classe: exposicaoDescargaDireta ? 'I+II' : 'II',
     tensaoMaximaOperacaoV: recomendarTensaoDps(tensaoFaseNeutro),
     exigidaPelaNorma,
     motivoExigencia: exigidaPelaNorma
-      ? 'exigência normativa — NBR 5410 §5.4.2.1.1 a) (alimentação aérea em região de alto índice de descargas atmosféricas)'
+      ? aq3 && !(alimentacaoAerea && aq2)
+        ? 'exigência normativa — NBR 5410 §5.4.2.1.1 b) (região AQ3, exposição direta dos componentes)'
+        : 'exigência normativa — NBR 5410 §5.4.2.1.1 a) (alimentação aérea em região de alto índice de descargas atmosféricas)'
       : 'recomendação de boa prática — a NBR 5410 só torna o DPS exigência normativa com alimentação aérea em região de alto índice de descargas (§5.4.2.1.1 a) ou região AQ3, Tabela 15 (§5.4.2.1.1 b)',
   }
 }
@@ -110,7 +117,13 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     fasoresFaseA = null,
     numeroFases = 1,
     neutroReduzidoDeclarado = false,
+    equilibrado = neutroReduzidoDeclarado,
+    protegido = neutroReduzidoDeclarado,
     terceiraHarmonica = TERCEIRA_HARMONICA_PADRAO,
+    convencao,
+    impedancia = null,
+    limiteQuedaTotalPercentual = LIMITE_QUEDA_TOTAL_PERCENTUAL,
+    disjuntores,
   } = opcoes
   const circuitoTrifasico = esquema.startsWith('trifasico')
 
@@ -126,12 +139,14 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
           tensaoFaseNeutroV: tensaoV,
           comprimentoM,
           secaoFaseMm2: secao,
-          secaoNeutroMm2: dimensionarCondutorNeutroGeral(secao, { neutroReduzidoDeclarado, numeroFases, terceiraHarmonica }),
+          secaoNeutroMm2: dimensionarCondutorNeutroGeral(secao, { neutroReduzidoDeclarado, equilibrado, protegido, numeroFases, terceiraHarmonica }),
           isolacao,
+          convencao,
+          impedancia,
         })
     : null
 
-  const disjuntorA = escolherDisjuntor(correnteEntradaA)
+  const disjuntorA = escolherDisjuntor(correnteEntradaA, disjuntores)
   if (disjuntorA === null) {
     return condutorFaseComErro(
       'Corrente de entrada acima da faixa de disjuntores padronizados considerada nesta versão.',
@@ -174,12 +189,14 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     fatorTemperatura,
     fatorAgrupamento,
     fatorResistividadeSolo,
-    limiteQuedaPercentual: LIMITE_QUEDA_TOTAL_PERCENTUAL,
+    limiteQuedaPercentual: limiteQuedaTotalPercentual,
     esquema,
     neutroCarregado,
     metodoInstalacao,
     isolacao,
     calcularQueda: quedaPorSecao,
+    convencao,
+    impedancia,
   })
 
   const opcaoNormativa = trilha.find((linha) => linha.aprovada)
@@ -234,9 +251,11 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
           tipoCarga: 'resistiva',
           circuitoTrifasico,
           isolacao,
+          convencao,
+          impedancia,
         }),
     quedaFasorial: Boolean(quedaPorSecao),
-    limitePercentual: LIMITE_QUEDA_TOTAL_PERCENTUAL,
+    limitePercentual: limiteQuedaTotalPercentual,
     naoVerificado: !comprimentoInformado,
     erro: null,
   }
@@ -254,11 +273,16 @@ export function dimensionarCondutorNeutroGeral(secaoFaseMm2, opcoes = {}) {
     neutroReduzidoDeclarado = false,
     numeroFases = 1,
     terceiraHarmonica = TERCEIRA_HARMONICA_PADRAO,
+    // As três condições de 6.2.6.2.6 são declaradas à parte (S7 §5.3): circuito presumivelmente equilibrado,
+    // 3ª harmônica ≤ 15% (a faixa declarada) e neutro protegido contra sobrecorrente. Em chamadas antigas,
+    // sem as duas confirmações, o próprio pedido de redução vale como declaração das duas.
+    equilibrado = neutroReduzidoDeclarado,
+    protegido = neutroReduzidoDeclarado,
   } = opcoes
   // A 2ª das 3 condições (3ª harmônica ≤ 15%) deixou de estar embutida no próprio checkbox e
   // passou a ser declarada à parte, porque ela também governa o fator de 0,86 do §6.2.5.6.1 —
   // ver TAXAS_TERCEIRA_HARMONICA. Sem essa declaração, o neutro não reduz.
-  if (numeroFases !== 3 || !neutroReduzidoDeclarado) return secaoFaseMm2
+  if (numeroFases !== 3 || !neutroReduzidoDeclarado || !equilibrado || !protegido) return secaoFaseMm2
   if (!TAXAS_TERCEIRA_HARMONICA[terceiraHarmonica]?.reduzNeutro) return secaoFaseMm2
   return obterSecaoNeutroReduzida(secaoFaseMm2)
 }
@@ -280,6 +304,7 @@ export function dimensionarCondutorTerraGeral(secaoFaseMm2) {
 // completa). `alimentacaoAerea`/`regiaoAltoIndiceDescargas`/`exposicaoDescargaDireta` são
 // declarações opcionais que afetam só a recomendação de DPS — ver `recomendarDPS`.
 export function dimensionarProtecaoGeral({
+  classeAQ = 'AQ1',
   correntePorFaseA,
   correnteNeutroA,
   fasoresFaseA = null,
@@ -294,9 +319,16 @@ export function dimensionarProtecaoGeral({
   metodoInstalacao = METODO_INSTALACAO_PADRAO,
   isolacao = ISOLACAO_PADRAO,
   neutroReduzidoDeclarado = false,
+  neutroEquilibrado = neutroReduzidoDeclarado,
+  neutroProtegido = neutroReduzidoDeclarado,
+  h3Percentual = null,
   terceiraHarmonica = TERCEIRA_HARMONICA_PADRAO,
   iccPresumidaA = null,
   iccFaseNeutroA = iccPresumidaA,
+  convencao,
+  impedanciaAlimentador = null,
+  limiteQuedaTotalPercentual = LIMITE_QUEDA_TOTAL_PERCENTUAL,
+  correntesDisjuntor,
   curvaDisjuntor = CURVA_DISJUNTOR_PADRAO,
   alimentacaoAerea = false,
   regiaoAltoIndiceDescargas = false,
@@ -332,12 +364,20 @@ export function dimensionarProtecaoGeral({
     fasoresFaseA,
     numeroFases,
     neutroReduzidoDeclarado,
+    equilibrado: neutroEquilibrado,
+    protegido: neutroProtegido,
     terceiraHarmonica,
+    convencao,
+    impedancia: impedanciaAlimentador,
+    limiteQuedaTotalPercentual,
+    disjuntores: correntesDisjuntor ? correntesDisjuntor(numeroFases >= 2 ? 2 : 1) : undefined,
   })
   const idr = dimensionarIDR(condutorFase.disjuntorA, numeroFases)
-  const dps = recomendarDPS(tensaoFaseNeutro, { alimentacaoAerea, regiaoAltoIndiceDescargas, exposicaoDescargaDireta })
+  const dps = recomendarDPS(tensaoFaseNeutro, { alimentacaoAerea, regiaoAltoIndiceDescargas, exposicaoDescargaDireta, classeAQ })
   const secaoNeutroMm2 = dimensionarCondutorNeutroGeral(condutorFase.secaoMm2, {
     neutroReduzidoDeclarado,
+    equilibrado: neutroEquilibrado,
+    protegido: neutroProtegido,
     numeroFases,
     terceiraHarmonica,
   })
@@ -396,6 +436,9 @@ export function dimensionarProtecaoGeral({
     secaoNeutroMm2,
     neutroReduzido,
     avisoNeutroSuperior,
+    neutroHarmonicas: terceiraHarmonica === 'acima-33' && numeroFases >= 2
+      ? correnteNeutroHarmonica({ correnteFaseA: correnteEntradaA, h3Percentual, esquema: numeroFases >= 3 ? '3F+N' : '2F+N' })
+      : null,
     verificacaoNeutro,
     secaoTerraMm2,
     curtoCircuito,

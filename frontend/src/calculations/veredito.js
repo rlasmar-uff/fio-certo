@@ -38,7 +38,7 @@ export function destaquesProjeto(projeto, calculo) {
 // Entradas ausentes ou inválidas. O motor nunca "conserta" um dado em silêncio a favor do
 // projeto: ausente vira pendência (não verificado); inválido vira problema.
 const vazio = (valor) => valor === '' || valor === null || valor === undefined
-export function avaliarEntradas(projeto) {
+export function avaliarEntradas(projeto, config = null) {
   const invalidos = []
   const ausentes = []
   const numeroInvalido = (valor, { exclusivoZero = false } = {}) => {
@@ -52,17 +52,30 @@ export function avaliarEntradas(projeto) {
     if (!TIPOS_COMODO[comodo.tipo]) invalidos.push(`${nome}: tipo de cômodo desconhecido`)
     if (vazio(comodo.area)) ausentes.push(`${nome}: área não informada`)
     else if (numeroInvalido(comodo.area, { exclusivoZero: true })) invalidos.push(`${nome}: área inválida`)
+    if (!vazio(comodo.tugPontos) && Number.isFinite(Number(comodo.tugPontos)) && !Number.isInteger(Number(comodo.tugPontos))) invalidos.push(`${nome}: número de pontos de tomada fracionário`)
+    if (comodo.excecaoLocalizacao && !String(comodo.excecaoMotivo ?? '').trim()) ausentes.push(`${nome}: exceção de localização escolhida sem o motivo registrado (3.1 e 4.2 do compilado)`)
     const usaPerimetro = TIPOS_COMODO[comodo.tipo]?.tugFixa === undefined
     if (usaPerimetro && vazio(comodo.perimetro)) ausentes.push(`${nome}: perímetro não informado (tomadas mínimas)`)
     else if (numeroInvalido(comodo.perimetro)) invalidos.push(`${nome}: perímetro inválido`)
     for (const equipamento of comodo.tue ?? []) {
       const rotulo = `${nome} · ${equipamento.nome || 'equipamento sem nome'}`
-      if (vazio(equipamento.potenciaW)) ausentes.push(`${rotulo}: potência não informada (equipamento fora do cálculo)`)
+      const potenciaIndefinida = vazio(equipamento.potenciaW) && Number(equipamento.tensaoV) > 0 && Number(equipamento.correnteNominalA) > 0
+      if (potenciaIndefinida) ausentes.push(`${rotulo}: potência indefinida — adotada S = U·I a partir da corrente nominal (hipótese de 4.2.1.2.3 c)`)
+      else if (vazio(equipamento.potenciaW)) ausentes.push(`${rotulo}: potência não informada (equipamento fora do cálculo)`)
       else if (numeroInvalido(equipamento.potenciaW, { exclusivoZero: true })) invalidos.push(`${rotulo}: potência inválida`)
       const quantidade = Number(equipamento.quantidade)
       if (!vazio(equipamento.quantidade) && !(Number.isInteger(quantidade) && quantidade >= 1)) invalidos.push(`${rotulo}: quantidade inválida`)
       if (!vazio(equipamento.cosPhi) && !(Number(equipamento.cosPhi) > 0 && Number(equipamento.cosPhi) <= 1)) invalidos.push(`${rotulo}: fator de potência fora de (0, 1]`)
       if (!vazio(equipamento.rendimento) && !(Number(equipamento.rendimento) > 0 && Number(equipamento.rendimento) <= 1)) invalidos.push(`${rotulo}: rendimento fora de (0, 1]`)
+      if (equipamento.tipoPotencia === 'saida' && !(Number(equipamento.rendimento) > 0 && Number(equipamento.rendimento) <= 1)) invalidos.push(`${rotulo}: potência de saída exige o rendimento (não se assume valor)`)
+      if (equipamento.tipoCarga && equipamento.tipoCarga !== 'resistiva' && vazio(equipamento.cosPhi)) ausentes.push(`${rotulo}: fator de potência não informado`)
+      if (equipamento.aquecedorAgua && equipamento.conexao === 'tomada') invalidos.push(`${rotulo}: aquecedor elétrico de água deve ter conexão direta, sem tomada (9.5.2.3)`)
+      if (equipamento.conexao === 'tomada' && Number(equipamento.distanciaM) > 1.5) invalidos.push(`${rotulo}: ponto de tomada a mais de 1,5 m do equipamento (4.2.1.2.3 d)`)
+      if (equipamento.motor && !(Number(equipamento.correntePartidaA) > 0)) ausentes.push(`${rotulo}: motor sem a corrente de partida — queda na partida (10%) não verificada (6.5.1.3.3)`)
+      if (config && Number(equipamento.tensaoV) > 0) {
+        const tensaoDaLigacao = equipamento.ligacao === 'fase-fase' && config.permiteFaseFase ? config.tensaoFaseFase : config.tensaoFaseNeutro
+        if (Number(equipamento.tensaoV) !== tensaoDaLigacao) invalidos.push(`${rotulo}: tensão do equipamento (${equipamento.tensaoV} V) incompatível com a ligação (${tensaoDaLigacao} V)`)
+      }
     }
   }
   for (const [id, valor] of Object.entries(projeto.comprimentos ?? {})) {
@@ -90,7 +103,7 @@ export function calcularVeredito(projeto, calculo) {
   const pendencias = []
   const contar = (lista, condicao) => lista.filter(condicao).length
 
-  const entradas = avaliarEntradas(projeto)
+  const entradas = avaliarEntradas(projeto, calculo.configInstalacao ?? null)
   for (const texto of entradas.invalidos) problemas.push({ texto: `Dado inválido — ${texto}`, etapa: 'comodos' })
   for (const texto of entradas.ausentes) pendencias.push({ texto: `Dado ausente — ${texto}`, etapa: 'comodos' })
 
@@ -150,6 +163,23 @@ export function calcularVeredito(projeto, calculo) {
   // Ikmin: sem a Icc fase-neutro, o laço parte da trifásica — premissa, não dado.
   if (projeto.iccPresumidaA && !projeto.iccFaseNeutroA)
     pendencias.push({ texto: 'Icc fase-neutro não informada: Ikmin e seccionamento partem da Icc trifásica (premissa)', etapa: 'instalacao' })
+  // S7 e S8 — itens do compilado que o motor calcula e o veredito precisa expor.
+  for (const grupo of calculo.agrupamentos ?? []) grupo.problemas.forEach((texto) => problemas.push({ texto: `Agrupamento ${grupo.nome || grupo.id}: ${texto}`, etapa: 'dimensionamento' }))
+  for (const c of dimensionados) {
+    if (c.partida?.informada && c.partida.conforme === false) problemas.push({ texto: `${c.nome}: queda na partida do motor ${c.partida.quedaTotalPercentual.toFixed(2)}% acima de 10% (6.5.1.3.3)`, etapa: 'dimensionamento' })
+    if (c.sobrecarga && c.sobrecarga.conforme === null) pendencias.push({ texto: `${c.nome}: relação I₂/In do dispositivo não informada — sobrecarga (b) não verificada`, etapa: 'instalacao' })
+  }
+  if (complementares.capacidadeInterrupcao?.conforme === false) problemas.push({ texto: 'Capacidade de interrupção do disjuntor menor que a Icc presumida (5.3.5.5.1)', etapa: 'instalacao' })
+  else if (complementares.capacidadeInterrupcao && complementares.capacidadeInterrupcao.icnKA === null) pendencias.push({ texto: 'Capacidade de interrupção (Icn) do disjuntor não informada: escolha a linha de disjuntores ou informe a Icn', etapa: 'instalacao' })
+  if (protecaoGeral.peDetalhe?.pendencia) pendencias.push({ texto: protecaoGeral.peDetalhe.pendencia, etapa: 'instalacao' })
+  if (projeto.neutroReduzidoDeclarado && protecaoGeral.correntePorFaseA.length === 3 && !(projeto.neutroEquilibrado && projeto.neutroProtegido))
+    pendencias.push({ texto: 'Neutro reduzido pedido, mas faltam confirmar o circuito equilibrado e o neutro protegido contra sobrecorrentes (6.2.6.2.6): o neutro não foi reduzido', etapa: 'instalacao' })
+  if (protecaoGeral.neutroHarmonicas?.aplicavel) pendencias.push({ texto: `Neutro com 3ª harmônica acima de 33%: corrente de neutro estimada ${protecaoGeral.neutroHarmonicas.correnteNeutroA.toFixed(1)} A (anexo F) — verificação complementar, a seção do neutro não foi dimensionada`, etapa: 'instalacao' })
+  if (calculo.complementares?.dps && protecaoGeral.dps?.exigidaPelaNorma && !projeto.esquemaAterramento) pendencias.push({ texto: 'DPS exigido pela norma: declare o esquema de aterramento para definir o esquema de conexão e a tensão Uc', etapa: 'instalacao' })
+  if (dimensionados.some((c) => c.exigenciaDR?.exige && /chuveiro/i.test(c.nome))) {
+    const nua = projeto.comodos.some((comodo) => (comodo.tue ?? []).some((e) => e.resistenciaNua))
+    if (nua) pendencias.push({ texto: 'Chuveiro de resistência nua: DR de alta sensibilidade não convive com ele, por causa da corrente de fuga (Creder, S8 §4.2) — use resistência blindada', etapa: 'comodos' })
+  }
   if (complementares.motores.length) pendencias.push({ texto: `${complementares.motores.length} motor(es) acima de 3,7 kW: consultar a distribuidora`, etapa: 'comodos' })
 
   return {

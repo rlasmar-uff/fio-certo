@@ -2,9 +2,9 @@
 
 Gerado por `node QA/scripts/inventario.mjs` a partir de `QA/scripts/verificar.mjs` (leitura do código-fonte).
 
-- **Critérios:** 246 em 45 grupos.
-- **Com valor de referência fixo no teste** (norma ou conta manual): 140.
-- **Só consistência/forma** (comparam saídas do motor entre si, ou testam presença/`null`/`> 0`): 106. São os que mais precisam de olho humano — um erro do motor e do teste podem coincidir.
+- **Critérios:** 293 em 46 grupos.
+- **Com valor de referência fixo no teste** (norma ou conta manual): 182.
+- **Só consistência/forma** (comparam saídas do motor entre si, ou testam presença/`null`/`> 0`): 111. São os que mais precisam de olho humano — um erro do motor e do teste podem coincidir.
 
 A classificação é por heurística textual (existência de número literal diferente de 0/1 na condição). Ela aponta onde olhar; não substitui a leitura do critério.
 
@@ -104,7 +104,7 @@ A classificação é por heurística textual (existência de número literal dif
 | G37.7 | §9.5.2 | O veredito do projeto fica vermelho (não conforme) quando iluminação ou tomadas informadas estão abaixo do mínimo — antes dizia "conforme" | critico |
 | G39.1 | Tabelas 36/37 · §5.3.4.1 | Ib = 20 A em cada um dos 6 métodos (A1/A2/B1/B2/C/D) × PVC/EPR: seção e Iz iguais ao esperado pela tabela do PDF | critico |
 | G39.2 | §6.2.5.3 / §6.2.5.5 / Tabelas 40 e 42 | Mudança de temperatura (40/45 °C) e de agrupamento (2/3/4 circuitos) muda a seção como calculado à mão; Iz = tabela × FCT × FCA | critico |
-| G39.5 | §5.3.4.1 a) e b) | Varredura Ib 0,5…200 A × 6 métodos × PVC/EPR (${n} casos): disjuntor e seção mínimos, e Ib ≤ In ≤ Iz (Iz da tabela do PDF) em todos | critico |
+| G39.5 | §5.3.4.1 a) e b) | Varredura Ib 0,5…125 A × 6 métodos × PVC/EPR (${n} casos): disjuntor e seção mínimos, e Ib ≤ In ≤ Iz (Iz da tabela do PDF) em todos | critico |
 | G41.1 | §5.3.5.5.2 / Tabela 30 | I²t ≤ k²S² exato: PVC 10 mm² aceita 11.500 A e reprova 11.501 A; EPR 10 mm² aceita 14.300 A e reprova 14.301 A | critico |
 | G41.2 | §6.3.4.3.2 a) · IEC 60898 | Ikmin só garante o disparo no limite superior da faixa magnética: In 32 A → B 160 A, C 320 A, D 640 A (no limite verifica; 0,01 A abaixo fica não verificado) | critico |
 | G41.3 | Tabela 30 NOTA 1 · §5.3.5.1 | Seção de 6 mm², Icc ausente (0) e Icc mínima ausente: sempre "não verificado" (verificado=false, conforme=null), nunca conforme | critico |
@@ -118,6 +118,11 @@ A classificação é por heurística textual (existência de número literal dif
 | G44.3 | Entrada ausente | Área, perímetro ou potência em branco: pendência explícita (não verificado), nunca "ok" — e o equipamento sem potência é avisado como fora do cálculo | alto |
 | G44.5 | §6.2.6.1.2 e) | Circuitos sem comprimento informado: "não verificado" (naoVerificado=true, conforme=false) e pendência no veredito — queda 0% não aprova nada | alto |
 | G45.3 | Creder Tab. 3.22/3.23 | Em nenhuma das 12 seções o diâmetro externo do cabo PVC usado no eletroduto fica abaixo do que resulta da área "Total" do livro (antes: 50 mm² −6,5% e 120 mm² −8,7% de área) | alto |
+| G46.5 | S3 §7.1 · 9.5.3.3 | Circuito misto: aceito com IB ≤ 16 A; rejeitado com tomadas de cozinha, IB = 16,01 A, toda a iluminação ou todas as tomadas no mesmo circuito | critico |
+| G46.7 | S3 §9 · §12 · Creder tab. 3.20 | Demanda por parcelas: X = 0 / 1000 / 4240 / 10000 / 10100 VA → 0 / 800 / 2920 / 5070 / 5094 VA (só o excedente recebe 24%) | critico |
+| G46.30 | S7 §4, §5.1 e §7 | PE pela tabela 58: 16/25/35/50/95 → 16/16/16/25/50; 120 → 70 (empate registrado); 150 → 70 (a mais próxima, abaixo de S/2); 185 → 95; 240 → 120 | critico |
+| G46.36 | S8 §3.4 | Quantidade máxima de condutores iguais no PVC roscável: as 48 combinações (1,5 a 35 mm² × DN 20 a 60) iguais às do documento; ex.: até 8 condutores de 2,5 mm² no DN 20 (8 × 10,2 = 81,6 ≤ 84,48 mm²) | alto |
+| G46.40 | S8 §4 e §7 · 5.1.3.2.2 | DR: circuito de iluminação com ponto no banheiro → obrigatório; luminária da cozinha a 2,60 m → pode ser excluída (nota 3); tomada da geladeira (cozinha) → exige; área social seca → não exigido; garagem/área molhada → exige | critico |
 
 ## Todos os critérios, por grupo
 
@@ -488,15 +493,15 @@ A classificação é por heurística textual (existência de número literal dif
 | G35.7 | §6.3.4.3.2 a) | Alimentador 50/25 mm² a 90 m: Icc mínima real (966 A) < disparo instantâneo (1250 A) — não pode aparecer como verificado/conforme | referência fixa | critico |
 | G35.8 | §5.3.5.1 | Sem neutro reduzido, a Icc mínima e a de referência para I²t são iguais (regressão: caso comum inalterado) | referência fixa | medio |
 | G35.9 | §5.3.5.1 | Icc fase-fase do alimentador 50 mm² / 30 m coincide com a referência independente (laço pelas 2 fases, sem neutro) | referência fixa | alto |
-| G35.10 | §5.3.5.1 / Problema B | Projeto completo, neutro 70/35 mm²: Icc na ponta do circuito terminal fase-neutro bate com a referência independente (neutro real do ramal) | referência fixa | critico |
+| G35.10 | §5.3.5.1 / Problema B | Projeto completo, neutro 50/25 mm²: Icc na ponta do circuito terminal fase-neutro bate com a referência independente (neutro real do ramal) | referência fixa | critico |
 
 ### G36
 
 | Critério | Cláusula | O que verifica | Referência | Severidade |
 |---|---|---|---|---|
-| G36.1 | Tabelas 36 e 37 | As 288 células de cobre (12 seções × 12 colunas × 2 tabelas) são idênticas às lidas do PDF por posição (x,y) das palavras | referência fixa | critico |
+| G36.1 | Tabelas 36 e 37 | As 360 células de cobre (15 seções, de 1,5 a 240 mm² × 12 colunas × 2 tabelas) são idênticas às lidas do PDF por posição (x,y) das palavras | referência fixa | critico |
 | G36.2 | Tabela 40 | Fatores de temperatura (15 temperaturas × PVC/EPR × ar/solo = 60 valores) idênticos à tabela do PDF, inclusive as faixas sem valor (PVC acima de 60 °C → null) | só consistência | critico |
-| G36.3 | Tabelas 42 (ref. 1 e 2) e 45 | Fatores de agrupamento idênticos ao PDF; onde a tabela não tem valor (ref. 2 acima de 11 circuitos; Tabela 45 acima de 6) o motor devolve null | referência fixa | alto |
+| G36.3 | Tabelas 42 (ref. 1 e 2) e 45 | Fatores de agrupamento idênticos ao PDF (a célula 0,70 da ref. 2 é mesclada: vale de 9 a ≥ 20 circuitos); só onde a tabela não tem valor (Tabela 45 acima de 6 circuitos) o motor devolve null | referência fixa | alto |
 | G36.4 | Tabelas 48 e 58 | Seção do neutro reduzido (Tab. 48) e do condutor de proteção (Tab. 58) idênticas ao PDF; 120 mm² → S/2=60, adota 70 (maior das duas equidistantes) | referência fixa | critico |
 | G36.5 | Tabelas 30 e 47; §6.2.11.1.6 a) | k = 115 (PVC) e 143 (EPR); seções mínimas 1,5 (iluminação) e 2,5 mm² (força); taxas de ocupação 53/31/40% | referência fixa | alto |
 
@@ -529,8 +534,8 @@ A classificação é por heurística textual (existência de número literal dif
 | G39.2 | §6.2.5.3 / §6.2.5.5 / Tabelas 40 e 42 | Mudança de temperatura (40/45 °C) e de agrupamento (2/3/4 circuitos) muda a seção como calculado à mão; Iz = tabela × FCT × FCA | só consistência | critico |
 | G39.3 | §6.2.7.2 | Limite de 4% no circuito terminal: 4 mm² serve a 23 m (3,870%) e deixa de servir a 24 m (4,038%) → 6 mm² (2,692%) | referência fixa | critico |
 | G39.4 | Tabela 47 · §5.3.4.1 | Seção mínima: iluminação 14 A (In 16) = 1,5 mm² (Iz 17,5); com FCA 0,8 → 2,5 mm²; tomada de 1 A nunca abaixo de 2,5 mm² | referência fixa | alto |
-| G39.5 | §5.3.4.1 a) e b) | Varredura Ib 0,5…200 A × 6 métodos × PVC/EPR (${n} casos): disjuntor e seção mínimos, e Ib ≤ In ≤ Iz (Iz da tabela do PDF) em todos | só consistência | critico |
-| G39.6 | §6.2.5.3 / §6.2.5.5 | PVC a 65 °C (sem fator na Tabela 40) e método C com 12 circuitos (sem fator na Tabela 42, ref. 2): erro explícito e nenhuma seção — nunca aprovação por extrapolação | referência fixa | alto |
+| G39.5 | §5.3.4.1 a) e b) | Varredura Ib 0,5…125 A × 6 métodos × PVC/EPR (${n} casos): disjuntor e seção mínimos, e Ib ≤ In ≤ Iz (Iz da tabela do PDF) em todos | só consistência | critico |
+| G39.6 | §6.2.5.3 / §6.2.5.5 | PVC a 65 °C (sem fator na Tabela 40) e método D com 7 circuitos (sem fator na Tabela 45): erro explícito e nenhuma seção — nunca aprovação por extrapolação | referência fixa | alto |
 
 ### G40
 
@@ -555,7 +560,7 @@ A classificação é por heurística textual (existência de número literal dif
 
 | Critério | Cláusula | O que verifica | Referência | Severidade |
 |---|---|---|---|---|
-| G42.1 | §6.2.11.1.6 a) | Eletroduto por área externa real (não mm² nominal): 3×2,5 mm² (Ø 3,60) → 1/2" (30,71 mm² em 211,2 = 14,54%); 3×25 mm² → 1" (3/4" daria 48,9% > 40%); 2×25 mm² → 1" (3/4" daria 32,6% > 31%) | referência fixa | alto |
+| G42.1 | §6.2.11.1.6 a) | Eletroduto por área externa real (não mm² nominal): 3×2,5 mm² (10,2 mm² cada, tab. 3.22) → 1/2" (30,60 mm² em 211,2 = 14,49%); 3×25 mm² → 1" (3/4" daria 48,9% > 40%); 2×25 mm² → 1" (3/4" daria 32,6% > 31%) | referência fixa | alto |
 | G42.2 | §5.1.3.2.2 / §6.3.3.2 | DR geral: 40 A → 40; 41 A → 63; 100 A → 100; 101 A → sem DR padronizado (null); 4 polos em trifásico; sensibilidade 30 mA | referência fixa | alto |
 | G42.3 | §6.3.5.2.4 a), b), d) · Tabelas 31 e 49 | DPS: 127 V → Up 1,5 kV, Uc 139,7 V, In 5 kA, N-PE 10 kA (mono), PE 4 mm²; 220 V trifásico com descarga direta → Up 2,5 kV, Uc 242 V, N-PE 20 kA, Iimp 12,5 kA, PE 16 mm² | referência fixa | alto |
 | G42.4 | §5.4.2.1.1 a) | DPS é "exigido pela norma" somente com alimentação aérea + região de alto índice de descargas; nos demais casos é recomendação — e a ferramenta não alega exigência | só consistência | alto |
@@ -591,4 +596,56 @@ A classificação é por heurística textual (existência de número literal dif
 | G45.3 | Creder Tab. 3.22/3.23 | Em nenhuma das 12 seções o diâmetro externo do cabo PVC usado no eletroduto fica abaixo do que resulta da área "Total" do livro (antes: 50 mm² −6,5% e 120 mm² −8,7% de área) | só consistência | alto |
 | G45.4 | Creder Tab. 10.4 | Diâmetros internos dos eletrodutos de 20 a 85 mm iguais aos do livro; o de 16 mm (Di 12,8), sem fonte, saiu da lista — o menor passa a ser o de 20 mm (1/2") | referência fixa | medio |
 | G45.5 | Creder §4.5.3 | Icc a jusante pelo método do motor (7,52 kA) fica a 1,2% do exemplo do livro (7,43 kA, fórmula simplificada com cosφ_ko = 0,5): mesma ordem de grandeza e mesmo sentido | referência fixa | medio |
+
+### G46
+
+| Critério | Cláusula | O que verifica | Referência | Severidade |
+|---|---|---|---|---|
+| G46.1 | S3 §12 · §9.5.2.2.1 b) | Cozinha com p = 14 m → 4 pontos; p = 14,01 m → 5 pontos | referência fixa | alto |
+| G46.2 | S3 §5.1 · §9.5.2.2.2 a) | Alternativa de 2 pontos a 600 VA: bloqueada com 6 pontos no grupo (limite 3), elegível com 7 (limite 2, só se escolhida); sem escolha, sempre 3 | referência fixa | critico |
+| G46.3 | S3 §6.2 · 9.5.3.1 | Equipamento de 10 A (1270 W a 127 V): circuito independente NÃO obrigatório; 10,01 A (1271,27 W): obrigatório | referência fixa | critico |
+| G46.4 | S3 §6.2 · §7.2 | Dois equipamentos de 600 W (4,7 A cada) dividem 1 circuito; dois de 3000 W (23,6 A cada) ficam em 2 circuitos independentes — não existe "toda TUE tem circuito próprio" | referência fixa | alto |
+| G46.5 | S3 §7.1 · 9.5.3.3 | Circuito misto: aceito com IB ≤ 16 A; rejeitado com tomadas de cozinha, IB = 16,01 A, toda a iluminação ou todas as tomadas no mesmo circuito | só consistência | critico |
+| G46.6 | S3 §7.2 · 9.5.3.3 | Modo misto configurável: gera circuitos de iluminação + tomadas com IB ≤ 16 A e nunca concentra tudo num só (≥ 2 circuitos mistos, ou volta ao padrão separado) | referência fixa | alto |
+| G46.7 | S3 §9 · §12 · Creder tab. 3.20 | Demanda por parcelas: X = 0 / 1000 / 4240 / 10000 / 10100 VA → 0 / 800 / 2920 / 5070 / 5094 VA (só o excedente recebe 24%) | só consistência | critico |
+| G46.8 | S3 §11 | Memorial demonstrativo: iluminação 740 VA, TUG 5000 VA (cozinha 4 pontos = 1900 VA; lavanderia 3 pontos = 1800 VA); com chuveiro de 5500 W: 11 240 VA e demanda 3633 + 5500 = 9133 VA | referência fixa | critico |
+| G46.9 | S3 §11 | Alternativa de 600 VA no memorial (8 pontos > 6, elegível): cozinha 1400, banheiro 600, lavanderia 1300; TUG total 4000 VA | referência fixa | alto |
+| G46.10 | S3 §10.3 | Balanceamento: A 1500, B 1300, C 1200 VA → 11,81 / 10,24 / 9,45 A; média 10,50 A; δ = 12,5%; zero carga → "sem carga" | referência fixa | alto |
+| G46.11 | S4 §7 | Troca de isolação (Cu 2,5 mm² B1/2: PVC 24 A, EPR 31 A); nº de carregados (Cu PVC 6 mm² B1: 2 → 41 A, 3 → 36 A); Cu PVC 50 mm² B1/3 = 134 A; Cu EPR D/2 95 mm² = 252 A | referência fixa | critico |
+| G46.12 | S4 §2 | Maneira de instalar → método: maneira 7 (eletroduto embutido em alvenaria) → B1, e não A1; 1 → A1; 2 → A2; 3, 5 → B1; 4, 6, 8 → B2; 11, 12, 52, 53 → C; 61, 61A, 63 → D; 71, 73, 74 → A1 | referência fixa | alto |
+| G46.13 | S4 §5, §7 | Cobre 2,5 mm² nas formações ao ar livre: PVC — F trifólio 24 A, F plano justaposto 25 A, G horizontal 34 A, vertical 29 A; EPR/XLPE — G horizontal 41 A, vertical 35 A; E multipolar 2/3: 30/25 A (PVC) e 36/32 A (EPR) | referência fixa | alto |
+| G46.14 | Tabelas 38 e 39 | As 210 células de cobre (15 seções × 7 colunas × 2 tabelas) dos métodos E, F e G são idênticas às lidas do PDF por coordenadas | referência fixa | critico |
+| G46.15 | S4 §6 · S5 §8 | K1·K2 = 0,87·0,70 = 0,609; 25 A (5500 W/220 V): 6 mm² dá 24,969 A < 25 → 10 mm² (34,713 A); 20 A (4400 W): 4 mm² 19,488 A falha, 6 mm² atende — sem arredondar 24,969 para 25 | referência fixa | critico |
+| G46.16 | S4 §7 | Quatro condutores carregados: Cu PVC B1 6 mm² → 36 × 0,86 = 30,96 A | referência fixa | alto |
+| G46.17 | S5 §9 | K1: PVC no ar a 30 °C = 1,00; no solo a 20 °C = 1,00; a 40 °C: ar 0,87, solo 0,77; trocando a isolação a 40 °C no ar: PVC 0,87, EPR/XLPE 0,91; PVC a 65 °C: sem valor (null) | referência fixa | critico |
+| G46.18 | S5 §9 | K2: 3 circuitos fase-neutro no mesmo conduto = 0,70 (2 carregados por circuito); circuito único no teto (tab. 42, linha 3) = 0,95; 2 camadas × 3 circuitos por camada (tab. 43) = 0,62 sem multiplicar pela tab. 42; 3 circuitos enterrados com distância nula: direto 0,65, multipolar em eletroduto 0,75 (e unipolar 0,70) | referência fixa | critico |
+| G46.19 | S5 §5.3 · 6.2.5.5.5 | Grupo não semelhante com n = 4: F = 1/√4 = 0,50 (substitui o K2 da tabela); seções 1,5, 2,5 e 4 mm² são semelhantes (3 valores sucessivos); 1,5 a 6 mm² não (4 valores) | referência fixa | alto |
+| G46.20 | S5 §9 | Mínimo de tomadas: IB = 10 A, Cu/PVC/B1/2, K1 = K2 = 1 → 1,5 mm² passaria termicamente (17,5 A), mas o mínimo de força é 2,5 mm² | referência fixa | alto |
+| G46.21 | S6 §6 e §8 | Exemplo de dois condutores (127 V, 20 A, 30 m, 6 mm², ρ = 1/56): ΔU = 3,571428 V; 2,812148%; 2,5 mm² 6,7492%, 4 mm² 4,2182%, 10 mm² 1,6873% | referência fixa | critico |
+| G46.22 | S6 §7 e §8 | Trifásico equilibrado (380 V, 32 A, 50 m, ρ = 1/56): 10 mm² → 4,948716 V entre fases, 1,302293%; 6 mm² 2,1705%; 16 mm² 0,8139% | referência fixa | critico |
+| G46.23 | S6 §7.1 | Modo por impedância (r = 2,2 Ω/km, x = 0,08 Ω/km, L = 0,05 km, 32 A, cosφ 0,8): ΔU_LL = √3 · 0,05 · 32 · (2,2·0,8 + 0,08·0,6) = 5,0105 V; 1,3185% em 380 V — sem usar ρ | referência fixa | alto |
+| G46.24 | S6 §6.2 e §8 | Vários trechos (10 m com 15 A; derivam 5 A; 10 m com 10 A): ΣLI = 5·10 + 10·20 = 250 A·m → 3,571428 V; 2,812148% (usar 15 A nos 20 m daria 300 A·m) | referência fixa | alto |
+| G46.25 | S6 §2 e §8 | Limites: 127 V e 4% → 5,08 V; 5% com montante 1,5% → terminal 3,5%; 5% com montante 2% e terminal 4% reprova (6%); 7% com montante 1% e terminal 4,5% reprova o terminal (> 4%); 7% e 150 m → 7,25%; 250 m → 7,5% (teto); 5% e 250 m → 5% | referência fixa | critico |
+| G46.26 | S6 §8 | Precisão: resultado de 4,004% reprova contra o limite de 4%, mesmo exibido como 4,00% | referência fixa | alto |
+| G46.27 | S7 §3 e §7 | Série de cadastro 4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125 A; IB = 21 A → In = 25 A (nunca 20); na linha DX-E (sem 25 e 40 A) → 32 A; DX-H 1P só 80 A; Icn: DX-E/DX 6000 6 kA, DX-H 10 kA | referência fixa | critico |
+| G46.28 | S7 §6 | Coordenação: IB 25 A, 10 mm² (Iz 34,713 A), DX 6000: In = 25 A, 25 ≤ 25 ≤ 34,713 e I₂ = 36,25 A ≤ 50,334 A; na DX-E: In = 32 A, I₂ = 46,4 A ≤ 50,334 A, e a seção de 10 mm² continua atendendo | referência fixa | critico |
+| G46.29 | S7 §7 | Igualdade: Cu/PVC/B1/2, 4 mm², 30 °C, IB = 30 A → In = 32 A = Iz, atende; alínea b: In = 20 A, Iz = 21 A → I₂ = 29 A ≤ 30,45 A; relação I₂/In ausente (outro dispositivo) → não verificável; sobrecarga prolongada compara com Iz | referência fixa | critico |
+| G46.30 | S7 §4, §5.1 e §7 | PE pela tabela 58: 16/25/35/50/95 → 16/16/16/25/50; 120 → 70 (empate registrado); 150 → 70 (a mais próxima, abaixo de S/2); 185 → 95; 240 → 120 | só consistência | critico |
+| G46.31 | S7 §4.1 e §7 | PE por cálculo: I = 2000 A, t = 0,02 s, k = 115 → 2,46 mm² → 2,5 mm²; PE fora do conduto (cálculo dá 1,5 mm²): 4 mm² sem proteção mecânica e 2,5 mm² com; adota-se o maior entre a Tab. 58 e o cálculo | referência fixa | alto |
+| G46.32 | S7 §5 e §7 | Neutro: monofásico 6 mm² → 6; 3F+N 70 mm² com h₃ ≤ 15%, equilibrado e protegido → 35; redução negada com h₃ = 20% (70, quatro carregados, ×0,86); duas fases e neutro 50 mm² → 50 (a Tab. 48 não se aplica); sem a declaração de equilíbrio ou de proteção → não reduz | referência fixa | critico |
+| G46.33 | S7 §5.2 e §6.3 | Anexo F: 3F+N, IB = 120 A, h₃ = 40% → f_h = 1,19 e I_N = 142,8 A; sem estimativa f_h = 1,73 e I_N = 207,6 A (duas fases e neutro: 1,41); h₃ fracionário arredonda para cima (33,1% → 35% → 1,15); h₃ ≤ 33% não se aplica; tudo marcado como verificação complementar | referência fixa | alto |
+| G46.34 | S7 §3.3 e §7 | k: cobre PVC 115, EPR/XLPE 143 (e não 135); alumínio fora do site residencial; k²S² do cobre PVC 2,5 mm² = 115² × 2,5² = 82 656,25 A²s | referência fixa | alto |
+| G46.35 | S8 §3.1–3.2 | Catálogo: PVC roscável DN 20…85 (Di 16,4 … 79,6; áreas 211,2 … 4976,4 mm²) e soldável DN 16…50 (Di 14,0 … 47,8): sem DN 16 roscável nem DN 110 | referência fixa | alto |
+| G46.36 | S8 §3.4 | Quantidade máxima de condutores iguais no PVC roscável: as 48 combinações (1,5 a 35 mm² × DN 20 a 60) iguais às do documento; ex.: até 8 condutores de 2,5 mm² no DN 20 (8 × 10,2 = 81,6 ≤ 84,48 mm²) | só consistência | alto |
+| G46.37 | S8 §6.6 e §7 | E1 (3×1,5 + 6×2,5): 81,0 mm² → DN 20, 38,35%; E2 (6×6): 99,6 mm² → DN 25, 27,95%; 7×4 mm²: 92,4 → DN 25 (e não 20, divergência do Creder); 9×6: 149,4 → DN 32; 2×10: 56,6 ≤ 65,47 → DN 20 | referência fixa | critico |
+| G46.38 | S8 §2.2 e §7 | Trecho interno de 12 m com 2 curvas: L_máx = 9 m, excesso de 3 m → 1 DN acima (E2: DN 25 → 32); trecho reto de 22 m: excesso de 7 m → 2 DN acima; 4 curvas de 90° entre caixas: rejeitar | referência fixa | alto |
+| G46.39 | S8 §6.6 · 6.2.10.2 | Mistura de seções: 1,5 e 2,5 mm² no mesmo eletroduto (E1) é admitida; juntar o circuito de 6 mm² (1,5, 2,5, 4 e 6 ocupam quatro valores) seria vedado | referência fixa | alto |
+| G46.40 | S8 §4 e §7 · 5.1.3.2.2 | DR: circuito de iluminação com ponto no banheiro → obrigatório; luminária da cozinha a 2,60 m → pode ser excluída (nota 3); tomada da geladeira (cozinha) → exige; área social seca → não exigido; garagem/área molhada → exige | só consistência | critico |
+| G46.41 | S8 §4.1 · 5.1.2.2.4.3 | TT: R × IΔn ≤ UL → 30 mA e 50 V: R ≤ 1666,7 Ω; com 300 mA: R ≤ 166,7 Ω; Caso 6: R = 80 Ω com DR geral de 300 mA → 24 V ≤ 50 V atende | referência fixa | alto |
+| G46.42 | S8 §5 e §6.7 · 5.4.2.1.1, 6.3.5.2 | DPS: linha aérea + AQ2 → obrigatório; AQ3 → obrigatório; AQ1 ou AQ2 subterrânea → não; Caso 6 (TT, DPS a montante do DR): esquema 3, Uc ≥ 139,7 V (F-N) e 127 V (N-PE), Up ≤ 1,5 kV, In ≥ 5 kA por modo e ≥ 20 kA neutro-PE (trifásica), PE ≥ 4 mm², ligação ≤ 0,5 m; 220/380 V TN-S: Up ≤ 2,5 kV e Uc ≥ 242 V; descarga direta: PE ≥ 16 mm², Iimp ≥ 12,5 kA (N-PE 25 kA monofásica) | referência fixa | critico |
+| G46.43 | S8 §6.2 · Caso 1 | Chuveiro 6800 W / 220 V, 15 m, 2 circuitos no eletroduto (K = 0,80), ρ = 1/58: IB 30,909 A; 6 mm² (4 mm² não atende: 32 × 0,8 = 25,6); Iz 32,8 A; disjuntor bipolar de 32 A; queda 1,211%; PE 6 mm²; DR obrigatório | referência fixa | critico |
+| G46.44 | S8 §6.3 · Caso 2 | Cozinha, 5 pontos (3×600 + 2×100 = 2000 VA), 127 V, 18 m, K = 0,70: IB 15,748 A; 2,5 mm² (Iz 16,8 A); disjuntor 16 A (I₂ 23,2 ≤ 24,36); queda 3,079%; neutro e PE 2,5 mm² | referência fixa | critico |
+| G46.45 | S8 §6.4 · Caso 3 | Iluminação 900 VA, 127 V, 20 m, K = 0,70: IB 7,087 A; 1,5 mm² (Iz 17,5 × 0,7 = 12,25 A); disjuntor 10 A (I₂ 14,5 ≤ 17,763); queda 2,566%; neutro e PE 1,5 mm²; DR não exigido em área social seca | referência fixa | critico |
+| G46.46 | S8 §6.5 · Caso 4 | Alimentador trifásico 18 000 VA, 127/220 V, 25 m, ρ = 1/58: IB 47,238 A; 10 mm² (Iz 50 A); disjuntor tripolar de 50 A (50 ≤ 50 por igualdade; I₂ 72,5 ≤ 72,5); queda 1,603%; neutro e PE 10 mm². Variante h₃ = 20%: 16 mm² (68 × 0,86 = 58,48 A), In 50 A, neutro 16 e PE 16; queda acumulada com o caso 2: 1,603 + 3,079 = 4,682% e 0,318% restantes | referência fixa | critico |
+| G46.47 | S8 §6.7 · Caso 6 | TT, rede aérea AQ2, DR geral de 300 mA (tipo S) e DR de 30 mA nos circuitos, R = 80 Ω, massas na situação 1: R·IΔn = 24 V ≤ 50 V atende; DPS obrigatório no quadro principal, esquema de conexão 3 (a montante do DR), Uc ≥ 139,7 V (F-N) e 127 V (N-PE), Up ≤ 1,5 kV, In ≥ 5 kA (F-N) e ≥ 20 kA (N-PE), PE ≥ 4 mm² | referência fixa | alto |
 

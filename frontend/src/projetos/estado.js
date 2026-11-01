@@ -1,7 +1,10 @@
 import {
+  CATALOGOS_ELETRODUTO,
   CONDICOES_ATERRAMENTO_ENTERRADO,
   ESQUEMAS_ATERRAMENTO,
+  FORNECIMENTOS,
   ISOLACOES,
+  LINHAS_DISJUNTOR,
   METODOS_INSTALACAO,
   TABELA_MULTIPLICADOR_DISPARO_INSTANTANEO,
   TAXAS_TERCEIRA_HARMONICA,
@@ -11,6 +14,8 @@ import {
   TIPOS_INSTALACAO,
 } from '../calculations/constantes.js'
 import { DISTRIBUIDORAS } from '../calculations/distribuidoras.js'
+import { PERFIS_DEMANDA } from '../calculations/demanda.js'
+import { CONVENCOES_RESISTIVIDADE } from '../calculations/quedaDeTensao.js'
 import { TIPOS_PONTO_BANHEIRO } from '../calculations/locaisEspeciais.js'
 import { DRS_MONTANTE } from '../calculations/seccionamento.js'
 
@@ -26,6 +31,19 @@ export const ESTADO_INICIAL = {
   // adotá-la (mesmo padrão de opt-in de `neutroReduzidoDeclarado`); default `false` mantém a
   // leitura base (sempre 3 pontos), mais conservadora.
   aplicarAlternativa600VA: false,
+  // Corrente máxima de projeto de um circuito terminal (A): critério de agrupamento de cômodos no mesmo
+  // circuito. A norma não fixa limite de VA nem de tomadas por circuito (compilado, S3 §7.2).
+  correnteMaximaCircuitoA: 16,
+  // 9.5.3.3 — circuito misto de iluminação e tomadas, só com as três condições (modo configurável).
+  circuitoMisto: false,
+  // Fases escolhidas pelo projetista {circuitoId: [fases]}; vazio = distribuição automática.
+  fasesManuais: {},
+  // Perfil de demanda (semana 3 §8): 'creder' (padrão, estimativa bibliográfica por parcelas) ou 'nenhum'.
+  // Para sair de "estimativa bibliográfica" é preciso identificar distribuidora, documento, revisão e grupo.
+  perfilDemanda: 'creder',
+  demandaDocumento: '',
+  demandaRevisao: '',
+  demandaGrupo: '',
   // Ajuste avançado opcional dos fatores de correção (Tabelas 40/42/45) — '' (não preenchido) usa
   // os defaults automáticos: 30°C ao ar (ou 20°C de solo, para circuitos/alimentador enterrados —
   // método D) e nº de circuitos agrupados = total de circuitos gerados. `temperaturaSoloC` e
@@ -38,6 +56,17 @@ export const ESTADO_INICIAL = {
   // Método de instalação (A1/A2/B1/B2/C/D — ver METODOS_INSTALACAO) por circuito terminal, no
   // mesmo padrão de mapa que `comprimentos`; ausente = B1 (fios em eletroduto, o mais comum).
   metodosInstalacao: {},
+  // Maneira de instalar da Tabela 33 por circuito (S4 §2): dela sai o método de referência. `metodosInstalacao`
+  // guarda o método derivado, que é o que o cálculo usa.
+  maneirasInstalacao: {},
+  maneiraAlimentador: '7',
+  // Grupos de agrupamento (K2) e eletrodutos compartilhados (S5 §3–5, S8 §6): [{id, nome, circuitoIds, forma,
+  // espacamento, camadas, circuitosPorCamada, multipolar, homogeneo, excluidos, eletroduto}]. Sem grupos, todos
+  // os circuitos contam como um só feixe (comportamento padrão).
+  agrupamentos: [],
+  // Catálogo de eletrodutos (CATALOGOS_ELETRODUTO) e áreas externas dos cabos do produto usado {seção: mm²}.
+  catalogoEletroduto: 'pvc-roscavel',
+  areasCabo: {},
   metodoInstalacaoAlimentador: 'B1',
   // Isolação dos condutores (Tabela 36 = PVC, Tabela 37 = EPR/XLPE) — decisão de projeto, não por
   // circuito (o método de instalação varia dentro de uma casa; a isolação é decisão de compra).
@@ -50,6 +79,12 @@ export const ESTADO_INICIAL = {
   // efeito quando o usuário declara explicitamente que as 3 condições da norma valem — nunca
   // aplicado automaticamente.
   neutroReduzidoDeclarado: false,
+  // As três condições de 6.2.6.2.6 (S7 §5.3): circuito presumivelmente equilibrado, neutro protegido contra
+  // sobrecorrentes e (pela faixa de h₃ abaixo) 3ª harmônica ≤ 15%. Declaradas à parte, sem padrão silencioso.
+  neutroEquilibrado: false,
+  neutroProtegido: false,
+  // Taxa de 3ª harmônica em % (usada só na faixa "acima de 33%", anexo F, para estimar a corrente de neutro).
+  h3Percentual: '',
   // §6.2.5.6.1 e §6.2.6.2.6 — taxa de 3ª harmônica e múltiplos. Tri-estado, não booleano: governa
   // ao mesmo tempo a redução do neutro (só com ≤ 15%) e o fator de 0,86 por neutro carregado (só
   // acima de 15%), cujos lados seguros são opostos. Ver TAXAS_TERCEIRA_HARMONICA.
@@ -64,6 +99,20 @@ export const ESTADO_INICIAL = {
   // nunca substitui o dimensionamento por NBR 5410). '' = nenhuma.
   distribuidoraId: '',
   curvaDisjuntorGeral: 'C',
+  // Semana 7 — linha de disjuntores (LINHAS_DISJUNTOR; 'serie' = série de cadastro, sem Icn) e, sem linha,
+  // a capacidade de ruptura Icn informada à mão (kA).
+  linhaDisjuntor: 'serie',
+  icnDisjuntorKA: '',
+  // Semana 6 — situação de alimentação (limite total de queda, §6.2.7.1) e convenção de resistividade.
+  fornecimento: 'secundario-distribuicao',
+  convencaoResistividade: 'operacao',
+  // Modo por impedância (S6 §7.1): {rOhmKm, xOhmKm} do alimentador e por circuito; vazio = modo por
+  // resistividade. Pontos de carga de circuito radial {id: [{id, distanciaM, correnteA}]} e seção do
+  // retorno quando diferente da ida {id: mm²}.
+  impedanciaAlimentador: { rOhmKm: '', xOhmKm: '' },
+  impedancias: {},
+  pontosCarga: {},
+  secoesRetorno: {},
   // Tabela 59, NOTA — potência (VA) de cada circuito de reserva do quadro, para entrar no cálculo
   // do alimentador. '' = reserva NÃO considerada (vira pendência no veredito).
   potenciaReservaPorCircuitoVA: '',
@@ -73,16 +122,33 @@ export const ESTADO_INICIAL = {
   // exigência normativa — ver `recomendarDPS`.
   alimentacaoAerea: false,
   regiaoAltoIndiceDescargas: false,
+  // Classe AQ de descargas atmosféricas (Tabela 15): AQ1, AQ2 (> 25 dias de trovoada/ano) ou AQ3 (exposição direta).
+  classeAQ: 'AQ1',
+  // Posição do DPS em relação ao DR (6.3.5.2.6 b): a montante do DR no TT obriga o esquema de conexão 3.
+  dpsMontanteDoDR: false,
   exposicaoDescargaDireta: false,
   // §4.2.2.2 — esquema de aterramento (ESQUEMAS_ATERRAMENTO) e §6.4.1.2.1/Tabela 52 — condição do
   // condutor de aterramento (CONDICOES_ATERRAMENTO_ENTERRADO). '' = não declarado.
   esquemaAterramento: '',
+  // PE (§6.4.3.1; S7 §4): corrente de falta e tempo de atuação para o cálculo S ≥ √(I²t)/k, e as condições de 6.4.3.1.4.
+  peFaltaA: '',
+  peTempoS: '',
+  peForaDoCabo: false,
+  peProtecaoMecanica: true,
+  // Dispositivo de proteção (S7 §2.1): 'disjuntor-nm60898' (I₂ = 1,45·In) ou 'outro' (relação I₂/In do fabricante);
+  // sobrecarga prolongada (> 100 h em 12 meses ou 500 h): vale I₂ ≤ Iz.
+  tipoDispositivo: 'disjuntor-nm60898',
+  relacaoI2InOutro: '',
+  sobrecargaProlongada: false,
   condicaoAterramento: '',
   // §5.1.2.2.4.3 — resistência de aterramento medida (TT), opcional.
   resistenciaAterramentoOhm: '',
   // §6.3.3.2.6 — 'geral' (um DR de 30 mA para tudo) ou 'grupos' (um por grupo, `grupoDR` =
   // {circuitoId: nº do DR}); `drMontante` = DRS_MONTANTE ('' = nenhum), só no modo por grupos.
-  modoDR: 'geral',
+  modoDR: 'exigidos',
+  // Tipo do DR (IEC 61008/61009): AC só correntes senoidais; A também com componente contínua; B também
+  // contínua lisa (S8 §4.1).
+  tipoDR: 'A',
   grupoDR: {},
   drMontante: '',
   // F8 — instalação existente: {circuitoId: {secaoMm2, disjuntorA}} já instalados, a conferir.
@@ -121,8 +187,16 @@ const OPCOES = {
   curvaDisjuntorGeral: Object.keys(TABELA_MULTIPLICADOR_DISPARO_INSTANTANEO),
   esquemaAterramento: ['', ...Object.keys(ESQUEMAS_ATERRAMENTO)],
   condicaoAterramento: ['', ...Object.keys(CONDICOES_ATERRAMENTO_ENTERRADO)],
-  modoDR: ['geral', 'grupos'],
+  modoDR: ['exigidos', 'geral', 'grupos'],
   drMontante: ['', ...Object.keys(DRS_MONTANTE)],
+  linhaDisjuntor: Object.keys(LINHAS_DISJUNTOR),
+  fornecimento: Object.keys(FORNECIMENTOS),
+  convencaoResistividade: Object.keys(CONVENCOES_RESISTIVIDADE),
+  perfilDemanda: Object.keys(PERFIS_DEMANDA),
+  classeAQ: ['AQ1', 'AQ2', 'AQ3'],
+  tipoDR: ['AC', 'A', 'B'],
+  tipoDispositivo: ['disjuntor-nm60898', 'outro'],
+  catalogoEletroduto: Object.keys(CATALOGOS_ELETRODUTO),
 }
 
 // Mapa {id: valor}: fica só o par cujo valor passa em `aceita`.
@@ -149,6 +223,13 @@ export function normalizarProjeto(dados) {
 
   projeto.comprimentos = filtrarMapa(projeto.comprimentos, ehEscalar)
   projeto.metodosInstalacao = filtrarMapa(projeto.metodosInstalacao, (metodo) => Object.hasOwn(METODOS_INSTALACAO, metodo))
+  projeto.maneirasInstalacao = filtrarMapa(projeto.maneirasInstalacao, (m) => typeof m === 'string')
+  projeto.fasesManuais = filtrarMapa(projeto.fasesManuais, Array.isArray)
+  projeto.impedancias = filtrarMapa(projeto.impedancias, ehObjeto)
+  projeto.pontosCarga = filtrarMapa(projeto.pontosCarga, Array.isArray)
+  projeto.secoesRetorno = filtrarMapa(projeto.secoesRetorno, ehEscalar)
+  projeto.areasCabo = filtrarMapa(projeto.areasCabo, ehEscalar)
+  projeto.agrupamentos = projeto.agrupamentos.filter(ehObjeto).map((g) => ({ ...g, id: idValido(g.id), circuitoIds: Array.isArray(g.circuitoIds) ? g.circuitoIds : [], excluidos: Array.isArray(g.excluidos) ? g.excluidos : [] }))
   projeto.grupoDR = filtrarMapa(projeto.grupoDR, (numero) => Number.isInteger(Number(numero)) && Number(numero) > 0)
   projeto.existentes = filtrarMapa(projeto.existentes, ehObjeto)
   projeto.percursos = Object.fromEntries(

@@ -16,7 +16,7 @@ test('sauna não pede perímetro e não tem tomada mínima', async ({ page }) =>
   await page.getByRole('button', { name: '+ Adicionar cômodo' }).click()
   await page.getByLabel('Tipo de cômodo').selectOption('sauna')
   await expect(page.getByLabel('Perímetro (m)')).toHaveCount(0)
-  await expect(page.getByText('mínimo da norma: 0')).toBeVisible()
+  await expect(page.getByText('mínimo da norma: 0', { exact: true })).toBeVisible()
   await expect(page.getByText(/Sauna \(§9\.4\): nenhuma tomada/)).toBeVisible()
 })
 

@@ -3,6 +3,7 @@ import { ProjetoContext } from './useProjeto.js'
 import { calcularProjetoCompleto } from '../calculations/projeto.js'
 import { resolverConfigInstalacao } from '../calculations/constantes.js'
 import { ESTADO_INICIAL, gerarId, normalizarProjeto } from '../projetos/estado.js'
+import { metodoDaManeira } from '../calculations/agrupamento.js'
 
 // Biblioteca de projetos: { ativoId, projetos: [{ id, nome, criadoEm, atualizadoEm, dados }] }.
 // Sempre há pelo menos um projeto — o ativo é o que a calculadora edita.
@@ -158,6 +159,8 @@ export function ProjetoProvider({ children }) {
                       ligacao: 'fase-neutro',
                       tipoCarga: 'resistiva',
                       cosPhi: 1,
+                      tipoPotencia: 'absorvida',
+                      conexao: 'tomada',
                     },
                   ],
                 }
@@ -191,6 +194,40 @@ export function ProjetoProvider({ children }) {
               : comodo,
           ),
         }))
+      },
+
+      // Ações genéricas (evitam um setter por campo): um campo do projeto, ou uma entrada de um mapa
+      // {id: valor}; valor vazio remove a entrada.
+      setCampo(chave, valor) {
+        setProjeto((atual) => ({ ...atual, [chave]: valor }))
+      },
+
+      setMapa(chave, id, valor) {
+        setProjeto((atual) => {
+          const mapa = { ...(atual[chave] ?? {}) }
+          if (valor === '' || valor === null || valor === undefined) delete mapa[id]
+          else mapa[id] = valor
+          return { ...atual, [chave]: mapa }
+        })
+      },
+
+      // Grupos de agrupamento / eletrodutos compartilhados (K2 por grupo, S5 e S8).
+      addAgrupamento() {
+        setProjeto((atual) => ({
+          ...atual,
+          agrupamentos: [
+            ...(atual.agrupamentos ?? []),
+            { id: gerarId(), nome: `Eletroduto E${(atual.agrupamentos ?? []).length + 1}`, circuitoIds: [], forma: 'feixe', espacamento: '', camadas: 2, circuitosPorCamada: '', multipolar: false, homogeneo: true, excluidos: [], eletroduto: true },
+          ],
+        }))
+      },
+
+      updateAgrupamento(id, patch) {
+        setProjeto((atual) => ({ ...atual, agrupamentos: (atual.agrupamentos ?? []).map((g) => (g.id === id ? { ...g, ...patch } : g)) }))
+      },
+
+      removeAgrupamento(id) {
+        setProjeto((atual) => ({ ...atual, agrupamentos: (atual.agrupamentos ?? []).filter((g) => g.id !== id) }))
       },
 
       setComprimento(circuitoId, metros) {
@@ -232,6 +269,15 @@ export function ProjetoProvider({ children }) {
         setProjeto((atual) => ({
           ...atual,
           metodosInstalacao: { ...atual.metodosInstalacao, [circuitoId]: metodo },
+        }))
+      },
+
+      // Tabela 33: a maneira é a entrada; o método de referência (A1..D) é derivado dela.
+      setManeiraInstalacao(circuitoId, codigo) {
+        setProjeto((atual) => ({
+          ...atual,
+          maneirasInstalacao: { ...atual.maneirasInstalacao, [circuitoId]: codigo },
+          metodosInstalacao: { ...atual.metodosInstalacao, [circuitoId]: metodoDaManeira(codigo) ?? 'B1' },
         }))
       },
 

@@ -50,6 +50,7 @@ export function casaModelo() {
     comprimentoRamalEntrada: '20',
     iccPresumidaA: '5000',
     iccFaseNeutroA: '5000',
+    linhaDisjuntor: 'DX-6000',
     potenciaReservaPorCircuitoVA: '1000',
     esquemaAterramento: 'TN-C-S',
     condicaoAterramento: 'protegido-total',

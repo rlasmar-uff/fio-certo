@@ -3,14 +3,17 @@ import Nota from '../../components/Nota.jsx'
 import { validarNumero } from '../../components/validacao.js'
 import { useProjeto } from '../../context/useProjeto.js'
 import Campo from '../../components/Campo.jsx'
-import { METODOS_INSTALACAO } from '../../calculations/constantes.js'
+import { CampoMarcar, CampoNumero } from '../../components/CamposProjeto.jsx'
+import { MANEIRAS_INSTALAR, MANEIRA_PADRAO } from '../../calculations/agrupamento.js'
+import { CORRENTE_MAXIMA_CIRCUITO_PADRAO_A, CORRENTE_MAXIMA_CIRCUITO_MISTO_A } from '../../calculations/constantes.js'
 import { DRS_MONTANTE } from '../../calculations/seccionamento.js'
 import { ROUTES } from '../../routes.js'
 
 export default function Circuitos() {
-  const { projeto, calculo, setComprimento, setMetodoInstalacao, setModoDR, setGrupoDR, setDrMontante } = useProjeto()
+  const { projeto, calculo, setComprimento, setManeiraInstalacao, setMapa, setModoDR, setGrupoDR, setDrMontante } = useProjeto()
   const { circuitosComFase, cargaPorFase, explicacoesFase: explicacoes } = calculo
   const porGrupos = projeto.modoDR === 'grupos'
+  const balanceamento = calculo.balanceamento
   const { numeroFases } = calculo.configInstalacao
 
   return (
@@ -33,10 +36,17 @@ export default function Circuitos() {
           <div className="grade-campos grade-campos-larga">
             <Campo label="Proteção diferencial (DR)" ajuda="§6.3.3.2.6 — dividir evita que a fuga normal de todos os circuitos derrube a casa inteira.">
               <select className="campo" value={projeto.modoDR} onChange={(evento) => setModoDR(evento.target.value)}>
-                <option value="geral">Um DR de 30 mA para toda a instalação</option>
-                <option value="grupos">Um DR de 30 mA por grupo de circuitos</option>
+                <option value="geral">Todos os circuitos sob um DR de 30 mA para toda a instalação</option>
+                <option value="grupos">Todos os circuitos, com um DR de 30 mA por grupo</option>
+                <option value="exigidos">Um DR de 30 mA para cada circuito que a norma exige (§5.1.3.2.2) — padrão</option>
               </select>
             </Campo>
+            <CampoNumero
+              chave="correnteMaximaCircuitoA"
+              label="Corrente máxima por circuito"
+              unidade="A"
+              ajuda={`Critério do compilado: o circuito é limitado pela corrente, não por VA fixo. Padrão ${CORRENTE_MAXIMA_CIRCUITO_PADRAO_A} A; circuito misto (iluminação + tomadas, §9.5.3.1) até ${CORRENTE_MAXIMA_CIRCUITO_MISTO_A} A.`}
+            />
             {porGrupos && (
               <Campo label="DR a montante dos grupos" ajuda="Opcional. Para ser seletivo: tipo S e ≥ 3× 30 mA (§6.3.6.3.2).">
                 <select className="campo" value={projeto.drMontante} onChange={(evento) => setDrMontante(evento.target.value)}>
@@ -50,6 +60,7 @@ export default function Circuitos() {
               </Campo>
             )}
           </div>
+          <CampoMarcar chave="circuitoMisto">Permitir circuito misto: iluminação e tomadas de uso geral no mesmo circuito (§9.5.3.1, com as condições do compilado).</CampoMarcar>
 
           <div className="tabela-scroll">
             <table className="tabela-resultado tabela-cartoes">
@@ -61,7 +72,8 @@ export default function Circuitos() {
                   <th className="numerico">Tensão</th>
                   {numeroFases > 1 && <th className="numerico">Fase</th>}
                   <th className="numerico">Comprimento</th>
-                  <th>Método de instalação</th>
+                  <th>Maneira de instalar (Tabela 33)</th>
+                  {numeroFases > 1 && <th>Fase (manual)</th>}
                   {porGrupos && <th>DR</th>}
                 </tr>
               </thead>
@@ -69,7 +81,7 @@ export default function Circuitos() {
                 {circuitosComFase.map((circuito) => {
                   const comprimento = projeto.comprimentos[circuito.id] ?? ''
                   const erroComprimento = validarNumero(comprimento)
-                  const metodo = projeto.metodosInstalacao[circuito.id] || 'B1'
+                  const maneira = projeto.maneirasInstalacao?.[circuito.id] || MANEIRA_PADRAO
                   return (
                     <tr key={circuito.id}>
                       <td data-label="Circuito">
@@ -106,21 +118,36 @@ export default function Circuitos() {
                           </span>
                         </span>
                       </td>
-                      <td data-label="Método">
+                      <td data-label="Maneira">
                         <select
                           className="campo campo-compacto"
-                          aria-label={`Método de instalação de ${circuito.nome}`}
-                          value={metodo}
-                          onChange={(evento) => setMetodoInstalacao(circuito.id, evento.target.value)}
-                          title={METODOS_INSTALACAO[metodo].descricao}
+                          aria-label={`Maneira de instalar de ${circuito.nome}`}
+                          value={maneira}
+                          onChange={(evento) => setManeiraInstalacao(circuito.id, evento.target.value)}
+                          title={MANEIRAS_INSTALAR.find((m) => m.codigo === maneira)?.descricao}
                         >
-                          {Object.entries(METODOS_INSTALACAO).map(([chave, opcao]) => (
-                            <option key={chave} value={chave}>
-                              {opcao.label}
+                          {MANEIRAS_INSTALAR.map((m) => (
+                            <option key={m.codigo} value={m.codigo}>
+                              {m.codigo} → {m.metodo}
                             </option>
                           ))}
                         </select>
                       </td>
+                      {numeroFases > 1 && (
+                        <td data-label="Fase manual">
+                          <select
+                            className="campo campo-compacto"
+                            aria-label={`Fase de ${circuito.nome}`}
+                            value={(projeto.fasesManuais?.[circuito.id] ?? []).join('+')}
+                            onChange={(evento) => setMapa('fasesManuais', circuito.id, evento.target.value ? evento.target.value.split('+').map(Number) : '')}
+                          >
+                            <option value="">Automática</option>
+                            {circuito.ehFaseFase
+                              ? [[1, 2], [1, 3], [2, 3]].filter(([, b]) => b <= numeroFases).map((par) => <option key={par.join('+')} value={par.join('+')}>F{par[0]}+F{par[1]}</option>)
+                              : Array.from({ length: numeroFases }, (_, k) => <option key={k} value={k + 1}>F{k + 1}</option>)}
+                          </select>
+                        </td>
+                      )}
                       {porGrupos && (
                         <td data-label="DR">
                           <select
@@ -169,6 +196,42 @@ export default function Circuitos() {
                   </tbody>
                 </table>
               </div>
+              {balanceamento && (
+                <>
+                  <h2>Distribuição por fase: correntes e dispersão δ</h2>
+                  <div className="tabela-scroll">
+                    <table className="tabela-resultado">
+                      <thead>
+                        <tr>
+                          <th>Cenário</th>
+                          {cargaPorFase.map((_, k) => (
+                            <th key={k} className="numerico">I fase {k + 1}</th>
+                          ))}
+                          <th className="numerico">δ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[['Distribuição automática', balanceamento.automatico], [balanceamento.ajusteManual ? 'Adotada (com ajuste manual)' : 'Adotada', balanceamento.adotado], ['Sem os equipamentos de uso específico', balanceamento.semEquipamentos]].map(([nome, c]) => (
+                          <tr key={nome}>
+                            <td>{nome}</td>
+                            {c.correntesA.map((i, k) => (
+                              <td key={k} className="numerico">{i.toFixed(1)} A</td>
+                            ))}
+                            <td className="numerico">{c.deltaPercentual === null ? '—' : `${c.deltaPercentual.toFixed(1)}%`}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Nota titulo="O que é o δ">
+                    <p>
+                      δ = 100·máx(|Iₖ − Imédia|)/Imédia, com as correntes de fase por soma fasorial. É um indicador de dispersão para comparar
+                      alternativas, não o fator de desequilíbrio por componentes simétricas nem um limite da NBR 5410 (4.2.5.6 não fixa percentual).
+                    </p>
+                  </Nota>
+                </>
+              )}
+
               <Nota titulo="Como as fases foram balanceadas?">
                 <p>
                   Cada circuito vai para a(s) fase(s) menos carregada(s) até o momento. Circuitos

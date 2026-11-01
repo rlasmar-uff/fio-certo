@@ -1,4 +1,8 @@
-import { balancearFases, calcularCorrentesVetoriais, gerarCircuitos } from './circuitos.js'
+import { balancearFases, calcularCorrentesVetoriais, gerarCircuitos, indicadorDesequilibrio } from './circuitos.js'
+import { calcularDemandaProjeto } from './demanda.js'
+import { resolverAgrupamentos, secoesDentroDeTresValores } from './agrupamento.js'
+import { dimensionarPE } from './condutorProtecao.js'
+import { exigenciaDR } from './exigenciaDR.js'
 import { dimensionarCircuitos } from './condutores.js'
 import { dimensionarProtecaoGeral } from './protecaoGeral.js'
 import { dimensionarEletroduto } from './eletroduto.js'
@@ -12,10 +16,17 @@ import {
   verificarSeccionamentoTN,
   verificarSeccionamentoTT,
 } from './seccionamento.js'
+import { correntesDaLinha } from './constantes.js'
 import { calcularReservaQuadro, verificacoesComplementares, verificarSobrecarga } from './complementares.js'
 import { verificarExistente } from './existente.js'
 import { ID_PERCURSO_ALIMENTADOR, verificarPercurso } from './percurso.js'
-import { IDR_SENSIBILIDADE_ALTA_MA, LIMITE_QUEDA_TERMINAL_PERCENTUAL, LIMITE_QUEDA_TOTAL_PERCENTUAL } from './constantes.js'
+import { IDR_SENSIBILIDADE_ALTA_MA, LIMITE_QUEDA_TERMINAL_PERCENTUAL, limiteQuedaTotal } from './constantes.js'
+import { calcularQuedaPercentual } from './quedaDeTensao.js'
+
+// Impedância informada (r e x em Ω/km): só vale com os dois campos numéricos preenchidos.
+function impedanciaValida(imp) {
+  return imp && imp.rOhmKm !== '' && imp.xOhmKm !== '' && Number.isFinite(Number(imp.rOhmKm)) && Number.isFinite(Number(imp.xOhmKm)) ? imp : null
+}
 
 function valorInformado(valor) {
   return valor !== undefined && valor !== null && valor !== ''
@@ -29,9 +40,31 @@ function valorInformado(valor) {
 // evita o alimentador e os circuitos terminais divergirem sobre o orçamento de queda disponível.
 export function calcularProjetoCompleto(projeto, configInstalacao) {
   const { numeroFases, tensaoFaseNeutro } = configInstalacao
+  // Corrente nominal disponível na linha de disjuntores escolhida (S7 §3), por número de polos.
+  const correntesDisjuntor = (polos) => correntesDaLinha(projeto.linhaDisjuntor, polos)
 
-  const circuitos = gerarCircuitos(projeto.comodos, configInstalacao, projeto.aplicarAlternativa600VA)
-  const { cargaPorFase, circuitosComFase, explicacoes } = balancearFases(circuitos, numeroFases)
+  const circuitos = gerarCircuitos(projeto.comodos, configInstalacao, projeto.aplicarAlternativa600VA, {
+    correnteMaximaA: projeto.correnteMaximaCircuitoA,
+    circuitoMisto: projeto.circuitoMisto,
+  })
+  const { cargaPorFase, circuitosComFase, explicacoes } = balancearFases(circuitos, numeroFases, projeto.fasesManuais)
+  // S3 §10 — "antes e depois": a distribuição automática × a adotada (com os ajustes do projetista), cada
+  // uma com as correntes de fase por soma fasorial e o indicador de dispersão δ; e um cenário sem os
+  // equipamentos de uso específico (simultaneidade parcial), só para comparar.
+  const correntesDe = (lista) => calcularCorrentesVetoriais(lista, numeroFases, tensaoFaseNeutro).correntePorFaseA
+  const automatico = balancearFases(circuitos, numeroFases, {}).circuitosComFase
+  const semTue = (lista) => lista.filter((circuito) => circuito.tipo !== 'tue')
+  const balanceamento = {
+    ajusteManual: Object.keys(projeto.fasesManuais ?? {}).some((id) => circuitosComFase.find((c) => c.id === id)?.decisaoFase?.manual),
+    automatico: { correntesA: correntesDe(automatico), ...indicadorDesequilibrio(correntesDe(automatico)) },
+    adotado: { correntesA: correntesDe(circuitosComFase), ...indicadorDesequilibrio(correntesDe(circuitosComFase)) },
+    semEquipamentos: { correntesA: correntesDe(semTue(circuitosComFase)), ...indicadorDesequilibrio(correntesDe(semTue(circuitosComFase))) },
+  }
+  const demanda = calcularDemandaProjeto({
+    totais: calcularPrevisaoDeCarga(projeto.comodos, projeto.aplicarAlternativa600VA).totais,
+    perfil: projeto.perfilDemanda,
+    identificacao: { distribuidoraId: projeto.distribuidoraId, documento: projeto.demandaDocumento, revisao: projeto.demandaRevisao, grupo: projeto.demandaGrupo },
+  })
   // Cálculo vetorial completo (soma de P/Q por fase, ângulo de 120° entre fases) — substitui a
   // soma escalar de VA (`cargaPorFase`, mantida acima só pra explicar a decisão de balanceamento
   // na UI) como base da corrente que dimensiona o disjuntor geral/alimentador, e é a única forma
@@ -67,7 +100,16 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     ? Number(projeto.iccFaseNeutroA)
     : iccAlimentadorA
 
+  // Limite total de queda conforme a situação de alimentação (§6.2.7.1 a-d) e, nos casos de 7%, o
+  // acréscimo da nota 3 por linha principal acima de 100 m (a linha principal é o ramal de entrada).
+  const limiteQuedaTotalPercentual = limiteQuedaTotal(projeto.fornecimento, comprimentoRamalM)
+  const impedanciaAlimentador = impedanciaValida(projeto.impedanciaAlimentador)
+
   const protecaoGeralBase = dimensionarProtecaoGeral({
+    convencao: projeto.convencaoResistividade,
+    impedanciaAlimentador,
+    limiteQuedaTotalPercentual,
+    correntesDisjuntor,
     correntePorFaseA,
     correnteNeutroA,
     fasoresFaseA,
@@ -81,6 +123,10 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     metodoInstalacao: projeto.metodoInstalacaoAlimentador,
     isolacao: projeto.isolacaoAlimentador,
     neutroReduzidoDeclarado: projeto.neutroReduzidoDeclarado,
+    neutroEquilibrado: Boolean(projeto.neutroEquilibrado),
+    neutroProtegido: Boolean(projeto.neutroProtegido),
+    h3Percentual: projeto.h3Percentual,
+    classeAQ: projeto.classeAQ,
     terceiraHarmonica: projeto.terceiraHarmonica,
     iccPresumidaA: iccAlimentadorA,
     iccFaseNeutroA,
@@ -95,13 +141,25 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   // carregados. Independente do FCA (Tabela 42) usado na ampacidade — ver `eletroduto.js`.
   // Método C (cabo direto na parede, sem eletroduto) não tem o que dimensionar aqui.
   const secaoFaseAlimentador = protecaoGeralBase.condutorFase.secaoMm2
+  // PE (§6.4.3.1): Tabela 58 e, com a corrente de falta e o tempo informados, o cálculo — vale o maior; piso de
+  // 6.4.3.1.4 para PE fora do cabo (compilado, S7 §4).
+  const opcoesPE = {
+    iFaltaA: Number(projeto.peFaltaA) > 0 ? Number(projeto.peFaltaA) : null,
+    tempoS: Number(projeto.peTempoS) > 0 ? Number(projeto.peTempoS) : null,
+    foraDoCabo: Boolean(projeto.peForaDoCabo),
+    protecaoMecanica: projeto.peProtecaoMecanica !== false,
+  }
+  const peAlimentador = dimensionarPE({ secaoFaseMm2: secaoFaseAlimentador, isolacao: protecaoGeralBase.condutorFase.isolacao, ...opcoesPE })
+  const opcoesEletroduto = { catalogo: projeto.catalogoEletroduto, areasCabo: projeto.areasCabo }
   const protecaoGeral = {
     ...protecaoGeralBase,
+    secaoTerraMm2: peAlimentador.secaoMm2 ?? protecaoGeralBase.secaoTerraMm2,
+    peDetalhe: peAlimentador,
     eletroduto:
       secaoFaseAlimentador !== null && projeto.metodoInstalacaoAlimentador !== 'C'
         ? dimensionarEletroduto(
-            [...Array(numeroFases).fill(secaoFaseAlimentador), protecaoGeralBase.secaoNeutroMm2, protecaoGeralBase.secaoTerraMm2],
-            { isolacao: protecaoGeralBase.condutorFase.isolacao },
+            [...Array(numeroFases).fill(secaoFaseAlimentador), protecaoGeralBase.secaoNeutroMm2, peAlimentador.secaoMm2 ?? protecaoGeralBase.secaoTerraMm2],
+            { isolacao: protecaoGeralBase.condutorFase.isolacao, ...opcoesEletroduto },
           )
         : null,
   }
@@ -115,10 +173,11 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   const quedaAlimentadorPercentual = protecaoGeral.condutorFase.quedaPercentual ?? 0
   const limiteQuedaTerminalDisponivel = Math.max(
     0,
-    Math.min(LIMITE_QUEDA_TERMINAL_PERCENTUAL, LIMITE_QUEDA_TOTAL_PERCENTUAL - quedaAlimentadorPercentual),
+    Math.min(LIMITE_QUEDA_TERMINAL_PERCENTUAL, limiteQuedaTotalPercentual - quedaAlimentadorPercentual),
   )
 
-  const dimensionadosBase = dimensionarCircuitos(circuitos, projeto.comprimentos, {
+  const metodoPorId = Object.fromEntries(circuitos.map((c) => [c.id, projeto.metodosInstalacao?.[c.id] || 'B1']))
+  const opcoesDimensionamento = {
     temperaturaC: projeto.temperaturaAmbienteC,
     temperaturaSoloC: projeto.temperaturaSoloC,
     resistividadeTermicaSoloKmW: projeto.resistividadeTermicaSoloKmW,
@@ -128,6 +187,38 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
       : undefined,
     limiteQuedaPercentual: limiteQuedaTerminalDisponivel,
     metodosPorId: projeto.metodosInstalacao,
+    convencao: projeto.convencaoResistividade,
+    impedanciasPorId: projeto.impedancias,
+    pontosCargaPorId: projeto.pontosCarga,
+    secoesRetornoPorId: projeto.secoesRetorno,
+    correntesDisjuntor,
+  }
+  // K2 por grupo de agrupamento (S5 §3–5): 1ª passada com os grupos tomados como semelhantes; com as seções
+  // obtidas confere-se a regra de "três valores normalizados sucessivos" (6.2.5.5.5 / 6.2.10.2) e, se o grupo
+  // não for semelhante, refaz-se com F = 1/√n.
+  const grupos1 = resolverAgrupamentos(projeto.agrupamentos, circuitos, metodoPorId)
+  let dimensionadosBase = dimensionarCircuitos(circuitos, projeto.comprimentos, { ...opcoesDimensionamento, fatorAgrupamentoPorId: grupos1.fatores })
+  const secoesPorId = Object.fromEntries(dimensionadosBase.map((c) => [c.id, c.secaoMm2]))
+  let gruposResolvidos = resolverAgrupamentos(projeto.agrupamentos, circuitos, metodoPorId, secoesPorId)
+  if (JSON.stringify(gruposResolvidos.fatores) !== JSON.stringify(grupos1.fatores)) {
+    dimensionadosBase = dimensionarCircuitos(circuitos, projeto.comprimentos, { ...opcoesDimensionamento, fatorAgrupamentoPorId: gruposResolvidos.fatores })
+    gruposResolvidos = resolverAgrupamentos(projeto.agrupamentos, circuitos, metodoPorId, Object.fromEntries(dimensionadosBase.map((c) => [c.id, c.secaoMm2])))
+  }
+  // Circuito excluído do agrupamento (6.2.5.5.2): corrente de projeto ≤ 30% da capacidade já corrigida pelo
+  // agrupamento incorrido — nunca da capacidade sem correção.
+  for (const grupo of gruposResolvidos.resultados) {
+    for (const id of grupo.excluidos) {
+      const c = dimensionadosBase.find((d) => d.id === id)
+      if (c?.ampacidadeA && !(c.correnteProjetoA <= 0.3 * c.ampacidadeA)) {
+        grupo.problemas.push(`${c.nome}: corrente de projeto (${c.correnteProjetoA.toFixed(1)} A) acima de 30% da capacidade corrigida (${(0.3 * c.ampacidadeA).toFixed(1)} A) — não pode ser excluído do agrupamento`)
+      }
+    }
+  }
+  // PE de cada circuito (Tabela 58 e/ou cálculo, S7 §4).
+  dimensionadosBase = dimensionadosBase.map((c) => {
+    if (!c.secaoMm2) return c
+    const pe = dimensionarPE({ secaoFaseMm2: c.secaoMm2, isolacao: c.isolacao, ...opcoesPE })
+    return { ...c, secaoTerraMm2: pe.secaoMm2 ?? c.secaoTerraMm2, peDetalhe: pe }
   })
 
   // Eletroduto de cada circuito terminal (§6.2.11.1.6): 2 condutores na seção de fase
@@ -155,6 +246,30 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   // Laço fase-neutro: o retorno pelo neutro REAL do alimentador (pode ser reduzido — Tabela 48), e
   // não pela seção de fase. O curto entre fases (`trechoAlimentador`) não passa pelo neutro.
   const trechoAlimentadorFaseNeutro = { ...trechoAlimentador, secaoVoltaMm2: protecaoGeral.secaoNeutroMm2 }
+  // I₂/I_n é atributo do tipo de dispositivo (S7 §2.1): 1,45 para NBR NM 60898; outro tipo exige a relação do
+  // fabricante. Sobrecarga prolongada troca a alínea b por I₂ ≤ I_z.
+  const opcoesSobrecarga = {
+    relacaoI2In: projeto.tipoDispositivo === 'outro' ? Number(projeto.relacaoI2InOutro) || null : 1.45,
+    prolongada: Boolean(projeto.sobrecargaProlongada),
+  }
+  // Partida de motor (6.5.1.3.3, S6 §2.3): com a corrente de partida informada, a queda nos terminais do
+  // dispositivo de partida (alimentador + circuito) não passa de 10%; sem ela, pendente — nunca com a corrente
+  // de regime.
+  const verificarPartida = (circuito) => {
+    const equipamento = circuito.equipamentoId && !circuito.equipamentoIds
+      ? projeto.comodos.find((comodo) => comodo.id === circuito.comodoId)?.tue?.find((e) => e.id === circuito.equipamentoId)
+      : null
+    if (!equipamento?.motor) return null
+    const correnteA = Number(equipamento.correntePartidaA)
+    if (!(correnteA > 0) || !circuito.secaoMm2 || !circuito.comprimentoInformado) return { informada: false, conforme: null }
+    const cosPhi = Number(equipamento.cosPhiPartida) > 0 && Number(equipamento.cosPhiPartida) <= 1 ? Number(equipamento.cosPhiPartida) : (Number(equipamento.cosPhi) || 1)
+    const quedaCircuito = calcularQuedaPercentual({
+      comprimentoM: circuito.comprimentoM, correnteA, secaoMm2: circuito.secaoMm2, tensaoV: circuito.tensao, cosPhi, tipoCarga: 'indutiva',
+      isolacao: circuito.isolacao, convencao: projeto.convencaoResistividade,
+    })
+    const quedaTotal = quedaAlimentadorPercentual + quedaCircuito
+    return { informada: true, correnteA, quedaCircuitoPercentual: quedaCircuito, quedaTotalPercentual: quedaTotal, limitePercentual: 10, conforme: quedaTotal <= 10 }
+  }
   const iccQuadroFaseFaseA = propagarIccFaseFase({ tensaoFaseNeutroV: tensaoFaseNeutro, iccFonteA: iccAlimentadorA, trechos: [trechoAlimentador] })
   const dimensionados = dimensionadosBase.map((circuito) => {
     const terminal = { comprimentoM: circuito.comprimentoM, secaoMm2: circuito.secaoMm2, isolacao: circuito.isolacao, tensaoV: circuito.tensao }
@@ -172,11 +287,12 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
       ...circuito,
       iccQuadroA,
       iccPontaA,
-      sobrecarga: verificarSobrecarga(circuito.disjuntorA, circuito.ampacidadeA),
+      sobrecarga: verificarSobrecarga(circuito.disjuntorA, circuito.ampacidadeA, opcoesSobrecarga),
       eletroduto:
         circuito.secaoMm2 !== null && circuito.metodoInstalacao !== 'C'
-          ? dimensionarEletroduto([circuito.secaoMm2, circuito.secaoMm2, circuito.secaoTerraMm2], { isolacao: circuito.isolacao })
+          ? dimensionarEletroduto([circuito.secaoMm2, circuito.secaoMm2, circuito.secaoTerraMm2], { isolacao: circuito.isolacao, ...opcoesEletroduto })
           : null,
+      partida: verificarPartida(circuito),
       curtoCircuito: verificarCurtoCircuito({
         correnteDisjuntorA: circuito.disjuntorA,
         curvaDisjuntor: projeto.curvaDisjuntorGeral,
@@ -192,6 +308,8 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   // com DR tipo S opcional a montante. No modo por grupos, o "IDR geral" passa a ser esse DR de
   // montante (ou nenhum); todo circuito continua sob um DR de 30 mA.
   const fasesPorCircuito = Object.fromEntries(circuitosComFase.map((circuito) => [circuito.id, circuito.fases]))
+  const exigencias = Object.fromEntries(dimensionados.map((c) => [c.id, exigenciaDR(c, projeto.comodos)]))
+  const exigidosIds = new Set(Object.entries(exigencias).filter(([, e]) => e.exige).map(([id]) => id))
   const drs = dimensionarDRs({
     modoDR: projeto.modoDR,
     grupoDR: projeto.grupoDR,
@@ -199,9 +317,14 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     fasesPorCircuito,
     disjuntorGeralA: protecaoGeral.disjuntorGeralA,
     drMontante: projeto.drMontante,
+    exigidosIds,
+  })
+  dimensionados.forEach((c) => {
+    c.exigenciaDR = exigencias[c.id]
+    c.sobDR = drs.modo !== 'exigidos' || exigidosIds.has(c.id)
   })
   protecaoGeral.drs = drs
-  if (drs.modo === 'grupos') {
+  if (drs.modo !== 'geral') {
     protecaoGeral.idr = drs.montante && protecaoGeral.idr
       ? { ...protecaoGeral.idr, sensibilidadeMA: drs.montante.sensibilidadeMA, tipoS: true }
       : null
@@ -220,7 +343,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   const ulV = tensaoContatoLimite(projeto.comodos.some((comodo) => comodo.tipo === 'banheiro'))
   const seccionamentoTT =
     esquema === 'TT'
-      ? verificarSeccionamentoTT({ resistenciaOhm: projeto.resistenciaAterramentoOhm, sensibilidadeDrMA: IDR_SENSIBILIDADE_ALTA_MA, ulV })
+      ? verificarSeccionamentoTT({ resistenciaOhm: projeto.resistenciaAterramentoOhm, sensibilidadeDrMA: drs.montante?.sensibilidadeMA ?? IDR_SENSIBILIDADE_ALTA_MA, ulV })
       : null
   const seccionamentoAlimentador = ehTN
     ? verificarSeccionamentoTN({
@@ -255,7 +378,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
           tensaoFaseNeutroV: tensaoFaseNeutro,
           correnteDisjuntorA: circuito.disjuntorA,
           curvaDisjuntor: projeto.curvaDisjuntorGeral,
-          sensibilidadeDrMA: IDR_SENSIBILIDADE_ALTA_MA,
+          sensibilidadeDrMA: circuito.sobDR ? IDR_SENSIBILIDADE_ALTA_MA : null,
         })
       : seccionamentoTT
     circuito.seccionamento = seccionamento
@@ -302,7 +425,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   const locaisEspeciais = {
     ...avaliarRequisitosBanheiro(
       projeto.comodos,
-      drs.modo === 'grupos' ? { sensibilidadeMA: IDR_SENSIBILIDADE_ALTA_MA } : protecaoGeral.idr,
+      drs.modo !== 'geral' ? { sensibilidadeMA: IDR_SENSIBILIDADE_ALTA_MA } : protecaoGeral.idr,
     ),
     ...avaliarPiscinaESauna(projeto.comodos, previsaoDeCarga.porComodo),
   }
@@ -314,8 +437,30 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   )
   // N17 — o ramal de entrada (medidor → quadro) também tem trechos entre caixas.
   protecaoGeral.percurso = verificarPercurso(projeto.percursos?.[ID_PERCURSO_ALIMENTADOR], protecaoGeral.eletroduto)
-  protecaoGeral.sobrecarga = verificarSobrecarga(protecaoGeral.condutorFase.disjuntorA, protecaoGeral.condutorFase.ampacidadeA)
+  protecaoGeral.sobrecarga = verificarSobrecarga(protecaoGeral.condutorFase.disjuntorA, protecaoGeral.condutorFase.ampacidadeA, opcoesSobrecarga)
   const complementares = verificacoesComplementares({ projeto, protecaoGeral, dimensionados, numeroFases, tensaoFaseNeutro })
+
+  // Eletroduto compartilhado por vários circuitos (S8 §2, §6.6): soma TODOS os condutores dos circuitos do grupo,
+  // fases, neutro e PE, e só admite seções em até três valores normalizados sucessivos (6.2.10.2).
+  const agrupamentos = gruposResolvidos.resultados.map((grupo) => {
+    if (!grupo.eletroduto) return grupo
+    const membros = grupo.circuitoIds.map((id) => dimensionados.find((c) => c.id === id)).filter((c) => c?.secaoMm2)
+    const eletroduto = membros.length
+      ? dimensionarEletroduto(membros.flatMap((c) => [c.secaoMm2, c.secaoMm2, c.secaoTerraMm2]), { isolacao: projeto.isolacaoCondutor, ...opcoesEletroduto })
+      : null
+    const problemas = [...grupo.problemas]
+    if (!secoesDentroDeTresValores(membros.map((c) => c.secaoMm2))) problemas.push('Eletroduto com seções de fase fora de três valores normalizados sucessivos: a norma veda a mistura (6.2.10.2)')
+    membros.forEach((c) => { c.eletroduto = eletroduto; c.eletrodutoCompartilhado = grupo.id })
+    return { ...grupo, eletrodutoCalculo: eletroduto, problemas }
+  })
+
+  // S4 §5.1 / S5 §7.1: "atende ao critério térmico e à seção mínima" NÃO equivale a "dimensionamento completo".
+  // O completo exige também queda, sobrecarga, curto-circuito e seccionamento verificados e atendidos.
+  for (const c of dimensionados) {
+    c.atendeCriterioTermico = c.secaoMm2 !== null && c.sobrecarga?.conforme !== false
+    const itens = [c.comprimentoInformado ? true : null, c.sobrecarga?.conforme ?? null, c.curtoCircuito?.verificado ? c.curtoCircuito.conforme : null, c.seccionamento?.verificado ? c.seccionamento.conforme : null]
+    c.dimensionamentoCompleto = !c.atendeCriterioTermico || itens.includes(false) ? false : itens.every((i) => i === true) ? true : null
+  }
 
   return {
     circuitos,
@@ -323,10 +468,14 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     explicacoesFase: explicacoes,
     cargaPorFase,
     protecaoGeral,
+    balanceamento,
+    agrupamentos,
+    demandaPerfil: demanda,
     reservaAlimentador: { circuitos: reservaCircuitos, potenciaPorCircuitoVA: reservaPorCircuitoVA, considerada: Boolean(reservaPorCircuitoVA) },
     dimensionados,
     limiteQuedaTerminalDisponivel,
     quedaAlimentadorPercentual,
+    limiteQuedaTotalPercentual,
     locaisEspeciais,
     demandaConcessionaria,
     complementares,

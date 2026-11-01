@@ -104,17 +104,21 @@ export function calcularLimite600VA(comodos, aplicarAlternativa = false) {
 // coincide com a potência ativa (W) do equipamento; para motores/compressores (cosφ < 1),
 // a potência aparente é maior, pois é ela que determina a corrente real do circuito.
 //
-// `rendimento` (η, 0 < η ≤ 1, opcional): a `potenciaW` cadastrada deve ser a potência ELÉTRICA que o
-// equipamento absorve. Para motores e compressores, cuja placa traz a potência MECÂNICA no eixo, a
-// absorvida é maior: P_elétrica = P_mecânica / η. Sem rendimento declarado vale η = 1 (a potência
-// informada já é a absorvida da rede). Valor fora de (0, 1] não pode melhorar o resultado: é
-// ignorado (η = 1) e a validação da tela o sinaliza.
+// Potência do equipamento (S3 §6, §12):
+// - `tipoPotencia` 'absorvida' (padrão): a potência informada já é a elétrica de entrada; NÃO se divide por
+//   rendimento de novo. 'saida': potência mecânica de saída (motores, compressores) — P_entrada = P_saída/η,
+//   com o rendimento η (0 < η ≤ 1) obrigatório. η ausente/inválido nunca melhora o resultado: vale 1, e a
+//   entrada é acusada no veredito (não se assume valor em silêncio).
+// - potência não informada, mas com tensão e corrente nominal (equipamento ainda indefinido): S = U·I, uma
+//   HIPÓTESE que o veredito registra (§4.2.1.2.3 c).
 export function calcularPotenciaAparenteVA(equipamento) {
-  // Potência negativa não abate carga das demais: vale 0 (e é sinalizada como inválida).
   const potenciaW = Math.max(0, Number(equipamento.potenciaW) || 0)
+  const tensaoV = Number(equipamento.tensaoV)
+  const correnteA = Number(equipamento.correnteNominalA)
+  if (!(potenciaW > 0) && tensaoV > 0 && correnteA > 0) return tensaoV * correnteA
   const cosPhi = normalizarCosPhi(equipamento.cosPhi)
   const rendimentoInformado = Number(equipamento.rendimento)
-  const rendimento = rendimentoInformado > 0 && rendimentoInformado <= 1 ? rendimentoInformado : 1
+  const rendimento = equipamento.tipoPotencia === 'saida' && rendimentoInformado > 0 && rendimentoInformado <= 1 ? rendimentoInformado : 1
   const potenciaEletricaW = potenciaW / rendimento
   return cosPhi > 0 ? potenciaEletricaW / cosPhi : potenciaEletricaW
 }
@@ -126,25 +130,51 @@ export function calcularTueVA(comodo) {
   }, 0)
 }
 
+const numeroValido = (v) => v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v))
+
+// S3 §3, §12.2 — área e perímetro nulos, negativos ou não numéricos são REJEITADOS (o cálculo do cômodo
+// não é feito) e pontos de tomada fracionários também. O perímetro só é exigido onde entra na regra.
+export function motivoRejeicaoComodo(comodo) {
+  const config = configTipoComodo(comodo.tipo)
+  if (!numeroValido(comodo.area) || Number(comodo.area) <= 0) return 'área nula, negativa ou não numérica'
+  const usaPerimetro = config.tugFixa === undefined && !(comodo.tipo === 'outro' && Number(comodo.area) <= 6)
+  if (usaPerimetro && (!numeroValido(comodo.perimetro) || Number(comodo.perimetro) <= 0)) return 'perímetro nulo, negativo ou não numérico'
+  if (numeroValido(comodo.tugPontos) && !Number.isInteger(Number(comodo.tugPontos))) return 'número de pontos de tomada fracionário'
+  if (numeroValido(comodo.tugPontos) && Number(comodo.tugPontos) < 0) return 'número de pontos de tomada negativo'
+  return null
+}
+
 export function calcularCargaComodo(comodo, limite600VA = 3) {
-  const area = Number(comodo.area) || 0
+  const rejeitado = motivoRejeicaoComodo(comodo)
+  if (rejeitado) {
+    return {
+      comodoId: comodo.id, nome: comodo.nome, tipo: comodo.tipo, area: Number(comodo.area) || 0,
+      rejeitado,
+      iluminacaoVA: 0, iluminacaoMinimaVA: 0, iluminacaoRealVA: null, iluminacaoAbaixoDoMinimo: false,
+      tugQuantidade: 0, tugVA: 0, tugQuantidadeMinima: 0, tugAbaixoDoMinimo: false,
+      tueVA: calcularTueVA(comodo), totalVA: calcularTueVA(comodo),
+    }
+  }
+  const area = Number(comodo.area)
 
   const iluminacaoMinimaVA = calcularIluminacaoMinimaVA(area)
   const iluminacaoManual =
     valorManualInformado(comodo.iluminacaoQuantidade) && valorManualInformado(comodo.iluminacaoPotenciaUnitariaW)
-  const iluminacaoQuantidade = iluminacaoManual ? Number(comodo.iluminacaoQuantidade) : null
-  const iluminacaoPotenciaUnitariaW = iluminacaoManual ? Number(comodo.iluminacaoPotenciaUnitariaW) : null
-  const iluminacaoVA = iluminacaoManual
-    ? iluminacaoQuantidade * iluminacaoPotenciaUnitariaW
-    : iluminacaoMinimaVA
-  const iluminacaoAbaixoDoMinimo = iluminacaoManual && iluminacaoVA < iluminacaoMinimaVA
+  const iluminacaoRealVA = iluminacaoManual ? Number(comodo.iluminacaoQuantidade) * Number(comodo.iluminacaoPotenciaUnitariaW) : null
+  // S3 §3.2 — previsão mínima e carga real são campos separados, e vale a MAIOR das duas (a norma
+  // distingue a carga para dimensionar os circuitos da potência nominal das lâmpadas).
+  const iluminacaoVA = iluminacaoManual ? Math.max(iluminacaoRealVA, iluminacaoMinimaVA) : iluminacaoMinimaVA
+  const iluminacaoAbaixoDoMinimo = iluminacaoManual && iluminacaoRealVA < iluminacaoMinimaVA
 
   const tugMinima = calcularTugMinima(comodo, limite600VA)
   const tugManual = valorManualInformado(comodo.tugPontos)
   const tugQuantidade = tugManual ? Number(comodo.tugPontos) : tugMinima.quantidade
-  const tugVA = tugManual
-    ? somarTugPorQuantidade(tugQuantidade, configTipoComodo(comodo.tipo).tugPotenciaBase, limite600VA)
+  const config = configTipoComodo(comodo.tipo)
+  const tugCalculadaVA = tugManual
+    ? somarTugPorQuantidade(tugQuantidade, config.tugPotenciaBase, limite600VA)
     : tugMinima.totalVA
+  // Hall de serviço, sala de manutenção ou de equipamentos (4.2.1.2.3 b): 1000 VA no mínimo.
+  const tugVA = config.tugPotenciaMinimaVA ? Math.max(tugCalculadaVA, config.tugPotenciaMinimaVA) : tugCalculadaVA
   const tugAbaixoDoMinimo = tugManual && tugQuantidade < tugMinima.quantidade
 
   const tueVA = calcularTueVA(comodo)
@@ -156,6 +186,7 @@ export function calcularCargaComodo(comodo, limite600VA = 3) {
     area,
     iluminacaoVA,
     iluminacaoMinimaVA,
+    iluminacaoRealVA,
     iluminacaoAbaixoDoMinimo,
     tugQuantidade,
     tugVA,

@@ -92,7 +92,14 @@ export const DRS_MONTANTE = {
 // (§6.3.6.2.2). Critério desta ferramenta (engenharia, não cláusula): ≥ soma dos In dos disjuntores
 // do grupo — nenhum circuito passa do próprio In sem desarmar — limitada ao In do disjuntor geral,
 // que já limita a corrente total.
-export function dimensionarDRs({ modoDR, grupoDR = {}, dimensionados, fasesPorCircuito, disjuntorGeralA, drMontante }) {
+export function dimensionarDRs({ modoDR, grupoDR = {}, dimensionados, fasesPorCircuito, disjuntorGeralA, drMontante, exigidosIds = null }) {
+  // Modo padrão 'exigidos' (compilado, S8 §4): DR de 30 mA só nos circuitos em que a NBR 5410 o exige
+  // (`exigenciaDR`), num único dispositivo; os demais ficam sem DR. 'geral' e 'grupos' = DR em TODOS os circuitos.
+  if (modoDR === 'exigidos') {
+    const alvo = dimensionados.filter((circuito) => exigidosIds?.has(circuito.id))
+    const resto = dimensionarDRs({ modoDR: 'grupos', grupoDR: {}, dimensionados: alvo, fasesPorCircuito, disjuntorGeralA, drMontante })
+    return { ...resto, modo: 'exigidos', semDR: alvo.length === 0, circuitosSemDR: dimensionados.filter((c) => !exigidosIds?.has(c.id)).map((c) => c.id), avisoIntempestivo: alvo.length > 1 }
+  }
   if (modoDR !== 'grupos') {
     return {
       modo: 'geral',

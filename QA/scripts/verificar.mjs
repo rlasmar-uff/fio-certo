@@ -81,8 +81,10 @@ import {
   listarTemperaturasDisponiveis,
   obterSecaoNeutroReduzida,
   obterReatanciaOhmMetro,
-  POTENCIA_MAXIMA_CIRCUITO_TUG_VA,
+  CORRENTE_MAXIMA_CIRCUITO_PADRAO_A,
 } from '../../frontend/src/calculations/constantes.js'
+// Teto de um circuito de tomadas em VA a 127 V, derivado do limite de corrente de projeto (padrão 16 A).
+const POTENCIA_MAXIMA_CIRCUITO_TUG_VA = CORRENTE_MAXIMA_CIRCUITO_PADRAO_A * 127
 
 // Converte um array simples de VA por fase (cargas resistivas, uma por fase — o padrão usado
 // pelos testes deste harness antes do cálculo vetorial existir) no formato que
@@ -1013,16 +1015,16 @@ checar(
 )
 
 // Prova de que a escolha do método muda o dimensionamento de verdade, não é um seletor
-// decorativo: com In=70 A (Ib=65 A), B1 aprova 16 mm² (76 A ≥ 70 A) mas B2 não (69 A < 70 A) e
-// precisa subir para 25 mm² (90 A) — mesma entrada, resultado diferente.
-const circuitoMetodo = { id: 'm1', nome: 'Teste método', tipo: 'tug', potenciaVA: 65 * 127, tensao: 127, cosPhi: 1, tipoCarga: 'resistiva' }
+// decorativo: com In=40 A (Ib=40 A), B1 aprova 6 mm² (41 A ≥ 40 A) mas B2 não (38 A < 40 A) e
+// precisa subir para 10 mm² (52 A) — mesma entrada, resultado diferente.
+const circuitoMetodo = { id: 'm1', nome: 'Teste método', tipo: 'tug', potenciaVA: 40 * 127, tensao: 127, cosPhi: 1, tipoCarga: 'resistiva' }
 const dimMetodoB1 = dimensionarCircuito(circuitoMetodo, 0, { metodoInstalacao: 'B1' })
 const dimMetodoB2 = dimensionarCircuito(circuitoMetodo, 0, { metodoInstalacao: 'B2' })
 checar(
   'G8.3',
   '§6.2.6.1.2 a) (Iz por método)',
   'A seção final realmente muda ao trocar o método de instalação (não é decorativo)',
-  dimMetodoB1.disjuntorA === 70 && dimMetodoB1.secaoMm2 === 16 && dimMetodoB2.secaoMm2 === 25,
+  dimMetodoB1.disjuntorA === 40 && dimMetodoB1.secaoMm2 === 6 && dimMetodoB2.secaoMm2 === 10,
   `In=${dimMetodoB1.disjuntorA} A → B1 escolhe ${dimMetodoB1.secaoMm2} mm² (Iz=${dimMetodoB1.ampacidadeTabelaA} A), B2 escolhe ${dimMetodoB2.secaoMm2} mm² (Iz=${dimMetodoB2.ampacidadeTabelaA} A)`,
   'critico',
 )
@@ -1589,12 +1591,13 @@ checar(
 // ---------------------------------------------------------------------------
 grupo('G16', 'Número de condutores carregados (§6.2.5.6 / Tabela 46)')
 
-// In = 70 A é a corrente que separa as duas colunas em B1: 16 mm² dá 76 A com 2 condutores
-// carregados (aprova) e 68 A com 3 (reprova, tem de subir para 25 mm² / 89 A). Escolhida acima
-// do piso prático de 10 mm², que senão mascararia a diferença.
+// In = 125 A (corrente de 120 A por fase) é a que separa as duas colunas em B1: 35 mm² dá 125 A com 2
+// condutores carregados (aprova) e 110 A com 3 (reprova, tem de subir para 50 mm² / 134 A). Escolhida
+// acima do piso prático de 10 mm², que senão mascararia a diferença. (A série de cadastro do documento,
+// semana 7, não tem 70 A, que era a corrente usada antes.)
 const alimentadorEm = (numeroFases, extras = {}) =>
   dimensionarProtecaoGeral({
-    correntePorFaseA: Array(numeroFases).fill(70),
+    correntePorFaseA: Array(numeroFases).fill(120),
     correnteNeutroA: 0,
     numeroFases,
     tensaoFaseNeutro: 127,
@@ -1609,8 +1612,8 @@ checar(
   'G16.1',
   '§6.2.5.6 / Tabela 46',
   'Alimentador BIFÁSICO é "duas fases com neutro" → 3 condutores carregados',
-  alimBi.condutorFase.condutoresCarregados === 3 && alimBi.condutorFase.secaoMm2 === 25 && alimBi.condutorFase.ampacidadeTabelaA === 89,
-  `esquema=${alimBi.condutorFase.esquema}, ${alimBi.condutorFase.condutoresCarregados} carregados, seção=${alimBi.condutorFase.secaoMm2} mm², Iz tabela=${alimBi.condutorFase.ampacidadeTabelaA} A (com a coluna errada de 2 cond. daria 16 mm² / 76 A)`,
+  alimBi.condutorFase.condutoresCarregados === 3 && alimBi.condutorFase.secaoMm2 === 50 && alimBi.condutorFase.ampacidadeTabelaA === 134,
+  `esquema=${alimBi.condutorFase.esquema}, ${alimBi.condutorFase.condutoresCarregados} carregados, seção=${alimBi.condutorFase.secaoMm2} mm², Iz tabela=${alimBi.condutorFase.ampacidadeTabelaA} A (com a coluna errada de 2 cond. daria 35 mm² / 125 A)`,
   'critico',
 )
 
@@ -1619,8 +1622,8 @@ checar(
   'G16.2',
   '§6.2.5.6 / Tabela 46',
   'Alimentador TRIFÁSICO com neutro → 3 condutores carregados',
-  alimTri.condutorFase.condutoresCarregados === 3 && alimTri.condutorFase.secaoMm2 === 25 && alimTri.condutorFase.ampacidadeTabelaA === 89,
-  `esquema=${alimTri.condutorFase.esquema}, ${alimTri.condutorFase.condutoresCarregados} carregados, seção=${alimTri.condutorFase.secaoMm2} mm², Iz tabela=${alimTri.condutorFase.ampacidadeTabelaA} A (com a coluna errada de 2 cond. daria 16 mm² / 76 A)`,
+  alimTri.condutorFase.condutoresCarregados === 3 && alimTri.condutorFase.secaoMm2 === 50 && alimTri.condutorFase.ampacidadeTabelaA === 134,
+  `esquema=${alimTri.condutorFase.esquema}, ${alimTri.condutorFase.condutoresCarregados} carregados, seção=${alimTri.condutorFase.secaoMm2} mm², Iz tabela=${alimTri.condutorFase.ampacidadeTabelaA} A (com a coluna errada de 2 cond. daria 35 mm² / 125 A)`,
   'critico',
 )
 
@@ -1631,7 +1634,7 @@ checar(
   'G16.3',
   '§6.2.5.6 / Tabela 46',
   'Alimentador MONOFÁSICO continua em 2 condutores carregados (correção dirigida, não geral)',
-  alimMono.condutorFase.condutoresCarregados === 2 && alimMono.condutorFase.secaoMm2 === 16 && alimMono.condutorFase.ampacidadeTabelaA === 76,
+  alimMono.condutorFase.condutoresCarregados === 2 && alimMono.condutorFase.secaoMm2 === 35 && alimMono.condutorFase.ampacidadeTabelaA === 125,
   `esquema=${alimMono.condutorFase.esquema}, ${alimMono.condutorFase.condutoresCarregados} carregados, seção=${alimMono.condutorFase.secaoMm2} mm², Iz tabela=${alimMono.condutorFase.ampacidadeTabelaA} A`,
   'alto',
 )
@@ -1653,14 +1656,15 @@ checar(
 )
 
 // §6.2.5.6.1 — 3ª harmônica > 15% em trifásico com neutro: 4 condutores carregados, sem coluna
-// própria na tabela → fator 0,86 sobre a coluna de 3 (89 × 0,86 = 76,54).
+// própria na tabela → fator 0,86 sobre a coluna de 3 (50 mm²: 134 × 0,86 = 115,24 A < 125 A, sobe para
+// 70 mm²: 171 × 0,86 = 147,06 A).
 const alimHarmonica = alimentadorEm(3, { terceiraHarmonica: 'acima-15' })
 checar(
   'G16.5',
   '§6.2.5.6.1',
   '3ª harmônica > 15% aplica o fator 0,86 sobre a coluna de 3 condutores carregados',
-  quase(alimHarmonica.condutorFase.ampacidadeA, 89 * 0.86, 0.01) && alimHarmonica.condutorFase.neutroCarregado === true,
-  `Iz tabela=${alimHarmonica.condutorFase.ampacidadeTabelaA} A → Iz corrigido=${alimHarmonica.condutorFase.ampacidadeA?.toFixed(2)} A (esperado ${(89 * 0.86).toFixed(2)} A)`,
+  quase(alimHarmonica.condutorFase.ampacidadeA, 171 * 0.86, 0.01) && alimHarmonica.condutorFase.neutroCarregado === true,
+  `Iz tabela=${alimHarmonica.condutorFase.ampacidadeTabelaA} A → Iz corrigido=${alimHarmonica.condutorFase.ampacidadeA?.toFixed(2)} A (esperado ${(171 * 0.86).toFixed(2)} A)`,
   'alto',
 )
 
@@ -2585,7 +2589,7 @@ checar(
   '—',
   'Arquivo inválido é recusado; campos de tipo errado voltam ao padrão em vez de entrar no cálculo',
   recusas === 3 && sujo.comodos.length === 1 && Array.isArray(sujo.comodos[0].tue) && sujo.tensaoFaseNeutro === 127 &&
-    sujo.modoDR === 'geral' && !('chaveEstranha' in sujo),
+    sujo.modoDR === 'exigidos' && !('chaveEstranha' in sujo),
   `recusados ${recusas}/3; cômodos ${sujo.comodos.length}, tensão ${sujo.tensaoFaseNeutro}, modoDR ${sujo.modoDR}`,
   'medio',
 )
@@ -3585,11 +3589,11 @@ checar(
   'alto',
 )
 
-// Integração ponta a ponta: projeto trifásico com neutro reduzido (70/35 mm²). A Icc na ponta de um
+// Integração ponta a ponta: projeto trifásico com neutro reduzido (50/25 mm²; 3 fornos de 15 kW, um por fase, disjuntor geral de 125 A — o máximo da série do documento). A Icc na ponta de um
 // circuito terminal fase-neutro deve usar o neutro do alimentador (35) no trecho do ramal.
 {
-  const tueForno = (id) => ({ id, nome: `Forno ${id}`, quantidade: 1, potenciaW: 9000, ligacao: 'fase-neutro', tipoCarga: 'resistiva', cosPhi: 1 })
-  const comodosG35 = [{ id: 'g', nome: 'Galpão', tipo: 'outro', area: 20, perimetro: 18, tue: ['a', 'b', 'c', 'd', 'e', 'f'].map(tueForno) }]
+  const tueForno = (id) => ({ id, nome: `Forno ${id}`, quantidade: 1, potenciaW: 15000, ligacao: 'fase-neutro', tipoCarga: 'resistiva', cosPhi: 1 })
+  const comodosG35 = [{ id: 'g', nome: 'Galpão', tipo: 'outro', area: 20, perimetro: 18, tue: ['a', 'b', 'c'].map(tueForno) }]
   const projG35 = {
     tipoInstalacao: 'trifasica',
     tensaoFaseNeutro: 127,
@@ -3598,6 +3602,8 @@ checar(
     iccPresumidaA: 3000,
     curvaDisjuntorGeral: 'C',
     neutroReduzidoDeclarado: true,
+    neutroEquilibrado: true, // as três condições de 6.2.6.2.6 são declaradas à parte (compilado, S7 §5.3)
+    neutroProtegido: true,
     terceiraHarmonica: 'ate-15',
   }
   projG35.comprimentos = Object.fromEntries(gerarCircuitos(comodosG35, cfgTri).map((c) => [c.id, 10]))
@@ -3612,8 +3618,8 @@ checar(
   checar(
     'G35.10',
     '§5.3.5.1 / Problema B',
-    'Projeto completo, neutro 70/35 mm²: Icc na ponta do circuito terminal fase-neutro bate com a referência independente (neutro real do ramal)',
-    sF === 70 && sN === 35 && quase(ilum.iccPontaA, iccPontaRef, 0.01),
+    'Projeto completo, neutro 50/25 mm²: Icc na ponta do circuito terminal fase-neutro bate com a referência independente (neutro real do ramal)',
+    sF === 50 && sN === 25 && quase(ilum.iccPontaA, iccPontaRef, 0.01),
     `fase ${sF}/neutro ${sN} mm²; ponta ${ilum.iccPontaA?.toFixed(2)} A · referência ${iccPontaRef.toFixed(2)} A`,
     'critico',
   )
@@ -3636,12 +3642,12 @@ import {
 } from '../../frontend/src/calculations/previsaoDeCarga.js'
 import { avaliarEntradas as avaliarEntradasG36 } from '../../frontend/src/calculations/veredito.js'
 import { dimensionarCondutorNeutroGeral as neutroGeralG36 } from '../../frontend/src/calculations/protecaoGeral.js'
-import { verificarSeccionamentoTN, verificarSeccionamentoTT } from '../../frontend/src/calculations/seccionamento.js'
+import { verificarSeccionamentoTN, verificarSeccionamentoTT, dimensionarDRs } from '../../frontend/src/calculations/seccionamento.js'
 import { ESTADO_INICIAL as ESTADO_G36 } from '../../frontend/src/projetos/estado.js'
 
 const NBR_PDF = JSON.parse(lerArquivoG36(new URL('../referencias/pdf-tabelas-36-37.json', import.meta.url), 'utf8'))
 const chavePdf = (secao) => String(secao).replace('.', ',')
-const SECOES_G36 = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120]
+const SECOES_G36 = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
 const COLUNA_G36 = { A1: 0, A2: 2, B1: 4, B2: 6, C: 8, D: 10 }
 // Ampacidade bruta direto da transcrição do PDF: método, nº de condutores carregados (2|3), isolação.
 const ampacidadePdf = (isolacao, metodo, carregados, secao) =>
@@ -3667,8 +3673,8 @@ grupo('G36', 'Tabelas 36/37 conferidas contra a extração do PDF por coordenada
   checar(
     'G36.1',
     'Tabelas 36 e 37',
-    'As 288 células de cobre (12 seções × 12 colunas × 2 tabelas) são idênticas às lidas do PDF por posição (x,y) das palavras',
-    celulas === 288 && divergencias.length === 0,
+    'As 360 células de cobre (15 seções, de 1,5 a 240 mm² × 12 colunas × 2 tabelas) são idênticas às lidas do PDF por posição (x,y) das palavras',
+    celulas === 360 && divergencias.length === 0,
     `${celulas} células comparadas; ${divergencias.length ? divergencias.slice(0, 3).join('; ') : 'nenhuma divergência'} (páginas ${NBR_PDF.tabela36.pagina} e ${NBR_PDF.tabela37.pagina} do PDF)`,
     'critico',
   )
@@ -3694,7 +3700,7 @@ grupo('G36', 'Tabelas 36/37 conferidas contra a extração do PDF por coordenada
   )
 
   const fca1 = [[1, 1], [2, 0.8], [3, 0.7], [4, 0.65], [5, 0.6], [6, 0.57], [7, 0.54], [8, 0.52], [9, 0.5], [11, 0.5], [12, 0.45], [15, 0.45], [16, 0.41], [19, 0.41], [20, 0.38], [60, 0.38]]
-  const fca2 = [[1, 1], [2, 0.85], [3, 0.79], [4, 0.75], [5, 0.73], [6, 0.72], [7, 0.72], [8, 0.71], [9, 0.7], [11, 0.7]]
+  const fca2 = [[1, 1], [2, 0.85], [3, 0.79], [4, 0.75], [5, 0.73], [6, 0.72], [7, 0.72], [8, 0.71], [9, 0.7], [11, 0.7], [12, 0.7], [19, 0.7], [20, 0.7], [60, 0.7]]
   const fca45 = [[1, 1], [2, 0.8], [3, 0.7], [4, 0.65], [5, 0.6], [6, 0.6]]
   const errosFca = [
     ...fca1.filter(([n, f]) => obterFatorAgrupamento(n, 'B1') !== f).map(([n, f]) => `Tab.42 ref.1 n=${n}: ${obterFatorAgrupamento(n, 'B1')} × ${f}`),
@@ -3704,9 +3710,9 @@ grupo('G36', 'Tabelas 36/37 conferidas contra a extração do PDF por coordenada
   checar(
     'G36.3',
     'Tabelas 42 (ref. 1 e 2) e 45',
-    'Fatores de agrupamento idênticos ao PDF; onde a tabela não tem valor (ref. 2 acima de 11 circuitos; Tabela 45 acima de 6) o motor devolve null',
-    errosFca.length === 0 && obterFatorAgrupamento(12, 'C') === null && obterFatorAgrupamento(7, 'D') === null,
-    errosFca.length ? errosFca.slice(0, 4).join('; ') : `${fca1.length + fca2.length + fca45.length} pontos conferidos; C(12)=${obterFatorAgrupamento(12, 'C')}, D(7)=${obterFatorAgrupamento(7, 'D')}`,
+    'Fatores de agrupamento idênticos ao PDF (a célula 0,70 da ref. 2 é mesclada: vale de 9 a ≥ 20 circuitos); só onde a tabela não tem valor (Tabela 45 acima de 6 circuitos) o motor devolve null',
+    errosFca.length === 0 && obterFatorAgrupamento(12, 'C') === 0.7 && obterFatorAgrupamento(7, 'D') === null,
+    errosFca.length ? errosFca.slice(0, 4).join('; ') : `${fca1.length + fca2.length + fca45.length} pontos conferidos; C(12)=${obterFatorAgrupamento(12, 'C')} (mesclada), D(7)=${obterFatorAgrupamento(7, 'D')}`,
     'alto',
   )
 
@@ -3782,9 +3788,9 @@ grupo('G37', 'Previsão de cargas — valores imediatamente antes/depois dos lim
 
   // TUE: potência aparente = W / (η·cosφ).
   const ar = potenciaAparenteG36({ potenciaW: 1000, cosPhi: 0.85 }) // 1176,47 VA
-  const motor = potenciaAparenteG36({ potenciaW: 736, cosPhi: 0.85, rendimento: 0.8 }) // 736/0,8 = 920 W → /0,85 = 1082,35 VA
+  const motor = potenciaAparenteG36({ potenciaW: 736, cosPhi: 0.85, tipoPotencia: 'saida', rendimento: 0.8 }) // 736/0,8 = 920 W → /0,85 = 1082,35 VA
   const cosInvalido = potenciaAparenteG36({ potenciaW: 1000, cosPhi: 1.5 }) // >1 não pode reduzir os VA
-  const etaInvalido = potenciaAparenteG36({ potenciaW: 1000, cosPhi: 1, rendimento: 1.2 })
+  const etaInvalido = potenciaAparenteG36({ potenciaW: 1000, cosPhi: 1, tipoPotencia: 'saida', rendimento: 1.2 })
   const negativa = potenciaAparenteG36({ potenciaW: -500, cosPhi: 1 })
   checar(
     'G37.5',
@@ -3896,13 +3902,13 @@ grupo('G39', 'Dimensionamento do condutor — cada método de instalação, fato
 
   // Varredura independente: para Ib de 0,5 a 200 A, método × isolação, o motor deve escolher o menor
   // (disjuntor ≥ Ib; seção com Iz do PDF ≥ In), e In ≤ Iz sempre (Ib ≤ In ≤ Iz; I2 = 1,45·In ≤ 1,45·Iz).
-  const DISJ = [10, 16, 20, 25, 32, 40, 50, 63, 70, 80, 100, 125, 150, 175, 200, 225, 250]
+  const DISJ = [4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125] // série de cadastro da semana 7 do compilado
   const SECOES_TUG = SECOES_G36.filter((s) => s >= 2.5)
   const errosVarredura = []
   let n = 0
   for (const isolacao of ['pvc', 'epr']) {
     for (const metodo of Object.keys(COLUNA_G36)) {
-      for (let ib = 0.5; ib <= 200; ib += 0.5) {
+      for (let ib = 0.5; ib <= 125; ib += 0.5) {
         n += 1
         const r = dimensionarCircuito(circuito(ib * 127), 1, { metodoInstalacao: metodo, isolacao })
         const inEsperado = DISJ.find((d) => d >= ib - 1e-9)
@@ -3913,12 +3919,12 @@ grupo('G39', 'Dimensionamento do condutor — cada método de instalação, fato
       }
     }
   }
-  checar('G39.5', '§5.3.4.1 a) e b)', `Varredura Ib 0,5…200 A × 6 métodos × PVC/EPR (${n} casos): disjuntor e seção mínimos, e Ib ≤ In ≤ Iz (Iz da tabela do PDF) em todos`, errosVarredura.length === 0, errosVarredura.length ? errosVarredura.join('; ') : `${n} casos sem divergência`, 'critico')
+  checar('G39.5', '§5.3.4.1 a) e b)', `Varredura Ib 0,5…125 A × 6 métodos × PVC/EPR (${n} casos): disjuntor e seção mínimos, e Ib ≤ In ≤ Iz (Iz da tabela do PDF) em todos`, errosVarredura.length === 0, errosVarredura.length ? errosVarredura.join('; ') : `${n} casos sem divergência`, 'critico')
 
   // Fora do alcance: temperatura sem valor na tabela e agrupamento acima da tabela → não verificado, sem seção.
   const quente = sec(2540, 5, { fatorTemperatura: obterFatorTemperatura(65, { isolacao: 'pvc' }) })
-  const muitosC = sec(2540, 5, { metodoInstalacao: 'C', fatorAgrupamento: obterFatorAgrupamento(12, 'C') })
-  checar('G39.6', '§6.2.5.3 / §6.2.5.5', 'PVC a 65 °C (sem fator na Tabela 40) e método C com 12 circuitos (sem fator na Tabela 42, ref. 2): erro explícito e nenhuma seção — nunca aprovação por extrapolação', quente.secaoMm2 === null && /Tabela 40/.test(quente.erro) && muitosC.secaoMm2 === null && /agrupad/.test(muitosC.erro), `65 °C: ${quente.erro?.slice(0, 50)}… · C(12): ${muitosC.erro?.slice(0, 55)}…`, 'alto')
+  const muitosD = sec(2540, 5, { metodoInstalacao: 'D', fatorAgrupamento: obterFatorAgrupamento(7, 'D') })
+  checar('G39.6', '§6.2.5.3 / §6.2.5.5', 'PVC a 65 °C (sem fator na Tabela 40) e método D com 7 circuitos (sem fator na Tabela 45): erro explícito e nenhuma seção — nunca aprovação por extrapolação', quente.secaoMm2 === null && /Tabela 40/.test(quente.erro) && muitosD.secaoMm2 === null && /agrupad/.test(muitosD.erro), `65 °C: ${quente.erro?.slice(0, 50)}… · D(7): ${muitosD.erro?.slice(0, 55)}…`, 'alto')
 }
 
 // ---------------------------------------------------------------------------
@@ -3998,13 +4004,13 @@ grupo('G42', 'Eletroduto por diâmetro externo, DR, DPS, reserva do quadro (Tabe
 
 {
   // 3 condutores de 2,5 mm² (PVC, Ø 3,60 mm, Creder Tab. 3.23): 3·π/4·3,6² = 30,71 mm². Taxa máx. 40%.
-  //   1/2" (Ø int. 16,4 → 211,2 mm²): 14,54% ✓ → recomendado 1/2" (o menor eletroduto da lista é o de 20 mm).
+  //   1/2" (Ø int. 16,4 → 211,2 mm²): 14,49% ✓ → recomendado 1/2" (o menor eletroduto da lista é o de 20 mm).
   // 3 condutores de 25 mm² (Ø 8,6): 3·58,09 = 174,26 mm². 3/4" (21,3 → 356,3 mm²): 48,9% ✗ ; 1" (27,5 → 594,0 mm²): 29,3% ✓ → 1".
   // 2 condutores (31%): 2·π/4·8,6² = 116,2 mm². 3/4": 32,6% ✗ → 1" (19,6%).
   const e3 = dimensionarEletroduto([2.5, 2.5, 2.5])
   const e25 = dimensionarEletroduto([25, 25, 25])
   const e2 = dimensionarEletroduto([25, 25])
-  checar('G42.1', '§6.2.11.1.6 a)', 'Eletroduto por área externa real (não mm² nominal): 3×2,5 mm² (Ø 3,60) → 1/2" (30,71 mm² em 211,2 = 14,54%); 3×25 mm² → 1" (3/4" daria 48,9% > 40%); 2×25 mm² → 1" (3/4" daria 32,6% > 31%)', e3.eletrodutoRecomendado.referencia === '1/2"' && quase(e3.areaCondutoresMm2, 30.71, 0.01) && e25.eletrodutoRecomendado.referencia === '1"' && quase(e25.trilha.find((t) => t.referencia === '3/4"').ocupacaoPercentual, 48.91, 0.05) && e2.eletrodutoRecomendado.referencia === '1"' && quase(e2.trilha.find((t) => t.referencia === '3/4"').ocupacaoPercentual, 32.6, 0.05), `3×2,5: ${e3.eletrodutoRecomendado.referencia} (${e3.areaCondutoresMm2.toFixed(2)} mm²) · 3×25: ${e25.eletrodutoRecomendado.referencia} · 2×25: ${e2.eletrodutoRecomendado.referencia}`, 'alto')
+  checar('G42.1', '§6.2.11.1.6 a)', 'Eletroduto por área externa real (não mm² nominal): 3×2,5 mm² (10,2 mm² cada, tab. 3.22) → 1/2" (30,60 mm² em 211,2 = 14,49%); 3×25 mm² → 1" (3/4" daria 48,9% > 40%); 2×25 mm² → 1" (3/4" daria 32,6% > 31%)', e3.eletrodutoRecomendado.referencia === '1/2"' && quase(e3.areaCondutoresMm2, 30.6, 0.01) && e25.eletrodutoRecomendado.referencia === '1"' && quase(e25.trilha.find((t) => t.referencia === '3/4"').ocupacaoPercentual, 48.91, 0.05) && e2.eletrodutoRecomendado.referencia === '1"' && quase(e2.trilha.find((t) => t.referencia === '3/4"').ocupacaoPercentual, 32.6, 0.05), `3×2,5: ${e3.eletrodutoRecomendado.referencia} (${e3.areaCondutoresMm2.toFixed(2)} mm²) · 3×25: ${e25.eletrodutoRecomendado.referencia} · 2×25: ${e2.eletrodutoRecomendado.referencia}`, 'alto')
 
   // DR geral: In ≥ disjuntor geral, entre 25/40/63/80/100 A; acima de 100 A não há DR no catálogo → null.
   const dr = (i) => dimensionarIDR(i, 3)
@@ -4192,6 +4198,239 @@ import { DIAMETRO_EXTERNO_CONDUTOR_MM, ELETRODUTOS_PVC_RIGIDO } from '../../fron
   const xC = (30 * 0.1) / 1000 / 2 // dois cabos de 95 mm² em paralelo: a reatância cai à metade (a resistência já está em 190 mm²)
   const ikMotor = 127 / Math.hypot(rC, 127 / 8440 + xC)
   checar('G45.5', 'Creder §4.5.3', 'Icc a jusante pelo método do motor (7,52 kA) fica a 1,2% do exemplo do livro (7,43 kA, fórmula simplificada com cosφ_ko = 0,5): mesma ordem de grandeza e mesmo sentido', Math.abs(ikMotor - 7430) / 7430 < 0.02, `motor ${(ikMotor / 1000).toFixed(3)} kA × livro 7,43 kA (${(((ikMotor - 7430) / 7430) * 100).toFixed(2)}%)`, 'medio')
+}
+
+
+// ===========================================================================
+// G46 — COMPILADO DO GRUPO DE PESQUISA (semanas 3 a 8): testes e casos de referência do próprio documento.
+// Os valores esperados são os que o documento traz (tabelas "Testes e referências" de cada semana e os casos 1 a 6
+// da semana 8). Onde o documento usa uma convenção (ρ = 1/56 ou 1/58), o teste usa a mesma.
+// ===========================================================================
+import {
+  fatorAgrupamentoGrupo as fatorGrupoG46,
+  secoesDentroDeTresValores as tresValoresG46,
+  metodoDaManeira as metodoManeiraG46,
+  MANEIRAS_INSTALAR as MANEIRAS_G46,
+} from '../../frontend/src/calculations/agrupamento.js'
+import { demandaCreder as demandaCrederG46, calcularDemandaProjeto as demandaProjetoG46 } from '../../frontend/src/calculations/demanda.js'
+import { indicadorDesequilibrio as deltaG46, validarCircuitoMisto as mistoG46 } from '../../frontend/src/calculations/circuitos.js'
+import { dimensionarPE as peG46, correnteNeutroHarmonica as neutroHarmonicaG46 } from '../../frontend/src/calculations/condutorProtecao.js'
+import { exigenciaDR as exigenciaDRG46 } from '../../frontend/src/calculations/exigenciaDR.js'
+import { quantidadeMaximaCondutores as quantidadeMaximaG46 } from '../../frontend/src/calculations/eletroduto.js'
+import { comprimentoEquivalente as compEquivG46 } from '../../frontend/src/calculations/quedaDeTensao.js'
+import { consultarCapacidadeEFG as efgG46, TABELA_38_COBRE_PVC, TABELA_39_COBRE_EPR } from '../../frontend/src/calculations/capacidadesEFG.js'
+import { esquemaConexaoDPS as esquemaDpsG46 } from '../../frontend/src/calculations/complementares.js'
+import { verificarSobrecarga as sobrecargaG46 } from '../../frontend/src/calculations/complementares.js'
+import { CATALOGOS_ELETRODUTO as CATALOGOS_G46, LINHAS_DISJUNTOR as LINHAS_G46, correntesDaLinha as correntesLinhaG46, limiteQuedaTotal as limiteTotalG46, DISJUNTORES_PADRONIZADOS as SERIE_G46 } from '../../frontend/src/calculations/constantes.js'
+import { verificarPercurso as percursoG46 } from '../../frontend/src/calculations/percurso.js'
+
+grupo('G46', 'Compilado do Grupo de Pesquisa (semanas 3 a 8): testes e casos de referência do documento')
+
+const comodoG46 = (campos) => ({ id: 'x', nome: 'x', tipo: 'social', area: 10, perimetro: 12, iluminacaoQuantidade: '', iluminacaoPotenciaUnitariaW: '', tugPontos: '', tue: [], ...campos })
+const cfg127G46 = resolverConfigInstalacao('trifasica', 127)
+
+// ---------------------------------------------------------------- Semana 3
+{
+  // §12: cozinha p = 14 / 14,01 m → 4 / 5 pontos (ARD CIMA(p/3,5)).
+  const q = (p) => tugQuantidadeG36(comodoG46({ tipo: 'servico', perimetro: p }))
+  checar('G46.1', 'S3 §12 · §9.5.2.2.1 b)', 'Cozinha com p = 14 m → 4 pontos; p = 14,01 m → 5 pontos', q(14) === 4 && q(14.01) === 5, `p=14: ${q(14)}; p=14,01: ${q(14.01)}`, 'alto')
+
+  // §5.1 e §12: o grupo de 600 VA com exatamente 6 pontos NÃO permite a alternativa; com 7 permite (e só por escolha).
+  const grupo600 = (pontosPorAmbiente) => pontosPorAmbiente.map((n, i) => comodoG46({ id: `a${i}`, tipo: 'servico', tugPontos: n }))
+  const seis = grupo600([3, 3])
+  const sete = grupo600([4, 3])
+  checar('G46.2', 'S3 §5.1 · §9.5.2.2.2 a)', 'Alternativa de 2 pontos a 600 VA: bloqueada com 6 pontos no grupo (limite 3), elegível com 7 (limite 2, só se escolhida); sem escolha, sempre 3', calcularLimite600VA(seis, true) === 3 && calcularLimite600VA(sete, true) === 2 && calcularLimite600VA(sete, false) === 3, `6 pontos: ${calcularLimite600VA(seis, true)}; 7 pontos escolhida: ${calcularLimite600VA(sete, true)}; 7 sem escolha: ${calcularLimite600VA(sete, false)}`, 'critico')
+
+  // §6.2 e §12: equipamento dedicado de 10 A exatos não impõe circuito independente (9.5.3.1); 10,01 A impõe.
+  const tueDe = (watts) => gerarCircuitos([comodoG46({ tue: [{ id: 'e', nome: 'Eq', quantidade: 1, potenciaW: watts, ligacao: 'fase-neutro', tipoCarga: 'resistiva', cosPhi: 1 }] })], cfg127G46).find((c) => c.tipo === 'tue')
+  checar('G46.3', 'S3 §6.2 · 9.5.3.1', 'Equipamento de 10 A (1270 W a 127 V): circuito independente NÃO obrigatório; 10,01 A (1271,27 W): obrigatório', tueDe(1270).independenteObrigatorio === false && tueDe(1271.27).independenteObrigatorio === true, `10 A → ${tueDe(1270).independenteObrigatorio}; 10,01 A → ${tueDe(1271.27).independenteObrigatorio}`, 'critico')
+
+  // Equipamentos de até 10 A podem dividir circuito; acima de 10 A cada um tem o seu.
+  const doisPequenos = gerarCircuitos([comodoG46({ tue: [1, 2].map((n) => ({ id: `e${n}`, nome: `Eq${n}`, quantidade: 1, potenciaW: 600, ligacao: 'fase-neutro', tipoCarga: 'resistiva', cosPhi: 1 })) })], cfg127G46).filter((c) => c.tipo === 'tue')
+  const doisGrandes = gerarCircuitos([comodoG46({ tue: [1, 2].map((n) => ({ id: `g${n}`, nome: `Gr${n}`, quantidade: 1, potenciaW: 3000, ligacao: 'fase-neutro', tipoCarga: 'resistiva', cosPhi: 1 })) })], cfg127G46).filter((c) => c.tipo === 'tue')
+  checar('G46.4', 'S3 §6.2 · §7.2', 'Dois equipamentos de 600 W (4,7 A cada) dividem 1 circuito; dois de 3000 W (23,6 A cada) ficam em 2 circuitos independentes — não existe "toda TUE tem circuito próprio"', doisPequenos.length === 1 && doisGrandes.length === 2, `pequenos: ${doisPequenos.length} circuito(s); grandes: ${doisGrandes.length}`, 'alto')
+
+  // §7.1: circuito misto — as três condições de 9.5.3.3; tomadas de cozinha rejeitam a configuração.
+  const mistoOk = mistoG46({ correnteProjetoA: 16 })
+  const mistoCozinha = mistoG46({ correnteProjetoA: 10, incluiTomadaDeLocalMolhado: true })
+  const misto17 = mistoG46({ correnteProjetoA: 16.01 })
+  const mistoTodaLuz = mistoG46({ correnteProjetoA: 10, iluminacaoTotalNoCircuito: true })
+  const mistoTodasTomadas = mistoG46({ correnteProjetoA: 10, tomadasTotalNoCircuito: true })
+  checar('G46.5', 'S3 §7.1 · 9.5.3.3', 'Circuito misto: aceito com IB ≤ 16 A; rejeitado com tomadas de cozinha, IB = 16,01 A, toda a iluminação ou todas as tomadas no mesmo circuito', mistoOk.conforme && !mistoCozinha.conforme && !misto17.conforme && !mistoTodaLuz.conforme && !mistoTodasTomadas.conforme, `16 A ${mistoOk.conforme}; cozinha ${mistoCozinha.conforme}; 16,01 A ${misto17.conforme}; toda luz ${mistoTodaLuz.conforme}; todas tomadas ${mistoTodasTomadas.conforme}`, 'critico')
+  const comodosMisto = ['a', 'b', 'c', 'd'].map((id) => comodoG46({ id, nome: id, area: 20, perimetro: 18 }))
+  const gMisto = gerarCircuitos(comodosMisto, cfg127G46, false, { circuitoMisto: true })
+  const gMistoValidos = gMisto.filter((c) => c.misto).every((c) => c.potenciaVA / c.tensao <= 16 + 1e-9)
+  checar('G46.6', 'S3 §7.2 · 9.5.3.3', 'Modo misto configurável: gera circuitos de iluminação + tomadas com IB ≤ 16 A e nunca concentra tudo num só (≥ 2 circuitos mistos, ou volta ao padrão separado)', gMisto.some((c) => c.misto) ? gMistoValidos && gMisto.filter((c) => c.misto).length >= 2 : gMisto.every((c) => !c.misto), `${gMisto.length} circuitos, ${gMisto.filter((c) => c.misto).length} mistos`, 'alto')
+
+  // §9 e §12: demanda de Creder por parcelas.
+  const demandas = [[0, 0], [1000, 800], [4240, 2920], [10000, 5070], [10100, 5094]]
+  const errosD = demandas.filter(([x, d]) => !quase(demandaCrederG46(x).demandaVA, d, 1e-6)).map(([x, d]) => `X=${x}: ${demandaCrederG46(x).demandaVA} × ${d}`)
+  checar('G46.7', 'S3 §9 · §12 · Creder tab. 3.20', 'Demanda por parcelas: X = 0 / 1000 / 4240 / 10000 / 10100 VA → 0 / 800 / 2920 / 5070 / 5094 VA (só o excedente recebe 24%)', errosD.length === 0, errosD.length ? errosD.join('; ') : '5 pontos conferidos; 4240 VA → fator equivalente 68,87%', 'critico')
+
+  // §11: memorial demonstrativo — Sala 18/18; Dormitório 12/14; Cozinha 8/12; Banheiro 3/7; Lavanderia 4/8.
+  const memorial = [['Sala', 18, 18, 'social'], ['Dormitório', 12, 14, 'social'], ['Cozinha', 8, 12, 'servico'], ['Banheiro', 3, 7, 'banheiro'], ['Lavanderia', 4, 8, 'servico']]
+    .map(([nome, area, perimetro, tipo], i) => comodoG46({ id: `m${i}`, nome, area, perimetro, tipo }))
+  const prevMem = previsaoG36(memorial)
+  const demMem = demandaProjetoG46({ totais: { ...prevMem.totais, tueVA: 5500, totalVA: prevMem.totais.totalVA + 5500 }, perfil: 'creder' })
+  const porNome = Object.fromEntries(prevMem.porComodo.map((c) => [c.nome, c]))
+  checar('G46.8', 'S3 §11', 'Memorial demonstrativo: iluminação 740 VA, TUG 5000 VA (cozinha 4 pontos = 1900 VA; lavanderia 3 pontos = 1800 VA); com chuveiro de 5500 W: 11 240 VA e demanda 3633 + 5500 = 9133 VA', prevMem.totais.iluminacaoVA === 740 && prevMem.totais.tugVA === 5000 && porNome.Cozinha.tugVA === 1900 && porNome.Lavanderia.tugVA === 1800 && quase(demMem.demandaGeralVA, 3633, 1e-6) && quase(demMem.demandaTotalVA, 9133, 1e-6), `luz ${prevMem.totais.iluminacaoVA} · TUG ${prevMem.totais.tugVA} · D geral ${demMem.demandaGeralVA} · D total ${demMem.demandaTotalVA}`, 'critico')
+  const comAlt = previsaoG36(memorial, true).totais.tugVA
+  checar('G46.9', 'S3 §11', 'Alternativa de 600 VA no memorial (8 pontos > 6, elegível): cozinha 1400, banheiro 600, lavanderia 1300; TUG total 4000 VA', comAlt === 4000, `TUG com a alternativa: ${comAlt} VA`, 'alto')
+
+  // §10.3: cargas de 1200, 900, 700, 500, 400, 300 VA em 127 V → A = 1200+300, B = 900+400, C = 700+500.
+  const cargasD = [['a', 1200, 1], ['b', 900, 2], ['c', 700, 3], ['d', 500, 3], ['e', 400, 2], ['f', 300, 1]].map(([id, va, f]) => ({ id, nome: id, tipo: 'tug', potenciaVA: va, tensao: 127, ehFaseFase: false, cosPhi: 1, tipoCarga: 'resistiva', _f: f }))
+  const manual = Object.fromEntries(cargasD.map((c) => [c.id, [c._f]]))
+  const bal = balancearFases(cargasD, 3, manual)
+  const corr = calcularCorrentesVetoriais(bal.circuitosComFase, 3, 127).correntePorFaseA
+  const ind = deltaG46(corr)
+  checar('G46.10', 'S3 §10.3', 'Balanceamento: A 1500, B 1300, C 1200 VA → 11,81 / 10,24 / 9,45 A; média 10,50 A; δ = 12,5%; zero carga → "sem carga"', quase(corr[0], 11.81, 0.01) && quase(corr[1], 10.24, 0.01) && quase(corr[2], 9.45, 0.01) && quase(ind.correnteMediaA, 10.5, 0.01) && quase(ind.deltaPercentual, 12.5, 0.1) && deltaG46([0, 0, 0]).semCarga === true && bal.circuitosComFase.every((c) => c.decisaoFase.manual), `correntes ${corr.map((i) => i.toFixed(2))}; média ${ind.correnteMediaA.toFixed(2)}; δ ${ind.deltaPercentual.toFixed(2)}%`, 'alto')
+}
+
+// ---------------------------------------------------------------- Semana 4
+{
+  const ampPvc = (sec, m, c) => obterAmpacidade({ isolacao: 'pvc', metodo: m, condutoresCarregados: c, secaoMm2: sec })
+  checar('G46.11', 'S4 §7', 'Troca de isolação (Cu 2,5 mm² B1/2: PVC 24 A, EPR 31 A); nº de carregados (Cu PVC 6 mm² B1: 2 → 41 A, 3 → 36 A); Cu PVC 50 mm² B1/3 = 134 A; Cu EPR D/2 95 mm² = 252 A', ampPvc(2.5, 'B1', 2) === 24 && obterAmpacidade({ isolacao: 'epr', metodo: 'B1', condutoresCarregados: 2, secaoMm2: 2.5 }) === 31 && ampPvc(6, 'B1', 2) === 41 && ampPvc(6, 'B1', 3) === 36 && ampPvc(50, 'B1', 3) === 134 && obterAmpacidade({ isolacao: 'epr', metodo: 'D', condutoresCarregados: 2, secaoMm2: 95 }) === 252, 'valores iguais ao documento', 'critico')
+  checar('G46.12', 'S4 §2', 'Maneira de instalar → método: maneira 7 (eletroduto embutido em alvenaria) → B1, e não A1; 1 → A1; 2 → A2; 3, 5 → B1; 4, 6, 8 → B2; 11, 12, 52, 53 → C; 61, 61A, 63 → D; 71, 73, 74 → A1', metodoManeiraG46('7') === 'B1' && metodoManeiraG46('1') === 'A1' && metodoManeiraG46('2') === 'A2' && ['3', '5'].every((m) => metodoManeiraG46(m) === 'B1') && ['4', '6', '8'].every((m) => metodoManeiraG46(m) === 'B2') && ['11', '12', '52', '53', '11A'].every((m) => metodoManeiraG46(m) === 'C') && ['61', '61A', '63'].every((m) => metodoManeiraG46(m) === 'D') && ['71', '73', '74'].every((m) => metodoManeiraG46(m) === 'A1') && MANEIRAS_G46.length === 19, `${MANEIRAS_G46.length} maneiras cadastradas`, 'alto')
+  // Métodos E, F e G (cobre): E/F/G — consulta; alumínio fora (o site residencial adota cobre).
+  checar('G46.13', 'S4 §5, §7', 'Cobre 2,5 mm² nas formações ao ar livre: PVC — F trifólio 24 A, F plano justaposto 25 A, G horizontal 34 A, vertical 29 A; EPR/XLPE — G horizontal 41 A, vertical 35 A; E multipolar 2/3: 30/25 A (PVC) e 36/32 A (EPR)', efgG46({ secaoMm2: 2.5, formacao: 'F-trifolio' }) === 24 && efgG46({ secaoMm2: 2.5, formacao: 'F-plano' }) === 25 && efgG46({ secaoMm2: 2.5, formacao: 'G-horizontal' }) === 34 && efgG46({ secaoMm2: 2.5, formacao: 'G-vertical' }) === 29 && efgG46({ isolacao: 'epr', secaoMm2: 2.5, formacao: 'G-horizontal' }) === 41 && efgG46({ isolacao: 'epr', secaoMm2: 2.5, formacao: 'G-vertical' }) === 35 && efgG46({ secaoMm2: 2.5, formacao: 'E-2' }) === 30 && efgG46({ secaoMm2: 2.5, formacao: 'E-3' }) === 25 && efgG46({ isolacao: 'epr', secaoMm2: 2.5, formacao: 'E-2' }) === 36 && efgG46({ isolacao: 'epr', secaoMm2: 2.5, formacao: 'E-3' }) === 32, 'valores iguais ao documento (alumínio não é oferecido)', 'alto')
+  {
+    const fx38 = JSON.parse(lerArquivoG36(new URL('../referencias/pdf-tabelas-38-39.json', import.meta.url), 'utf8'))
+    const divs = []
+    for (const [nome, tabela] of [['tabela38', TABELA_38_COBRE_PVC], ['tabela39', TABELA_39_COBRE_EPR]]) {
+      for (const linha of tabela) fx38[nome][String(linha[0]).replace('.', ',')].forEach((v, i) => { if (linha[i + 1] !== v) divs.push(`${nome} ${linha[0]} col ${i + 1}`) })
+    }
+    checar('G46.14', 'Tabelas 38 e 39', 'As 210 células de cobre (15 seções × 7 colunas × 2 tabelas) dos métodos E, F e G são idênticas às lidas do PDF por coordenadas', divs.length === 0 && TABELA_38_COBRE_PVC.length === 15, divs.length ? divs.slice(0, 3).join('; ') : '210 células conferidas', 'critico')
+  }
+  // Exemplo (S4 §6 e S5 §8): carga resistiva em B1, 40 °C e 3 circuitos em feixe: K1·K2 = 0,609.
+  const k = obterFatorTemperatura(40, { isolacao: 'pvc' }) * obterFatorAgrupamento(3, 'B1')
+  const circ25 = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 5500, tensao: 220, ehFaseFase: true, cosPhi: 1, tipoCarga: 'resistiva' }, 0, { fatorTemperatura: 0.87, fatorAgrupamento: 0.7 })
+  const circ20 = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 4400, tensao: 220, ehFaseFase: true, cosPhi: 1, tipoCarga: 'resistiva' }, 0, { fatorTemperatura: 0.87, fatorAgrupamento: 0.7 })
+  checar('G46.15', 'S4 §6 · S5 §8', 'K1·K2 = 0,87·0,70 = 0,609; 25 A (5500 W/220 V): 6 mm² dá 24,969 A < 25 → 10 mm² (34,713 A); 20 A (4400 W): 4 mm² 19,488 A falha, 6 mm² atende — sem arredondar 24,969 para 25', quase(k, 0.609, 1e-12) && circ25.secaoMm2 === 10 && quase(circ25.ampacidadeA, 34.713, 1e-3) && circ20.secaoMm2 === 6 && quase(circ20.ampacidadeA, 24.969, 1e-3), `25 A → ${circ25.secaoMm2} mm²; 20 A → ${circ20.secaoMm2} mm² (${circ20.ampacidadeA.toFixed(3)} A)`, 'critico')
+  const quartoCarregado = ampPvc(6, 'B1', 3) * 0.86
+  checar('G46.16', 'S4 §7', 'Quatro condutores carregados: Cu PVC B1 6 mm² → 36 × 0,86 = 30,96 A', quase(quartoCarregado, 30.96, 1e-9), `${quartoCarregado}`, 'alto')
+}
+
+// ---------------------------------------------------------------- Semana 5
+{
+  const k1 = (t, iso, solo = false) => obterFatorTemperatura(t, { isolacao: iso, enterrado: solo })
+  checar('G46.17', 'S5 §9', 'K1: PVC no ar a 30 °C = 1,00; no solo a 20 °C = 1,00; a 40 °C: ar 0,87, solo 0,77; trocando a isolação a 40 °C no ar: PVC 0,87, EPR/XLPE 0,91; PVC a 65 °C: sem valor (null)', k1(30, 'pvc') === 1 && k1(20, 'pvc', true) === 1 && k1(40, 'pvc') === 0.87 && k1(40, 'pvc', true) === 0.77 && k1(40, 'epr') === 0.91 && k1(65, 'pvc') === null, 'valores iguais ao documento', 'critico')
+  checar('G46.18', 'S5 §9', 'K2: 3 circuitos fase-neutro no mesmo conduto = 0,70 (2 carregados por circuito); circuito único no teto (tab. 42, linha 3) = 0,95; 2 camadas × 3 circuitos por camada (tab. 43) = 0,62 sem multiplicar pela tab. 42; 3 circuitos enterrados com distância nula: direto 0,65, multipolar em eletroduto 0,75 (e unipolar 0,70)', fatorGrupoG46({ forma: 'feixe', n: 3 }) === 0.7 && fatorGrupoG46({ forma: 'camada-teto', n: 1 }) === 0.95 && fatorGrupoG46({ forma: 'multicamadas', n: 3, camadas: 2 }) === 0.62 && fatorGrupoG46({ forma: 'enterrado-direto', n: 3, espacamento: 'nula' }) === 0.65 && fatorGrupoG46({ forma: 'enterrado-eletroduto', n: 3, espacamento: 'nulo', multipolar: true }) === 0.75 && fatorGrupoG46({ forma: 'enterrado-eletroduto', n: 3, espacamento: 'nulo', multipolar: false }) === 0.7, 'valores iguais ao documento', 'critico')
+  checar('G46.19', 'S5 §5.3 · 6.2.5.5.5', 'Grupo não semelhante com n = 4: F = 1/√4 = 0,50 (substitui o K2 da tabela); seções 1,5, 2,5 e 4 mm² são semelhantes (3 valores sucessivos); 1,5 a 6 mm² não (4 valores)', fatorGrupoG46({ forma: 'feixe', n: 4, homogeneo: false }) === 0.5 && tresValoresG46([1.5, 2.5, 4]) && !tresValoresG46([1.5, 2.5, 4, 6]), 'F = 0,50; semelhança conforme 6.2.5.5.5', 'alto')
+  const tab42Min = dimensionarCircuito({ id: 't', nome: 't', tipo: 'tug', potenciaVA: 10 * 127, tensao: 127, ehFaseFase: false, cosPhi: 1, tipoCarga: 'resistiva' }, 0, {})
+  checar('G46.20', 'S5 §9', 'Mínimo de tomadas: IB = 10 A, Cu/PVC/B1/2, K1 = K2 = 1 → 1,5 mm² passaria termicamente (17,5 A), mas o mínimo de força é 2,5 mm²', ampPvcSimples() === 17.5 && tab42Min.secaoMm2 === 2.5, `1,5 mm² B1/2 = ${ampPvcSimples()} A; seção adotada ${tab42Min.secaoMm2} mm²`, 'alto')
+}
+function ampPvcSimples() { return obterAmpacidade({ isolacao: 'pvc', metodo: 'B1', condutoresCarregados: 2, secaoMm2: 1.5 }) }
+
+// ---------------------------------------------------------------- Semana 6
+{
+  // Exemplos com ρ = 1/56 (convenção da semana 6) e modelo resistivo (reatância desprezada).
+  const q127 = calcularQuedaPercentual({ comprimentoM: 30, correnteA: 20, secaoMm2: 6, tensaoV: 127, convencao: 'cu-1/56' })
+  checar('G46.21', 'S6 §6 e §8', 'Exemplo de dois condutores (127 V, 20 A, 30 m, 6 mm², ρ = 1/56): ΔU = 3,571428 V; 2,812148%; 2,5 mm² 6,7492%, 4 mm² 4,2182%, 10 mm² 1,6873%', quase(q127, 2.812148, 1e-5) && quase(calcularQuedaPercentual({ comprimentoM: 30, correnteA: 20, secaoMm2: 2.5, tensaoV: 127, convencao: 'cu-1/56' }), 6.7492, 1e-3) && quase(calcularQuedaPercentual({ comprimentoM: 30, correnteA: 20, secaoMm2: 4, tensaoV: 127, convencao: 'cu-1/56' }), 4.2182, 1e-3) && quase(calcularQuedaPercentual({ comprimentoM: 30, correnteA: 20, secaoMm2: 10, tensaoV: 127, convencao: 'cu-1/56' }), 1.6873, 1e-3), `6 mm²: ${q127.toFixed(6)}%`, 'critico')
+  const uFase = 380 / Math.sqrt(3)
+  const qTri = calcularQuedaPercentual({ comprimentoM: 50, correnteA: 32, secaoMm2: 10, tensaoV: uFase, circuitoTrifasico: true, convencao: 'cu-1/56' })
+  checar('G46.22', 'S6 §7 e §8', 'Trifásico equilibrado (380 V, 32 A, 50 m, ρ = 1/56): 10 mm² → 4,948716 V entre fases, 1,302293%; 6 mm² 2,1705%; 16 mm² 0,8139%', quase(qTri, 1.302293, 1e-5) && quase(Math.sqrt(3) * (1 / 56) * 50 * 32 / 10, 4.948716, 1e-5) && quase(calcularQuedaPercentual({ comprimentoM: 50, correnteA: 32, secaoMm2: 6, tensaoV: uFase, circuitoTrifasico: true, convencao: 'cu-1/56' }), 2.1705, 1e-3) && quase(calcularQuedaPercentual({ comprimentoM: 50, correnteA: 32, secaoMm2: 16, tensaoV: uFase, circuitoTrifasico: true, convencao: 'cu-1/56' }), 0.8139, 1e-3), `${qTri.toFixed(6)}%`, 'critico')
+  const qImp = calcularQuedaPercentual({ comprimentoM: 50, correnteA: 32, tensaoV: uFase, circuitoTrifasico: true, cosPhi: 0.8, tipoCarga: 'indutiva', impedancia: { rOhmKm: 2.2, xOhmKm: 0.08 } })
+  checar('G46.23', 'S6 §7.1', 'Modo por impedância (r = 2,2 Ω/km, x = 0,08 Ω/km, L = 0,05 km, 32 A, cosφ 0,8): ΔU_LL = √3 · 0,05 · 32 · (2,2·0,8 + 0,08·0,6) = 5,0105 V; 1,3185% em 380 V — sem usar ρ', quase(qImp, 1.3185, 1e-3) && quase(Math.sqrt(3) * 0.05 * 32 * (2.2 * 0.8 + 0.08 * 0.6), 5.0105, 1e-3), `${qImp.toFixed(4)}%`, 'alto')
+  const eq = compEquivG46([{ distanciaM: 10, correnteA: 5 }, { distanciaM: 20, correnteA: 10 }])
+  const qRadial = calcularQuedaPercentual({ comprimentoM: eq.comprimentoM, correnteA: eq.correnteTotalA, secaoMm2: 2.5, tensaoV: 127, convencao: 'cu-1/56' })
+  checar('G46.24', 'S6 §6.2 e §8', 'Vários trechos (10 m com 15 A; derivam 5 A; 10 m com 10 A): ΣLI = 5·10 + 10·20 = 250 A·m → 3,571428 V; 2,812148% (usar 15 A nos 20 m daria 300 A·m)', quase(eq.somaCorrenteDistanciaAm, 250, 1e-9) && quase(qRadial, 2.812148, 1e-5), `ΣLI ${eq.somaCorrenteDistanciaAm} A·m; ${qRadial.toFixed(6)}%`, 'alto')
+  const serie = [[5, 0, 5], [5, 1.5, 3.5], [7, 1, 6]]
+  checar('G46.25', 'S6 §2 e §8', 'Limites: 127 V e 4% → 5,08 V; 5% com montante 1,5% → terminal 3,5%; 5% com montante 2% e terminal 4% reprova (6%); 7% com montante 1% e terminal 4,5% reprova o terminal (> 4%); 7% e 150 m → 7,25%; 250 m → 7,5% (teto); 5% e 250 m → 5%', quase(0.04 * 127, 5.08, 1e-9) && Math.min(4, 5 - 1.5) === 3.5 && 2 + 4 > 5 && 4.5 > 4 && quase(limiteTotalG46('transformador-unidade', 150), 7.25, 1e-9) && quase(limiteTotalG46('transformador-unidade', 250), 7.5, 1e-9) && limiteTotalG46('secundario-distribuicao', 250) === 5 && limiteTotalG46('gerador-proprio', 100) === 7 && limiteTotalG46('transformador-distribuidora', 100) === 7 && serie.length === 3, 'valores iguais ao documento', 'critico')
+  const comP = (qPct) => qPct > 4
+  checar('G46.26', 'S6 §8', 'Precisão: resultado de 4,004% reprova contra o limite de 4%, mesmo exibido como 4,00%', comP(4.004) && (4.004).toFixed(2) === '4.00', '4,004 → "4.00" mas reprovado', 'alto')
+}
+
+// ---------------------------------------------------------------- Semana 7
+{
+  const serieOk = JSON.stringify(SERIE_G46) === JSON.stringify([4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125])
+  const dimLinha = (ib, linha) => escolherDisjuntor(ib, correntesLinhaG46(linha, 2))
+  checar('G46.27', 'S7 §3 e §7', 'Série de cadastro 4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125 A; IB = 21 A → In = 25 A (nunca 20); na linha DX-E (sem 25 e 40 A) → 32 A; DX-H 1P só 80 A; Icn: DX-E/DX 6000 6 kA, DX-H 10 kA', serieOk && escolherDisjuntor(21) === 25 && dimLinha(21, 'DX-E') === 32 && dimLinha(33, 'DX-E') === 50 && correntesLinhaG46('DX-H', 1).join() === '80' && correntesLinhaG46('DX-H', 2).join() === '80,100,125' && LINHAS_G46['DX-E'].icnKA === 6 && LINHAS_G46['DX-6000'].icnKA === 6 && LINHAS_G46['DX-H'].icnKA === 10, `série ok: ${serieOk}`, 'critico')
+  const c25 = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 25 * 220, tensao: 220, ehFaseFase: true, cosPhi: 1, tipoCarga: 'resistiva' }, 0, { fatorTemperatura: 0.87, fatorAgrupamento: 0.7 })
+  const c25Dxe = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 25 * 220, tensao: 220, ehFaseFase: true, cosPhi: 1, tipoCarga: 'resistiva' }, 0, { fatorTemperatura: 0.87, fatorAgrupamento: 0.7, disjuntores: correntesLinhaG46('DX-E', 2) })
+  const sobr = sobrecargaG46(25, 34.713)
+  checar('G46.28', 'S7 §6', 'Coordenação: IB 25 A, 10 mm² (Iz 34,713 A), DX 6000: In = 25 A, 25 ≤ 25 ≤ 34,713 e I₂ = 36,25 A ≤ 50,334 A; na DX-E: In = 32 A, I₂ = 46,4 A ≤ 50,334 A, e a seção de 10 mm² continua atendendo', c25.disjuntorA === 25 && c25.secaoMm2 === 10 && quase(sobr.i2A, 36.25, 1e-9) && quase(sobr.limiteA, 50.334, 1e-3) && c25Dxe.disjuntorA === 32 && c25Dxe.secaoMm2 === 10 && quase(sobrecargaG46(32, 34.713).i2A, 46.4, 1e-9) && sobrecargaG46(25, 24.969).conforme === false, `In ${c25.disjuntorA}, I₂ ${sobr.i2A}; DX-E In ${c25Dxe.disjuntorA}`, 'critico')
+  const igual = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 30 * 127, tensao: 127, ehFaseFase: false, cosPhi: 1, tipoCarga: 'resistiva' }, 0, {})
+  const s20 = sobrecargaG46(20, 21)
+  checar('G46.29', 'S7 §7', 'Igualdade: Cu/PVC/B1/2, 4 mm², 30 °C, IB = 30 A → In = 32 A = Iz, atende; alínea b: In = 20 A, Iz = 21 A → I₂ = 29 A ≤ 30,45 A; relação I₂/In ausente (outro dispositivo) → não verificável; sobrecarga prolongada compara com Iz', igual.disjuntorA === 32 && igual.secaoMm2 === 4 && igual.ampacidadeA === 32 && quase(s20.i2A, 29, 1e-9) && quase(s20.limiteA, 30.45, 1e-9) && s20.conforme === true && sobrecargaG46(20, 21, { relacaoI2In: null }).conforme === null && sobrecargaG46(20, 21, { prolongada: true }).conforme === false, `In ${igual.disjuntorA}, Iz ${igual.ampacidadeA}; I₂ ${s20.i2A} ≤ ${s20.limiteA}`, 'critico')
+  const peT = [[16, 16], [25, 16], [35, 16], [50, 25], [95, 50], [120, 70], [150, 70], [185, 95], [240, 120]]
+  const errosPe = peT.filter(([f, p]) => peG46({ secaoFaseMm2: f }).secaoMm2 !== p).map(([f, p]) => `${f}: ${peG46({ secaoFaseMm2: f }).secaoMm2} × ${p}`)
+  checar('G46.30', 'S7 §4, §5.1 e §7', 'PE pela tabela 58: 16/25/35/50/95 → 16/16/16/25/50; 120 → 70 (empate registrado); 150 → 70 (a mais próxima, abaixo de S/2); 185 → 95; 240 → 120', errosPe.length === 0, errosPe.length ? errosPe.join('; ') : `${peT.length} seções conferidas`, 'critico')
+  const peCalc = peG46({ secaoFaseMm2: 1.5, iFaltaA: 2000, tempoS: 0.02, isolacao: 'pvc' })
+  const peFora = peG46({ secaoFaseMm2: 1.5, foraDoCabo: true, protecaoMecanica: false })
+  const peForaProt = peG46({ secaoFaseMm2: 1.5, foraDoCabo: true, protecaoMecanica: true })
+  checar('G46.31', 'S7 §4.1 e §7', 'PE por cálculo: I = 2000 A, t = 0,02 s, k = 115 → 2,46 mm² → 2,5 mm²; PE fora do conduto (cálculo dá 1,5 mm²): 4 mm² sem proteção mecânica e 2,5 mm² com; adota-se o maior entre a Tab. 58 e o cálculo', quase(peCalc.calculoExatoMm2, 2.46, 0.005) && peCalc.secaoMm2 === 2.5 && peFora.secaoMm2 === 4 && peForaProt.secaoMm2 === 2.5 && peG46({ secaoFaseMm2: 25, iFaltaA: 100, tempoS: 0.01 }).secaoMm2 === 16, `calculo ${peCalc.calculoExatoMm2.toFixed(3)} → ${peCalc.secaoMm2}; fora do conduto ${peFora.secaoMm2}/${peForaProt.secaoMm2}`, 'alto')
+  const neutro = (opcoes) => neutroGeralG36(opcoes.f, { numeroFases: opcoes.fases, neutroReduzidoDeclarado: opcoes.pedido ?? false, terceiraHarmonica: opcoes.h3 ?? 'nao-declarado', equilibrado: opcoes.eq ?? false, protegido: opcoes.pr ?? false })
+  checar('G46.32', 'S7 §5 e §7', 'Neutro: monofásico 6 mm² → 6; 3F+N 70 mm² com h₃ ≤ 15%, equilibrado e protegido → 35; redução negada com h₃ = 20% (70, quatro carregados, ×0,86); duas fases e neutro 50 mm² → 50 (a Tab. 48 não se aplica); sem a declaração de equilíbrio ou de proteção → não reduz', neutro({ f: 6, fases: 1 }) === 6 && neutro({ f: 70, fases: 3, pedido: true, h3: 'ate-15', eq: true, pr: true }) === 35 && neutro({ f: 70, fases: 3, pedido: true, h3: 'acima-15', eq: true, pr: true }) === 70 && neutro({ f: 50, fases: 2, pedido: true, h3: 'ate-15', eq: true, pr: true }) === 50 && neutro({ f: 70, fases: 3, pedido: true, h3: 'ate-15', eq: false, pr: true }) === 70 && neutro({ f: 70, fases: 3, pedido: true, h3: 'ate-15', eq: true, pr: false }) === 70, 'valores iguais ao documento', 'critico')
+  const h40 = neutroHarmonicaG46({ correnteFaseA: 120, h3Percentual: 40 })
+  const hSem = neutroHarmonicaG46({ correnteFaseA: 120 })
+  const h2f = neutroHarmonicaG46({ correnteFaseA: 100, esquema: '2F+N' })
+  checar('G46.33', 'S7 §5.2 e §6.3', 'Anexo F: 3F+N, IB = 120 A, h₃ = 40% → f_h = 1,19 e I_N = 142,8 A; sem estimativa f_h = 1,73 e I_N = 207,6 A (duas fases e neutro: 1,41); h₃ fracionário arredonda para cima (33,1% → 35% → 1,15); h₃ ≤ 33% não se aplica; tudo marcado como verificação complementar', h40.fh === 1.19 && quase(h40.correnteNeutroA, 142.8, 1e-9) && hSem.fh === 1.73 && quase(hSem.correnteNeutroA, 207.6, 1e-9) && h2f.fh === 1.41 && neutroHarmonicaG46({ correnteFaseA: 100, h3Percentual: 33.1 }).fh === 1.15 && neutroHarmonicaG46({ correnteFaseA: 100, h3Percentual: 33 }).aplicavel === false && h40.verificacaoComplementar === true, `40% → ${h40.fh} / ${h40.correnteNeutroA.toFixed(1)} A; sem estimativa → ${hSem.fh} / ${hSem.correnteNeutroA.toFixed(1)} A`, 'alto')
+  checar('G46.34', 'S7 §3.3 e §7', 'k: cobre PVC 115, EPR/XLPE 143 (e não 135); alumínio fora do site residencial; k²S² do cobre PVC 2,5 mm² = 115² × 2,5² = 82 656,25 A²s', obterK({ isolacao: 'epr', secaoMm2: 10 }) === 143 && obterK({ isolacao: 'pvc', secaoMm2: 10 }) === 115 && quase(115 ** 2 * 2.5 ** 2, 82656.25, 1e-9), 'valores iguais ao documento', 'alto')
+}
+
+// ---------------------------------------------------------------- Semana 8
+{
+  const tolerancia = 1e-6
+  const rosc = CATALOGOS_G46['pvc-roscavel'].itens
+  const sold = CATALOGOS_G46['pvc-soldavel'].itens
+  const areasInternas = rosc.map((e) => (Math.PI / 4) * e.di ** 2)
+  const docA = [211.2, 356.3, 593.9, 1023.5, 1346.1, 2189.6, 3536.2, 4976.4]
+  checar('G46.35', 'S8 §3.1–3.2', 'Catálogo: PVC roscável DN 20…85 (Di 16,4 … 79,6; áreas 211,2 … 4976,4 mm²) e soldável DN 16…50 (Di 14,0 … 47,8): sem DN 16 roscável nem DN 110', rosc.map((e) => e.dn).join() === '20,25,32,40,50,60,75,85' && areasInternas.every((a, i) => Math.abs(a - docA[i]) < 0.1) && sold.map((e) => e.dn).join() === '16,20,25,32,40,50' && quase(sold[0].di, 14, tolerancia) && quase(sold[5].di, 47.8, tolerancia), `roscável ${rosc.length} itens; soldável ${sold.length}`, 'alto')
+  // §3.4: quantidade máxima de condutores iguais no PVC roscável.
+  const docQ = { 1.5: [12, 21, 35, 62, 81, 132], 2.5: [8, 13, 23, 40, 52, 85], 4: [6, 10, 17, 31, 40, 66], 6: [5, 8, 14, 24, 32, 52], 10: [2, 5, 8, 14, 19, 30], 16: [1, 3, 6, 10, 13, 22], 25: [1, 1, 4, 7, 9, 15], 35: [1, 1, 3, 5, 6, 11] }
+  const errosQ = []
+  for (const [secao, valores] of Object.entries(docQ)) valores.forEach((esperado, i) => { const obtido = quantidadeMaximaG46(Number(secao), rosc[i]); if (obtido !== esperado) errosQ.push(`${secao} mm² DN ${rosc[i].dn}: ${obtido} × ${esperado}`) })
+  checar('G46.36', 'S8 §3.4', 'Quantidade máxima de condutores iguais no PVC roscável: as 48 combinações (1,5 a 35 mm² × DN 20 a 60) iguais às do documento; ex.: até 8 condutores de 2,5 mm² no DN 20 (8 × 10,2 = 81,6 ≤ 84,48 mm²)', errosQ.length === 0, errosQ.length ? errosQ.slice(0, 4).join('; ') : '48 combinações conferidas', 'alto')
+  // §6.6 e §7: eletrodutos E1, E2 e demais.
+  const e1 = dimensionarEletroduto([1.5, 1.5, 1.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5])
+  const e2 = dimensionarEletroduto(Array(6).fill(6))
+  const e47 = dimensionarEletroduto(Array(7).fill(4))
+  const e96 = dimensionarEletroduto(Array(9).fill(6))
+  const e210 = dimensionarEletroduto([10, 10])
+  checar('G46.37', 'S8 §6.6 e §7', 'E1 (3×1,5 + 6×2,5): 81,0 mm² → DN 20, 38,35%; E2 (6×6): 99,6 mm² → DN 25, 27,95%; 7×4 mm²: 92,4 → DN 25 (e não 20, divergência do Creder); 9×6: 149,4 → DN 32; 2×10: 56,6 ≤ 65,47 → DN 20', quase(e1.areaCondutoresMm2, 81, 1e-9) && e1.eletrodutoRecomendado.nominalMm === 20 && quase(e1.eletrodutoRecomendado.ocupacaoPercentual, 38.35, 0.01) && quase(e2.areaCondutoresMm2, 99.6, 1e-9) && e2.eletrodutoRecomendado.nominalMm === 25 && quase(e2.eletrodutoRecomendado.ocupacaoPercentual, 27.95, 0.01) && quase(e47.areaCondutoresMm2, 92.4, 1e-9) && e47.eletrodutoRecomendado.nominalMm === 25 && e96.eletrodutoRecomendado.nominalMm === 32 && e210.eletrodutoRecomendado.nominalMm === 20 && quase(e210.areaCondutoresMm2, 56.6, 1e-9), `E1 ${e1.areaCondutoresMm2} mm² DN ${e1.eletrodutoRecomendado.nominalMm}; E2 ${e2.areaCondutoresMm2} DN ${e2.eletrodutoRecomendado.nominalMm}`, 'critico')
+  const t12 = percursoG46([{ id: 't', comprimentoM: 12, curvas: 2, externo: false }], e2)
+  const t22 = percursoG46([{ id: 't', comprimentoM: 22, curvas: 0, externo: false }], e2)
+  const t4c = percursoG46([{ id: 't', comprimentoM: 5, curvas: 4, externo: false }], e2)
+  checar('G46.38', 'S8 §2.2 e §7', 'Trecho interno de 12 m com 2 curvas: L_máx = 9 m, excesso de 3 m → 1 DN acima (E2: DN 25 → 32); trecho reto de 22 m: excesso de 7 m → 2 DN acima; 4 curvas de 90° entre caixas: rejeitar', t12.trechos[0].limiteM === 9 && t12.trechos[0].degrausAlternativa === 1 && t12.trechos[0].eletrodutoAlternativa.startsWith('32') && t22.trechos[0].degrausAlternativa === 2 && t4c.conforme === false, `12 m/2 curvas: ${t12.trechos[0].eletrodutoAlternativa}; 22 m: ${t22.trechos[0].degrausAlternativa} DN`, 'alto')
+  checar('G46.39', 'S8 §6.6 · 6.2.10.2', 'Mistura de seções: 1,5 e 2,5 mm² no mesmo eletroduto (E1) é admitida; juntar o circuito de 6 mm² (1,5, 2,5, 4 e 6 ocupam quatro valores) seria vedado', tresValoresG46([1.5, 2.5]) && !tresValoresG46([1.5, 2.5, 4, 6]) && !tresValoresG46([1.5, 6]), 'regra dos três valores sucessivos', 'alto')
+
+  // DR (§4): exigência por circuito.
+  const banheiro = comodoG46({ id: 'b', nome: 'Banheiro', tipo: 'banheiro' })
+  const cozinha = comodoG46({ id: 'k', nome: 'Cozinha', tipo: 'servico', iluminacaoAlturaM: 2.6 })
+  const social = comodoG46({ id: 's', nome: 'Sala', tipo: 'social' })
+  const externa = comodoG46({ id: 'e', nome: 'Garagem', tipo: 'externa' })
+  const todos = [banheiro, cozinha, social, externa]
+  const circ = (tipo, comodo) => ({ tipo, comodoIds: [comodo.id], comodoId: comodo.id })
+  checar('G46.40', 'S8 §4 e §7 · 5.1.3.2.2', 'DR: circuito de iluminação com ponto no banheiro → obrigatório; luminária da cozinha a 2,60 m → pode ser excluída (nota 3); tomada da geladeira (cozinha) → exige; área social seca → não exigido; garagem/área molhada → exige', exigenciaDRG46(circ('iluminacao', banheiro), todos).exige === true && exigenciaDRG46(circ('iluminacao', cozinha), todos).exige === false && exigenciaDRG46(circ('tug', cozinha), todos).exige === true && exigenciaDRG46(circ('tug', social), todos).exige === false && exigenciaDRG46(circ('iluminacao', social), todos).exige === false && exigenciaDRG46(circ('tug', externa), todos).exige === true && exigenciaDRG46(circ('tue', banheiro), todos).exige === true, 'exigências conforme 5.1.3.2.2 a), b), d) e nota 3', 'critico')
+  checar('G46.41', 'S8 §4.1 · 5.1.2.2.4.3', 'TT: R × IΔn ≤ UL → 30 mA e 50 V: R ≤ 1666,7 Ω; com 300 mA: R ≤ 166,7 Ω; Caso 6: R = 80 Ω com DR geral de 300 mA → 24 V ≤ 50 V atende', quase(verificarSeccionamentoTT({ resistenciaOhm: '', sensibilidadeDrMA: 30, ulV: 50 }).raMaximaOhm, 1666.667, 0.001) && quase(verificarSeccionamentoTT({ resistenciaOhm: '', sensibilidadeDrMA: 300, ulV: 50 }).raMaximaOhm, 166.667, 0.001) && verificarSeccionamentoTT({ resistenciaOhm: 80, sensibilidadeDrMA: 300, ulV: 50 }).conforme === true && quase(80 * 0.3, 24, 1e-9), 'valores iguais ao documento', 'alto')
+  // DPS (§5).
+  const dpsTT = especificarDPS({ tensaoFaseNeutro: 127, numeroFases: 3, exposicaoDescargaDireta: false, esquemaAterramento: 'TT', dpsMontanteDoDR: true })
+  const dpsTN = especificarDPS({ tensaoFaseNeutro: 220, numeroFases: 3, exposicaoDescargaDireta: false, esquemaAterramento: 'TN-S' })
+  const dpsDireto = especificarDPS({ tensaoFaseNeutro: 127, numeroFases: 1, exposicaoDescargaDireta: true, esquemaAterramento: 'TT', dpsMontanteDoDR: true })
+  const dpsAQ = recomendarDPS(127, { alimentacaoAerea: true, classeAQ: 'AQ2' })
+  const dpsAQ3 = recomendarDPS(127, { alimentacaoAerea: false, classeAQ: 'AQ3' })
+  const dpsAQ1 = recomendarDPS(127, { alimentacaoAerea: true, classeAQ: 'AQ1' })
+  const dpsAQ2Sub = recomendarDPS(127, { alimentacaoAerea: false, classeAQ: 'AQ2' })
+  checar('G46.42', 'S8 §5 e §6.7 · 5.4.2.1.1, 6.3.5.2', 'DPS: linha aérea + AQ2 → obrigatório; AQ3 → obrigatório; AQ1 ou AQ2 subterrânea → não; Caso 6 (TT, DPS a montante do DR): esquema 3, Uc ≥ 139,7 V (F-N) e 127 V (N-PE), Up ≤ 1,5 kV, In ≥ 5 kA por modo e ≥ 20 kA neutro-PE (trifásica), PE ≥ 4 mm², ligação ≤ 0,5 m; 220/380 V TN-S: Up ≤ 2,5 kV e Uc ≥ 242 V; descarga direta: PE ≥ 16 mm², Iimp ≥ 12,5 kA (N-PE 25 kA monofásica)', dpsAQ.exigidaPelaNorma && dpsAQ3.exigidaPelaNorma && !dpsAQ1.exigidaPelaNorma && !dpsAQ2Sub.exigidaPelaNorma && dpsTT.esquemaConexao.esquema === 3 && dpsTT.esquemaConexao.obrigatorio && quase(dpsTT.ucMinimoFaseV, 139.7, 1e-9) && dpsTT.ucMinimoNeutroPeV === 127 && dpsTT.upMaximoKV === 1.5 && dpsTT.inMinimoKA === 5 && dpsTT.inMinimoNeutroPeKA === 20 && dpsTT.secaoCondutorPeMm2 === 4 && dpsTT.comprimentoLigacoesM === 0.5 && dpsTN.upMaximoKV === 2.5 && quase(dpsTN.ucMinimoFaseV, 242, 1e-9) && dpsTN.esquemaConexao.esquema === 2 && dpsDireto.secaoCondutorPeMm2 === 16 && dpsDireto.iimpMinimoKA === 12.5 && dpsDireto.iimpMinimoNeutroPeKA === 25 && esquemaDpsG46({ esquemaAterramento: 'TN-C-S' }).esquema === 1, 'valores iguais ao documento', 'critico')
+}
+
+// ---------------------------------------------------------------- Casos de referência 1 a 6 (S8 §6), premissas do documento
+{
+  const P = { convencao: 'cu-1/58', metodoInstalacao: 'B1' }
+  const c1 = dimensionarCircuito({ id: 'c1', nome: 'Chuveiro', tipo: 'tue', potenciaVA: 6800, tensao: 220, ehFaseFase: true, cosPhi: 1, tipoCarga: 'resistiva' }, 15, { ...P, fatorAgrupamento: 0.8 })
+  checar('G46.43', 'S8 §6.2 · Caso 1', 'Chuveiro 6800 W / 220 V, 15 m, 2 circuitos no eletroduto (K = 0,80), ρ = 1/58: IB 30,909 A; 6 mm² (4 mm² não atende: 32 × 0,8 = 25,6); Iz 32,8 A; disjuntor bipolar de 32 A; queda 1,211%; PE 6 mm²; DR obrigatório', quase(c1.correnteProjetoA, 30.909, 1e-3) && c1.secaoMm2 === 6 && quase(c1.ampacidadeA, 32.8, 1e-9) && c1.disjuntorA === 32 && c1.polos === 2 && quase(c1.quedaPercentual, 1.211, 1e-3) && c1.secaoTerraMm2 === 6 && exigenciaDRG46({ tipo: 'tue', comodoIds: ['b'] }, [comodoG46({ id: 'b', nome: 'Banheiro', tipo: 'banheiro' })]).exige, `seção ${c1.secaoMm2}; Iz ${c1.ampacidadeA}; In ${c1.disjuntorA}; queda ${c1.quedaPercentual.toFixed(4)}%`, 'critico')
+  const c2 = dimensionarCircuito({ id: 'c2', nome: 'TUG cozinha', tipo: 'tug', potenciaVA: 2000, tensao: 127, ehFaseFase: false, cosPhi: 1, tipoCarga: 'resistiva' }, 18, { ...P, fatorAgrupamento: 0.7 })
+  checar('G46.44', 'S8 §6.3 · Caso 2', 'Cozinha, 5 pontos (3×600 + 2×100 = 2000 VA), 127 V, 18 m, K = 0,70: IB 15,748 A; 2,5 mm² (Iz 16,8 A); disjuntor 16 A (I₂ 23,2 ≤ 24,36); queda 3,079%; neutro e PE 2,5 mm²', quase(c2.correnteProjetoA, 15.748, 1e-3) && c2.secaoMm2 === 2.5 && quase(c2.ampacidadeA, 16.8, 1e-9) && c2.disjuntorA === 16 && quase(c2.quedaPercentual, 3.079, 1e-3) && c2.secaoTerraMm2 === 2.5 && quase(sobrecargaG46(16, 16.8).i2A, 23.2, 1e-9) && quase(sobrecargaG46(16, 16.8).limiteA, 24.36, 1e-9), `queda ${c2.quedaPercentual.toFixed(4)}%`, 'critico')
+  const c3 = dimensionarCircuito({ id: 'c3', nome: 'Ilum', tipo: 'iluminacao', potenciaVA: 900, tensao: 127, ehFaseFase: false, cosPhi: 1, tipoCarga: 'resistiva' }, 20, { ...P, fatorAgrupamento: 0.7 })
+  checar('G46.45', 'S8 §6.4 · Caso 3', 'Iluminação 900 VA, 127 V, 20 m, K = 0,70: IB 7,087 A; 1,5 mm² (Iz 17,5 × 0,7 = 12,25 A); disjuntor 10 A (I₂ 14,5 ≤ 17,763); queda 2,566%; neutro e PE 1,5 mm²; DR não exigido em área social seca', quase(c3.correnteProjetoA, 7.087, 1e-3) && c3.secaoMm2 === 1.5 && quase(c3.ampacidadeA, 12.25, 1e-9) && c3.disjuntorA === 10 && quase(c3.quedaPercentual, 2.566, 1e-3) && c3.secaoTerraMm2 === 1.5 && quase(sobrecargaG46(10, 12.25).limiteA, 17.7625, 1e-9) && !exigenciaDRG46({ tipo: 'iluminacao', comodoIds: ['s'] }, [comodoG46({ id: 's', nome: 'Sala', tipo: 'social' })]).exige, `queda ${c3.quedaPercentual.toFixed(4)}%`, 'critico')
+  const equilibrado = (n) => Array(3).fill(n)
+  const ib18 = 18000 / (Math.sqrt(3) * 220)
+  const geral4 = dimensionarProtecaoGeral({ correntePorFaseA: equilibrado(18000 / 3 / 127), correnteNeutroA: 0, numeroFases: 3, tensaoFaseNeutro: 127, comprimentoRamalM: 25, convencao: 'cu-1/58', metodoInstalacao: 'B1' })
+  const geral4H = dimensionarProtecaoGeral({ correntePorFaseA: equilibrado(18000 / 3 / 127), correnteNeutroA: 0, numeroFases: 3, tensaoFaseNeutro: 127, comprimentoRamalM: 25, convencao: 'cu-1/58', metodoInstalacao: 'B1', terceiraHarmonica: 'acima-15' })
+  checar('G46.46', 'S8 §6.5 · Caso 4', 'Alimentador trifásico 18 000 VA, 127/220 V, 25 m, ρ = 1/58: IB 47,238 A; 10 mm² (Iz 50 A); disjuntor tripolar de 50 A (50 ≤ 50 por igualdade; I₂ 72,5 ≤ 72,5); queda 1,603%; neutro e PE 10 mm². Variante h₃ = 20%: 16 mm² (68 × 0,86 = 58,48 A), In 50 A, neutro 16 e PE 16; queda acumulada com o caso 2: 1,603 + 3,079 = 4,682% e 0,318% restantes', quase(ib18, 47.238, 1e-3) && geral4.condutorFase.secaoMm2 === 10 && geral4.condutorFase.ampacidadeA === 50 && geral4.disjuntorGeralA === 50 && quase(geral4.condutorFase.quedaPercentual, 1.603, 1e-3) && geral4.secaoNeutroMm2 === 10 && geral4.secaoTerraMm2 === 10 && quase(sobrecargaG46(50, 50).i2A, 72.5, 1e-9) && sobrecargaG46(50, 50).conforme === true && geral4H.condutorFase.secaoMm2 === 16 && quase(geral4H.condutorFase.ampacidadeA, 58.48, 1e-9) && geral4H.disjuntorGeralA === 50 && geral4H.secaoNeutroMm2 === 16 && geral4H.secaoTerraMm2 === 16 && quase(1.603 + c2.quedaPercentual, 4.682, 2e-3) && quase(5 - (1.603 + 3.079), 0.318, 1e-9), `queda ${geral4.condutorFase.quedaPercentual.toFixed(4)}%; variante ${geral4H.condutorFase.secaoMm2} mm²`, 'critico')
+  const dpsTT = especificarDPS({ tensaoFaseNeutro: 127, numeroFases: 3, exposicaoDescargaDireta: false, esquemaAterramento: 'TT', dpsMontanteDoDR: true })
+  const drsCaso6 = dimensionarDRs({ modoDR: 'grupos', grupoDR: {}, dimensionados: [{ id: 'a', nome: 'a', disjuntorA: 32, ehFaseFase: true }, { id: 'b', nome: 'b', disjuntorA: 16, ehFaseFase: false }], fasesPorCircuito: { a: [1, 2], b: [1] }, disjuntorGeralA: 63, drMontante: '300-S' })
+  checar('G46.47', 'S8 §6.7 · Caso 6', 'TT, rede aérea AQ2, DR geral de 300 mA (tipo S) e DR de 30 mA nos circuitos, R = 80 Ω, massas na situação 1: R·IΔn = 24 V ≤ 50 V atende; DPS obrigatório no quadro principal, esquema de conexão 3 (a montante do DR), Uc ≥ 139,7 V (F-N) e 127 V (N-PE), Up ≤ 1,5 kV, In ≥ 5 kA (F-N) e ≥ 20 kA (N-PE), PE ≥ 4 mm²', drsCaso6.montante.sensibilidadeMA === 300 && drsCaso6.montante.seletivo === true && verificarSeccionamentoTT({ resistenciaOhm: 80, sensibilidadeDrMA: drsCaso6.montante.sensibilidadeMA, ulV: 50 }).conforme === true && recomendarDPS(127, { alimentacaoAerea: true, classeAQ: 'AQ2' }).exigidaPelaNorma && dpsTT.esquemaConexao.esquema === 3 && dpsTT.inMinimoNeutroPeKA === 20, 'DR geral 300 mA seletivo (tipo S); TT atende', 'alto')
 }
 
 // ---------------------------------------------------------------------------

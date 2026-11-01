@@ -180,6 +180,25 @@ export default function ComodoCard({ comodo, indice }) {
             </p>
           </div>
 
+          <div className="grade-campos">
+            <Campo label="Altura da iluminação (opcional)" unidade="m" ajuda="Iluminação a 2,5 m ou mais do piso fica fora da exigência de DR.">
+              <input type="number" inputMode="decimal" min="0" step="0.1" className="campo" value={comodo.iluminacaoAlturaM ?? ''} onChange={(evento) => updateComodo(comodo.id, { iluminacaoAlturaM: evento.target.value })} />
+            </Campo>
+          </div>
+          <label className="campo-checkbox">
+            <input type="checkbox" checked={Boolean(comodo.tomadasAlimentamExterior)} onChange={(evento) => updateComodo(comodo.id, { tomadasAlimentamExterior: evento.target.checked })} />
+            Tomadas deste cômodo alimentam equipamentos que podem ir para o exterior (exigem DR)
+          </label>
+          <label className="campo-checkbox">
+            <input type="checkbox" checked={Boolean(comodo.excecaoLocalizacao)} onChange={(evento) => updateComodo(comodo.id, { excecaoLocalizacao: evento.target.checked })} />
+            Aplicar exceção de localização das tomadas (exige motivo registrado)
+          </label>
+          {comodo.excecaoLocalizacao && (
+            <Campo label="Motivo da exceção">
+              <input type="text" className="campo" value={comodo.excecaoMotivo ?? ''} onChange={(evento) => updateComodo(comodo.id, { excecaoMotivo: evento.target.value })} />
+            </Campo>
+          )}
+
           <div className="secao-comodo">
             <h3 className="secao-titulo">Tomadas (TUG)</h3>
             <div className="grade-campos">
@@ -377,8 +396,20 @@ export default function ComodoCard({ comodo, indice }) {
                           </Campo>
                         )}
                         {(equipamento.tipoCarga ?? 'resistiva') === 'indutiva' && (
+                          <Campo label="Potência informada" ajuda="Absorvida da rede (padrão): não se divide por η. De saída (eixo): P entrada = P saída/η, exige o rendimento.">
+                            <select
+                              value={equipamento.tipoPotencia ?? 'absorvida'}
+                              onChange={(evento) => updateTue(comodo.id, equipamento.id, { tipoPotencia: evento.target.value })}
+                              className="campo"
+                            >
+                              <option value="absorvida">Absorvida da rede (entrada)</option>
+                              <option value="saida">De saída (eixo / placa)</option>
+                            </select>
+                          </Campo>
+                        )}
+                        {(equipamento.tipoCarga ?? 'resistiva') === 'indutiva' && equipamento.tipoPotencia === 'saida' && (
                           <Campo
-                            label="Rendimento η (opcional)"
+                            label="Rendimento η"
                             ajuda="Para motor/compressor com a potência de placa no eixo. Em branco = a potência informada já é a absorvida da rede."
                             erro={validarNumero(equipamento.rendimento, { maiorQueMin: true, max: 1 })}
                           >
@@ -394,7 +425,44 @@ export default function ComodoCard({ comodo, indice }) {
                             />
                           </Campo>
                         )}
+                        <Campo label="Corrente nominal (opcional)" unidade="A" ajuda="Sem potência, informe corrente e tensão: S = U·I (potência indefinida, sem cosφ).">
+                          <input type="number" inputMode="decimal" min="0" step="any" className="campo" aria-label={`Corrente nominal de ${nomeEquipamento}`} value={equipamento.correnteNominalA ?? ''} onChange={(evento) => updateTue(comodo.id, equipamento.id, { correnteNominalA: evento.target.value })} />
+                        </Campo>
+                        <Campo label="Tensão do equipamento (opcional)" unidade="V">
+                          <input type="number" inputMode="decimal" min="0" step="any" className="campo" aria-label={`Tensão de ${nomeEquipamento}`} value={equipamento.tensaoV ?? ''} onChange={(evento) => updateTue(comodo.id, equipamento.id, { tensaoV: evento.target.value })} />
+                        </Campo>
+                        <Campo label="Conexão ao circuito" ajuda="Tomada (TUE) ou ligação direta, sem tomada.">
+                          <select value={equipamento.conexao ?? 'tomada'} onChange={(evento) => updateTue(comodo.id, equipamento.id, { conexao: evento.target.value })} className="campo">
+                            <option value="tomada">Tomada</option>
+                            <option value="direta">Ligação direta</option>
+                          </select>
+                        </Campo>
+                        <Campo label="Distância da tomada (opcional)" unidade="m" ajuda="Tomada de uso específico a no máximo 1,5 m do equipamento.">
+                          <input type="number" inputMode="decimal" min="0" step="any" className="campo" aria-label={`Distância de ${nomeEquipamento}`} value={equipamento.distanciaM ?? ''} onChange={(evento) => updateTue(comodo.id, equipamento.id, { distanciaM: evento.target.value })} />
+                        </Campo>
+                        {equipamento.motor && (
+                          <>
+                        <Campo label="Corrente de partida" unidade="A" ajuda="Habilita a verificação da queda na partida (10%, 6.5.1.3.3).">
+                          <input type="number" inputMode="decimal" min="0" step="any" className="campo" aria-label={`Corrente de partida de ${nomeEquipamento}`} value={equipamento.correntePartidaA ?? ''} onChange={(evento) => updateTue(comodo.id, equipamento.id, { correntePartidaA: evento.target.value })} />
+                        </Campo>
+                        <Campo label="cosφ na partida (opcional)" unidade="">
+                          <input type="number" inputMode="decimal" min="0" step="any" className="campo" aria-label={`cosφ de partida de ${nomeEquipamento}`} value={equipamento.cosPhiPartida ?? ''} onChange={(evento) => updateTue(comodo.id, equipamento.id, { cosPhiPartida: evento.target.value })} />
+                        </Campo>
+                          </>
+                        )}
                       </div>
+                      <label className="campo-checkbox">
+                        <input type="checkbox" checked={Boolean(equipamento.motor)} onChange={(evento) => updateTue(comodo.id, equipamento.id, { motor: evento.target.checked })} />
+                        É motor (verificar a queda na partida)
+                      </label>
+                      <label className="campo-checkbox">
+                        <input type="checkbox" checked={Boolean(equipamento.aquecedorAgua)} onChange={(evento) => updateTue(comodo.id, equipamento.id, { aquecedorAgua: evento.target.checked })} />
+                        Aquecedor de água
+                      </label>
+                      <label className="campo-checkbox">
+                        <input type="checkbox" checked={Boolean(equipamento.resistenciaNua)} onChange={(evento) => updateTue(comodo.id, equipamento.id, { resistenciaNua: evento.target.checked })} />
+                        Resistência nua (chuveiro ou torneira sem blindagem)
+                      </label>
                     </div>
                   )
                 })}

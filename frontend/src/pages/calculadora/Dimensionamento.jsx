@@ -14,6 +14,7 @@ import {
   listarTemperaturasDisponiveis,
 } from '../../calculations/constantes.js'
 import { ROUTES } from '../../routes.js'
+import { Agrupamentos, CatalogoEletroduto, ConsultaEFG, ExtrasCircuito } from './DimensionamentoDocumento.jsx'
 import { ID_PERCURSO_ALIMENTADOR } from '../../calculations/percurso.js'
 
 function nomeReferenciaAgrupamento(metodo) {
@@ -349,6 +350,8 @@ export default function Dimensionamento() {
                     </div>
                   </dl>
 
+                  <ExtrasCircuito circuito={circuito} />
+
                   <InstalacaoExistente
                     circuito={circuito}
                     valor={projeto.existentes[circuito.id]}
@@ -538,6 +541,10 @@ export default function Dimensionamento() {
             não tabela dimensões de produto) — confira com o material comprado se a ocupação ficar perto
             do limite.
           </Nota>
+
+          <Agrupamentos />
+          <CatalogoEletroduto />
+          <ConsultaEFG />
 
           <details className="detalhes-calculo">
             <summary>Condições de instalação (avançado)</summary>

@@ -12,7 +12,7 @@ implementação própria escrita no teste — nunca do motor.
 | 4 | Alto | Veredito "conforme" num projeto sem nenhum cômodo | `veredito.js` | G44.1 |
 | 5 | Alto | Reserva do quadro ignorada no cálculo do alimentador (Tabela 59, NOTA) | `projeto.js`, `veredito.js`, `Instalacao.jsx` | G42.7 |
 | 6 | Alto | Dados inválidos favoreciam o projeto (cosφ > 1, potência negativa, quantidade ≤ 0, equipamento sem potência sumia em silêncio) | `previsaoDeCarga.js`, `circuitos.js`, `veredito.js` | G37.5, G44.2–G44.4 |
-| 7 | Alto | Fator de agrupamento extrapolado onde a norma não tem valor (Tabela 42 ref. 2 acima de 11; Tabela 45 acima de 6) | `constantes.js`, `condutores.js`, `protecaoGeral.js` | G36.3, G39.6, G20.2 |
+| 7 | Alto | Fator de agrupamento extrapolado onde a norma não tem valor (Tabela 45 acima de 6 circuitos). Correção posterior: a célula 0,70 da Tabela 42 ref. 2 é mesclada (9 a ≥ 20 circuitos); a primeira versão deste item a tratava como vazia acima de 11, o que estava errado e foi revertido | `constantes.js`, `condutores.js`, `protecaoGeral.js` | G36.3, G39.6, G20.2 |
 | 8 | Médio | Ponto exatamente em 0,60 m / 3,0 m caía no volume seguinte do banheiro (erro de ponto flutuante) | `locaisEspeciais.js` | G43.1 |
 | 9 | Médio | Cômodo com tipo desconhecido derrubava o cálculo com exceção | `previsaoDeCarga.js` | G44.2 |
 | 10 | Médio | Rendimento η de motores/compressores não era considerado | `previsaoDeCarga.js`, `circuitos.js`, `ComodoCard.jsx` | G37.5 |
@@ -56,7 +56,7 @@ A Tabela 59 diz na NOTA: "a capacidade de reserva deve ser considerada no cálcu
 
 ## 7. Fator de agrupamento fora da tabela — ALTO
 
-Tabela 42 ref. 2 (camada única, método C) só tem valores até 11 circuitos (as colunas 12–15, 16–19 e ≥ 20 estão vazias para essa linha). Tabela 45 só vai até 6. O código repetia o último valor — **permissivo**, porque o fator real continua caindo. Agora devolve `null` e o circuito fica "não verificado" com mensagem explicando. O critério G20.2, que consagrava a repetição, foi atualizado (resultado incorreto corrigido; não foi afrouxado).
+Tabela 45 (eletrodutos enterrados) só vai até 6 circuitos; o código repetia o último valor, permissivo. Agora devolve `null` e o circuito fica "não verificado". **Erro corrigido depois:** a primeira versão também tratava a Tabela 42 ref. 2 (método C) como sem valor acima de 11 circuitos. Conferida a imagem da página 116 do PDF, a célula 0,70 é mesclada e vale de "9 a 11" até "≥ 20"; o relatório da semana 5 do grupo de pesquisa a lê assim. Revertido (G36.3).
 
 ## 8–10. Médios
 
@@ -82,3 +82,19 @@ Tabela 42 ref. 2 (camada única, método C) só tem valores até 11 circuitos (a
 - **casa-modelo** — passou a trazer `iccFaseNeutroA` e `potenciaReservaPorCircuitoVA` para continuar sem pendência (G27.3 preservado).
 - **G42.1** — esperado 3×2,5 mm² passou de 3/8" para 1/2" (efeito dos itens 14–15; conta manual refeita: 3·π/4·3,61² = 30,71 mm² em 211,2 mm² = 14,54%).
 - Nenhum critério foi removido; `verificar.mjs` passou de 240 para **302**.
+
+## Adequação ao compilado do Grupo de Pesquisa (semanas 3 a 8) — G46
+
+Plano e decisões em `docs/PLANO_ADEQUACAO_AO_DOCUMENTO.md`. Resumo do que mudou no motor e no que o usuário vê:
+
+- **Queda de tensão:** convenções de resistividade (operação, 1/56, 1/58), modo por impedância (r, x em Ω/km), limites 5% e 7% com o acréscimo de 0,005 pp/m (teto de 0,5 pp, só nos casos de 7%), circuito radial com vários pontos de carga (comprimento equivalente), ΔU em volts e partida de motor (≤ 10%).
+- **Previsão e circuitos:** rejeita área e perímetro inválidos, maior entre mínimo e real, sala de manutenção (1000 VA), exceções com motivo, TUE por potência absorvida ou de saída com η, corrente e tensão (potência indefinida), circuito próprio só acima de 10 A, circuito misto validado, corrente máxima por circuito no lugar dos tetos de VA, dispersão δ e ajuste manual de fases.
+- **Condutores:** Tabela 33 (maneira → método), seções até 240 mm², K2 por grupo (Tabelas 42 a 45, F = 1/√n, exclusão ≤ 30%), "critério térmico" separado de "dimensionamento completo".
+- **Proteção:** disjuntores de 4 a 125 A por linha com Icn, I₂/In por tipo de dispositivo, sobrecarga prolongada, PE por cálculo e mínimos da 6.4.3.1.4, neutro (equilíbrio e proteção declarados à parte) e Anexo F.
+- **Eletrodutos:** catálogo (roscável e soldável) com as áreas da tabela 3.22 do Creder, editáveis; quantidade máxima por eletroduto; eletroduto compartilhado com a regra da 6.2.10.2.
+- **DR e DPS:** DR por circuito exigido (padrão), classe AQ, esquema de conexão 1/2/3 e Iimp neutro-PE.
+- **Demanda:** perfil de Creder por parcelas como padrão, rotulado como estimativa bibliográfica.
+
+**Critérios existentes alterados (nenhum afrouxado, todos com conta refeita):** G8.3, G16.x, G27.2, G35.10, G36.1/36.3, G37.5, G39.6 e G42.1 acompanharam as novas séries de disjuntores e de seções, o modo de DR padrão e a nova área dos cabos. Nenhum critério foi removido; `verificar.mjs` passou de 302 para **349**.
+
+**e2e:** `rendimento` agora escolhe "potência de saída" antes de informar η; `M9` troca o método por maneira de instalar (11 → C); três rótulos novos foram renomeados para não colidirem com rótulos existentes. Novo `e2e/documento.spec.js` (5 roteiros).

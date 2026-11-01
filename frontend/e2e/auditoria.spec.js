@@ -52,6 +52,8 @@ test('rendimento do motor aumenta a corrente do circuito de equipamento', async 
   await page.getByLabel('Potência unitária').last().fill('736')
   await page.getByLabel('Tipo de carga').last().selectOption('indutiva')
   await page.getByLabel('Fator de potência (cosφ)').fill('0.85')
+  // Potência de placa no eixo: só então a ferramenta divide por η (S3 §12)
+  await page.getByLabel('Potência informada').selectOption('saida')
   await expect(page.getByLabel(/Rendimento η/)).toBeVisible()
   await page.getByLabel(/Rendimento η/).fill('0.8')
   await page.goto('/#/calculadora/circuitos')

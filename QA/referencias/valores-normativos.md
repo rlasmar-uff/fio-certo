@@ -1135,7 +1135,7 @@ A norma não dá regra de corrente nominal do DR, só que ele seja protegido con
 Fonte: `NBR-5410.pdf`, extração por coordenadas (pdfplumber). Fixture das Tabelas 36/37 (cobre):
 `QA/referencias/pdf-tabelas-36-37.json` — comparada célula a célula em G36.1.
 
-- **Tabela 42, referência 2 (camada única, método C):** só tem valores até "9 a 11 circuitos" (0,70). As colunas 12–15, 16–19 e ≥ 20 **estão vazias** para essa linha. O motor devolve `null` acima de 11 circuitos.
+- **Tabela 42, referência 2 (camada única, método C):** 0,70 de "9 a 11" até "≥ 20" circuitos — a célula é **mesclada** (conferido na imagem da p. 116 do PDF). O motor usa 0,70 para qualquer quantidade ≥ 9. (Uma versão anterior deste arquivo dizia que as colunas 12+ estavam vazias; estava errado.)
 - **Tabela 45 (eletrodutos enterrados, condutor unipolar, espaçamento nulo):** 2→0,80; 3→0,70; 4→0,65; 5→0,60; 6→0,60. Sem valor acima de 6.
 - **Tabela 40, solo:** 20 °C = 1,00 (implícito); PVC não tem valor acima de 60 °C.
 - **Tabela 58:** S ≤ 16 → S; 16 < S ≤ 35 → 16; S > 35 → S/2, adotando a seção padronizada **mais próxima** (120 mm² → 60: empate entre 50 e 70, o motor usa 70).

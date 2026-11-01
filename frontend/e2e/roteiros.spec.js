@@ -94,7 +94,7 @@ test('M9: método C recalcula na hora e tira o eletroduto; neutro reduzido não 
   await page.goto('/')
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
   await etapa(page, 'Circuitos').click()
-  await page.getByLabel('Método de instalação de Iluminação').selectOption('C')
+  await page.getByLabel('Maneira de instalar de Iluminação').selectOption('11') // maneira 11 → método C (Tabela 33)
   await etapa(page, 'Dimensionamento').click()
   const detalhe = page.locator('details', { hasText: 'Iluminação' }).first()
   await detalhe.locator('summary').click()

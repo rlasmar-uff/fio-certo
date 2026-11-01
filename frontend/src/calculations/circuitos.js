@@ -1,9 +1,5 @@
 import { calcularCargaComodo, calcularLimite600VA, calcularPotenciaAparenteVA, normalizarCosPhi } from './previsaoDeCarga.js'
-import {
-  POTENCIA_MAXIMA_CIRCUITO_ILUMINACAO_VA,
-  POTENCIA_MAXIMA_CIRCUITO_TUG_VA,
-  ANGULO_FASE_GRAUS,
-} from './constantes.js'
+import { ANGULO_FASE_GRAUS, CORRENTE_MAXIMA_CIRCUITO_PADRAO_A, CORRENTE_MAXIMA_CIRCUITO_MISTO_A, LIMITE_CORRENTE_TUE_INDEPENDENTE_A } from './constantes.js'
 
 // Agrupa itens (cômodos) em circuitos, respeitando uma potência máxima por circuito — um cômodo
 // nunca é dividido entre dois circuitos. First-Fit Decreasing (empacota por ordem de VA
@@ -57,67 +53,82 @@ function agruparEmCircuitos(itens, potenciaMaximaVA, tipo, slugBase, nomeBase, t
     cosPhi: 1,
     tipoCarga: 'resistiva',
     comodos: grupo.itens.map((item) => item.nome),
+    comodoIds: grupo.itens.map((item) => item.comodoId),
   }))
+}
+
+// S3 §7.1 — circuito misto (iluminação + tomadas) em habitação, 9.5.3.3: as TRÊS condições valem ao mesmo
+// tempo. Função pura, para validar também um agrupamento informado à mão.
+export function validarCircuitoMisto({ correnteProjetoA, incluiTomadaDeLocalMolhado = false, iluminacaoTotalNoCircuito = false, tomadasTotalNoCircuito = false }) {
+  const falhas = []
+  if (incluiTomadaDeLocalMolhado) falhas.push('inclui tomadas de cozinha, copa, área de serviço, lavanderia ou análogos (9.5.3.2): circuito exclusivo')
+  if (!(correnteProjetoA <= CORRENTE_MAXIMA_CIRCUITO_MISTO_A)) falhas.push(`corrente de projeto acima de ${CORRENTE_MAXIMA_CIRCUITO_MISTO_A} A (9.5.3.3 a)`)
+  if (iluminacaoTotalNoCircuito) falhas.push('concentra toda a iluminação da habitação (9.5.3.3 b)')
+  if (tomadasTotalNoCircuito) falhas.push('concentra todos os pontos de tomada considerados pela exceção (9.5.3.3 c)')
+  return { conforme: falhas.length === 0, falhas }
 }
 
 // configInstalacao vem de resolverConfigInstalacao(tipoInstalacao, tensaoFaseNeutro) —
 // define a tensão fase-neutro (sempre existe) e fase-fase (só em bi/trifásico) do projeto.
 // `aplicarAlternativa600VA` (default `false`) é a mesma declaração opt-in do usuário usada em
 // `calcularPrevisaoDeCarga` — ver comentário de `calcularLimite600VA`.
-export function gerarCircuitos(comodos, configInstalacao, aplicarAlternativa600VA = false) {
+//
+// Critérios (compilado, semana 3 §6–7): iluminação e tomadas em circuitos separados, por padrão; tomadas
+// de cozinhas e áreas de serviço só com as dos locais de 9.5.3.2; equipamento com corrente > 10 A em
+// circuito independente (9.5.3.1) — e SÓ esse; os de até 10 A podem dividir circuito. NÃO existe limite de
+// VA nem de nº de tomadas por circuito na norma: o agrupamento se limita pela CORRENTE de projeto
+// (`correnteMaximaA`, escolha de projeto, padrão 16 A). `circuitoMisto` habilita a exceção de 9.5.3.3.
+export function gerarCircuitos(comodos, configInstalacao, aplicarAlternativa600VA = false, opcoes = {}) {
   const { tensaoFaseNeutro, tensaoFaseFase, permiteFaseFase } = configInstalacao
+  const correnteMaximaA = Number(opcoes.correnteMaximaA) > 0 ? Number(opcoes.correnteMaximaA) : CORRENTE_MAXIMA_CIRCUITO_PADRAO_A
+  const limiteVA = correnteMaximaA * tensaoFaseNeutro
   const limite600VA = calcularLimite600VA(comodos, aplicarAlternativa600VA)
   const cargas = comodos.map((comodo) => ({ comodo, carga: calcularCargaComodo(comodo, limite600VA) }))
 
-  const circuitosIluminacao = agruparEmCircuitos(
-    cargas.map(({ comodo, carga }) => ({ comodoId: comodo.id, nome: comodo.nome, va: carga.iluminacaoVA })),
-    POTENCIA_MAXIMA_CIRCUITO_ILUMINACAO_VA,
-    'iluminacao',
-    'iluminacao',
-    'Iluminação',
-    tensaoFaseNeutro,
-  )
-
   const cargasServico = cargas.filter(({ comodo }) => comodo.tipo === 'servico')
   const cargasGeral = cargas.filter(({ comodo }) => comodo.tipo !== 'servico')
+  const itensDe = (lista, campo) => lista.map(({ comodo, carga }) => ({ comodoId: comodo.id, nome: comodo.nome, va: carga[campo] }))
 
-  const circuitosTugServico = agruparEmCircuitos(
-    cargasServico.map(({ comodo, carga }) => ({ comodoId: comodo.id, nome: comodo.nome, va: carga.tugVA })),
-    POTENCIA_MAXIMA_CIRCUITO_TUG_VA,
-    'tug',
-    'tug-servico',
-    'TUG — Cozinha/Área de serviço',
-    tensaoFaseNeutro,
-  )
+  let circuitosIluminacao
+  let circuitosTugGeral
+  let circuitosMistos = []
+  if (opcoes.circuitoMisto) {
+    const limiteMistoVA = CORRENTE_MAXIMA_CIRCUITO_MISTO_A * tensaoFaseNeutro
+    circuitosMistos = agruparEmCircuitos(
+      cargasGeral.map(({ comodo, carga }) => ({ comodoId: comodo.id, nome: comodo.nome, va: carga.iluminacaoVA + carga.tugVA })),
+      limiteMistoVA, 'tug', 'misto', 'Iluminação e tomadas (misto)', tensaoFaseNeutro,
+    ).map((circuito) => ({ ...circuito, misto: true }))
+    // Só vale com pelo menos 2 circuitos mistos (9.5.3.3 b e c: nenhum concentra toda a iluminação nem todas as tomadas).
+    // Com 1 só, volta ao padrão (separados): a exceção não se aplica ao conjunto.
+    if (circuitosMistos.length < 2) circuitosMistos = []
+  }
+  if (circuitosMistos.length) {
+    circuitosIluminacao = []
+    circuitosTugGeral = []
+  } else {
+    circuitosIluminacao = agruparEmCircuitos(itensDe(cargas, 'iluminacaoVA'), limiteVA, 'iluminacao', 'iluminacao', 'Iluminação', tensaoFaseNeutro)
+    circuitosTugGeral = agruparEmCircuitos(itensDe(cargasGeral, 'tugVA'), limiteVA, 'tug', 'tug-geral', 'TUG — Salas/Dormitórios/Banheiros', tensaoFaseNeutro)
+  }
+  // Os cômodos de serviço (cozinha etc.) nunca entram em circuito misto; sua iluminação segue o padrão.
+  if (circuitosMistos.length) {
+    circuitosIluminacao = agruparEmCircuitos(itensDe(cargasServico, 'iluminacaoVA'), limiteVA, 'iluminacao', 'iluminacao', 'Iluminação', tensaoFaseNeutro)
+  }
+  const circuitosTugServico = agruparEmCircuitos(itensDe(cargasServico, 'tugVA'), limiteVA, 'tug', 'tug-servico', 'TUG — Cozinha/Área de serviço', tensaoFaseNeutro)
 
-  const circuitosTugGeral = agruparEmCircuitos(
-    cargasGeral.map(({ comodo, carga }) => ({ comodoId: comodo.id, nome: comodo.nome, va: carga.tugVA })),
-    POTENCIA_MAXIMA_CIRCUITO_TUG_VA,
-    'tug',
-    'tug-geral',
-    'TUG — Salas/Dormitórios/Banheiros',
-    tensaoFaseNeutro,
-  )
-
-  // NBR 5410 §9.5.3.1 exige circuito dedicado apenas para equipamento com corrente nominal
-  // acima de 10 A — esta ferramenta dedica um circuito a TODO equipamento cadastrado como TUE,
-  // independente da corrente, como simplificação conservadora (mais seguro, nunca menos). Por
-  // isso "quantidade" gera um circuito por unidade (2 chuveiros = 2 circuitos), não um só somado.
-  const circuitosTue = comodos.flatMap((comodo) =>
+  // Equipamentos de uso específico: um circuito próprio quando I > 10 A (9.5.3.1); os de até 10 A, com a
+  // mesma ligação e tensão, podem dividir circuito até a corrente máxima de projeto. "quantidade" gera uma
+  // unidade por equipamento (2 chuveiros = 2 circuitos, pois cada um tem mais de 10 A).
+  const unidadesTue = comodos.flatMap((comodo) =>
     (comodo.tue ?? []).flatMap((equipamento) => {
-      // Quantidade inválida (0, negativa, fracionária) vale 1: some em silêncio seria pior (o circuito
-      // inteiro deixaria de existir) — a entrada é sinalizada no veredito.
       const quantidade = Number.isInteger(Number(equipamento.quantidade)) && Number(equipamento.quantidade) >= 1 ? Number(equipamento.quantidade) : 1
       const cosPhi = normalizarCosPhi(equipamento.cosPhi)
-      // Potência aparente (VA) = potência elétrica absorvida (W / rendimento) / cosφ — para carga
-      // resistiva pura (η = cosφ = 1) coincide com os W; para motores/compressores, a corrente
-      // real é maior que P/V sozinho sugeriria (ver `calcularPotenciaAparenteVA`).
+      // Potência aparente (VA) = potência elétrica absorvida (W / rendimento, se de saída) / cosφ
+      // (ver `calcularPotenciaAparenteVA`).
       const potenciaVA = calcularPotenciaAparenteVA(equipamento)
       // "fase-fase" só é válido se a instalação realmente tiver mais de uma fase disponível
       // (numa monofásica não existe fase-fase — cai de volta pra fase-neutro por segurança).
       const ehFaseFase = equipamento.ligacao === 'fase-fase' && permiteFaseFase
       const tensao = ehFaseFase ? tensaoFaseFase : tensaoFaseNeutro
-
       return Array.from({ length: quantidade }, (_, indice) => ({
         id: `tue-${comodo.id}-${equipamento.id}-${indice + 1}`,
         nome: quantidade > 1 ? `${equipamento.nome} ${indice + 1} (${comodo.nome})` : `${equipamento.nome} (${comodo.nome})`,
@@ -128,14 +139,48 @@ export function gerarCircuitos(comodos, configInstalacao, aplicarAlternativa600V
         cosPhi,
         tipoCarga: equipamento.tipoCarga ?? 'resistiva',
         comodos: [comodo.nome],
-        // referência de volta ao equipamento de origem (cômodo + equipamento cadastrados).
+        comodoIds: [comodo.id],
         comodoId: comodo.id,
         equipamentoId: equipamento.id,
+        independenteObrigatorio: potenciaVA / tensao > LIMITE_CORRENTE_TUE_INDEPENDENTE_A,
       }))
     }),
-  )
+  ).filter((unidade) => unidade.potenciaVA > 0)
 
-  return [...circuitosIluminacao, ...circuitosTugServico, ...circuitosTugGeral, ...circuitosTue].filter(
+  const circuitosTue = []
+  const pequenos = new Map()
+  unidadesTue.forEach((unidade) => {
+    if (unidade.independenteObrigatorio) circuitosTue.push(unidade)
+    else {
+      const chave = `${unidade.ehFaseFase}-${unidade.tensao}`
+      if (!pequenos.has(chave)) pequenos.set(chave, [])
+      pequenos.get(chave).push(unidade)
+    }
+  })
+  pequenos.forEach((lista) => {
+    const grupos = []
+    // First-fit decrescente por corrente (todos do grupo têm a mesma tensão: VA proporcional à corrente).
+    ;[...lista].sort((x, y) => y.potenciaVA - x.potenciaVA).forEach((unidade) => {
+      const grupo = grupos.find((g) => g.va + unidade.potenciaVA <= correnteMaximaA * unidade.tensao)
+      if (grupo) { grupo.itens.push(unidade); grupo.va += unidade.potenciaVA } else grupos.push({ itens: [unidade], va: unidade.potenciaVA })
+    })
+    grupos.forEach((grupo) => {
+      if (grupo.itens.length === 1) { circuitosTue.push(grupo.itens[0]); return }
+      const primeiro = grupo.itens[0]
+      circuitosTue.push({
+        ...primeiro,
+        id: `tue-grupo-${grupo.itens.map((i) => i.equipamentoId).join('_')}`,
+        nome: `Equipamentos de uso específico (${grupo.itens.map((i) => i.nome).join(' + ')})`,
+        potenciaVA: grupo.va,
+        comodos: [...new Set(grupo.itens.flatMap((i) => i.comodos))],
+        comodoIds: [...new Set(grupo.itens.flatMap((i) => i.comodoIds))],
+        equipamentoIds: grupo.itens.map((i) => i.equipamentoId),
+        independenteObrigatorio: false,
+      })
+    })
+  })
+
+  return [...circuitosIluminacao, ...circuitosMistos, ...circuitosTugServico, ...circuitosTugGeral, ...circuitosTue].filter(
     (circuito) => circuito.potenciaVA > 0,
   )
 }
@@ -227,15 +272,46 @@ function resolverAtribuicaoExata(ordenados, numeroFases) {
 
 // Processa da maior para a menor potência primeiro (só importa para o guloso — a busca exata é
 // insensível à ordem), e guarda o "antes/depois" de cada decisão para poder explicar o resultado.
-export function balancearFases(circuitos, numeroFases) {
+// Atribuição manual de fases (S3 §10.1: "permitir ajuste pelo projetista"): 1 fase em circuito fase-neutro,
+// 2 fases distintas em circuito fase-fase, todas entre 1 e `numeroFases`. Inválida = ignorada (volta ao automático).
+function fasesManuaisValidas(circuito, manuais, numeroFases) {
+  const fases = manuais?.[circuito.id]
+  if (!Array.isArray(fases) || numeroFases === 1) return null
+  const lista = fases.map(Number)
+  const esperado = circuito.ehFaseFase ? 2 : 1
+  if (lista.length !== esperado || new Set(lista).size !== esperado) return null
+  return lista.every((f) => Number.isInteger(f) && f >= 1 && f <= numeroFases) ? lista.map((f) => f - 1) : null
+}
+
+// Indicador de dispersão das correntes de fase (S3 §10.2) — criado para COMPARAR alternativas; não é o fator
+// de desequilíbrio por componentes simétricas nem um limite da NBR 5410 (4.2.5.6 não fixa percentual).
+// I_média = (|I_A| + |I_B| + |I_C|)/3; δ = 100 · max_k(| |I_k| − I_média |) / I_média. Média zero = sem carga.
+export function indicadorDesequilibrio(correntesPorFase) {
+  const media = correntesPorFase.reduce((soma, i) => soma + i, 0) / correntesPorFase.length
+  if (!(media > 0)) return { correnteMediaA: 0, deltaPercentual: null, semCarga: true }
+  return { correnteMediaA: media, deltaPercentual: (100 * Math.max(...correntesPorFase.map((i) => Math.abs(i - media)))) / media, semCarga: false }
+}
+
+export function balancearFases(circuitos, numeroFases, fasesManuais = {}) {
   const cargaPorFase = Array.from({ length: numeroFases }, () => 0)
   const decisoesPorId = new Map()
 
-  const ordenados = [...circuitos].sort((a, b) => b.potenciaVA - a.potenciaVA)
-  const atribuicaoExata = numeroFases > 1 ? resolverAtribuicaoExata(ordenados, numeroFases) : null
+  const manualDe = (circuito) => fasesManuaisValidas(circuito, fasesManuais, numeroFases)
+  // Circuitos fixados pelo projetista entram primeiro; os demais são distribuídos em volta deles.
+  const ordenados = [...circuitos].sort((a, b) => Number(Boolean(manualDe(b))) - Number(Boolean(manualDe(a))) || b.potenciaVA - a.potenciaVA)
+  const haManual = ordenados.some((circuito) => manualDe(circuito))
+  const atribuicaoExata = numeroFases > 1 && !haManual ? resolverAtribuicaoExata(ordenados, numeroFases) : null
 
   ordenados.forEach((circuito, indice) => {
     const cargasAntes = [...cargaPorFase]
+
+    const manual = manualDe(circuito)
+    if (manual) {
+      const contribuicao = circuito.ehFaseFase ? circuito.potenciaVA / CONTRIBUICAO_FASE_FASE : circuito.potenciaVA
+      manual.forEach((i) => { cargaPorFase[i] += contribuicao })
+      decisoesPorId.set(circuito.id, { ordem: indice + 1, fases: manual.map((i) => i + 1), cargasAntes, contribuicaoPorFase: contribuicao, manual: true })
+      return
+    }
 
     if (numeroFases === 1 || !circuito.ehFaseFase) {
       let indicesFase

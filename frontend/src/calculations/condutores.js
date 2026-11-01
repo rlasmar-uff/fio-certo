@@ -16,7 +16,7 @@ import {
   obterFatorResistividadeSolo,
   obterFatorTemperatura,
 } from './constantes.js'
-import { calcularQuedaPercentual } from './quedaDeTensao.js'
+import { calcularQuedaPercentual, comprimentoEquivalente } from './quedaDeTensao.js'
 
 // §6.2.6.1.2 c) (§5.3.5.1) — proteção contra curto-circuito nos circuitos terminais PODE ser
 // verificada (ver `projeto.js`, `propagarIccTerminal` em `curtoCircuito.js`), por propagação de
@@ -40,8 +40,8 @@ export function calcularCorrenteProjeto(circuito) {
 
 // NBR 5410 — coordenação disjuntor/condutor: Ib ≤ In ≤ Iz
 // (corrente de projeto ≤ corrente nominal do disjuntor ≤ capacidade de condução do condutor).
-export function escolherDisjuntor(correnteProjetoA) {
-  return DISJUNTORES_PADRONIZADOS.find((corrente) => corrente >= correnteProjetoA) ?? null
+export function escolherDisjuntor(correnteProjetoA, correntes = DISJUNTORES_PADRONIZADOS) {
+  return correntes.find((corrente) => corrente >= correnteProjetoA) ?? null
 }
 
 // Avalia CADA seção da tabela (a partir da seção mínima normativa do tipo de uso) contra os
@@ -77,6 +77,9 @@ export function avaliarTrilhaSecao(tipoCircuito, parametros) {
     metodoInstalacao = METODO_INSTALACAO_PADRAO,
     isolacao = ISOLACAO_PADRAO,
     calcularQueda = null,
+    convencao,
+    impedancia = null,
+    secaoRetornoMm2 = null,
   } = parametros
   const secaoMinimaNormativa = SECAO_MINIMA_MM2[tipoCircuito] ?? SECAO_MINIMA_MM2.tug
   const condutoresCarregados = TABELA_46_CONDUTORES_CARREGADOS[esquema]
@@ -102,6 +105,9 @@ export function avaliarTrilhaSecao(tipoCircuito, parametros) {
           tipoCarga,
           circuitoTrifasico,
           isolacao,
+          convencao,
+          impedancia,
+          secaoRetornoMm2,
         })
     const atendeQueda = quedaPercentual === null || quedaPercentual <= limiteQuedaPercentual
 
@@ -153,6 +159,10 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
     comprimentoInformado = comprimentoM > 0,
     metodoInstalacao = METODO_INSTALACAO_PADRAO,
     isolacao = ISOLACAO_PADRAO,
+    convencao,
+    impedancia = null,
+    secaoRetornoMm2 = null,
+    disjuntores = DISJUNTORES_PADRONIZADOS,
   } = opcoes
 
   // Tabela 46 — derivado do próprio circuito, nunca recebido de fora: um circuito terminal é
@@ -161,7 +171,7 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
   const circuitoTrifasico = esquema.startsWith('trifasico')
 
   const correnteProjetoA = calcularCorrenteProjeto(circuito)
-  const disjuntorA = escolherDisjuntor(correnteProjetoA)
+  const disjuntorA = escolherDisjuntor(correnteProjetoA, disjuntores)
   const cosPhi = circuito.cosPhi ?? 1
   const tipoCarga = circuito.tipoCarga ?? 'resistiva'
 
@@ -221,6 +231,9 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
         esquema,
         metodoInstalacao,
         isolacao,
+        convencao,
+        impedancia,
+        secaoRetornoMm2,
       })
 
   const quedaPercentual =
@@ -234,6 +247,9 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
           tipoCarga,
           circuitoTrifasico,
           isolacao,
+          convencao,
+          impedancia,
+          secaoRetornoMm2,
         })
       : null
 
@@ -266,6 +282,10 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
     trilhaSecao: trilha,
     elevadaPorQuedaDeTensao: secaoPorAmpacidade !== null && secaoMm2 !== null && secaoMm2 > secaoPorAmpacidade,
     quedaPercentual,
+    quedaVolts: quedaPercentual === null ? null : (quedaPercentual * circuito.tensao) / 100,
+    quedaAdmissivelVolts: (limiteQuedaPercentual * circuito.tensao) / 100,
+    convencaoResistividade: convencao ?? 'operacao',
+    modoQueda: impedancia ? 'impedancia' : 'resistividade',
     limitePercentual: limiteQuedaPercentual,
     conforme: secaoMm2 !== null && comprimentoInformado,
     naoVerificado: secaoMm2 !== null && !comprimentoInformado,
@@ -275,7 +295,7 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
     erro: temperaturaForaDaFaixa
       ? 'Temperatura ambiente informada está fora da faixa tabelada (Tabela 40) para a isolação escolhida — dimensionamento não verificado.'
       : agrupamentoForaDaTabela
-        ? 'Número de circuitos agrupados acima do que a tabela de agrupamento da norma cobre (Tabela 42, ref. 2: até 11; Tabela 45: até 6) — sem fator tabelado, dimensionamento não verificado.'
+        ? 'Número de circuitos agrupados acima do que a tabela de agrupamento da norma cobre (Tabela 45, eletrodutos enterrados: até 6 circuitos) — sem fator tabelado, dimensionamento não verificado.'
         : secaoMm2 === null
         ? 'Nenhuma seção da tabela atende simultaneamente à corrente exigida e à queda de tensão disponível.'
         : null,
@@ -304,9 +324,13 @@ export function dimensionarCircuitos(circuitos, comprimentosPorId = {}, opcoes =
   const metodosPorId = opcoes.metodosPorId ?? {}
 
   return circuitos.map((circuito) => {
-    const bruto = comprimentosPorId[circuito.id]
+    const pontos = comprimentoEquivalente(opcoes.pontosCargaPorId?.[circuito.id])
+    const bruto = pontos ? pontos.comprimentoM : comprimentosPorId[circuito.id]
     const comprimentoInformado = bruto !== undefined && bruto !== null && bruto !== ''
     const comprimentoM = comprimentoInformado ? Number(bruto) || 0 : 0
+    const imp = opcoes.impedanciasPorId?.[circuito.id]
+    const impedancia = imp && imp.rOhmKm !== '' && imp.xOhmKm !== '' && Number.isFinite(Number(imp.rOhmKm)) && Number.isFinite(Number(imp.xOhmKm)) ? imp : null
+    const secaoRetorno = Number(opcoes.secoesRetornoPorId?.[circuito.id]) || null
     const metodoInstalacao = metodosPorId[circuito.id] || METODO_INSTALACAO_PADRAO
     const enterrado = Boolean(METODOS_INSTALACAO[metodoInstalacao]?.enterrado)
     const fatorTemperatura = obterFatorTemperatura(enterrado ? opcoes.temperaturaSoloC : opcoes.temperaturaC, {
@@ -314,7 +338,9 @@ export function dimensionarCircuitos(circuitos, comprimentosPorId = {}, opcoes =
       enterrado,
     })
     const fatorResistividadeSolo = enterrado ? obterFatorResistividadeSolo(opcoes.resistividadeTermicaSoloKmW) : 1
-    const fatorAgrupamento = obterFatorAgrupamento(numeroCircuitosAgrupados, metodoInstalacao)
+    const fatorAgrupamento = opcoes.fatorAgrupamentoPorId?.[circuito.id] !== undefined
+      ? opcoes.fatorAgrupamentoPorId[circuito.id]
+      : obterFatorAgrupamento(numeroCircuitosAgrupados, metodoInstalacao)
     return dimensionarCircuito(circuito, comprimentoM, {
       fatorTemperatura,
       fatorAgrupamento,
@@ -323,6 +349,10 @@ export function dimensionarCircuitos(circuitos, comprimentosPorId = {}, opcoes =
       comprimentoInformado,
       metodoInstalacao,
       isolacao,
+      convencao: opcoes.convencao,
+      impedancia,
+      secaoRetornoMm2: secaoRetorno,
+      disjuntores: opcoes.correntesDisjuntor ? opcoes.correntesDisjuntor(circuito.ehFaseFase ? 2 : 1) : undefined,
     })
   })
 }

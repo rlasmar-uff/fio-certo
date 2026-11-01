@@ -6,6 +6,7 @@ import { useProjeto } from '../../context/useProjeto.js'
 import TabelasResumo from './TabelasResumo.jsx'
 import SecaoQuadro from './SecaoQuadro.jsx'
 import SecaoMateriais from './SecaoMateriais.jsx'
+import ResultadoDocumento from './ResultadoDocumento.jsx'
 import CardVeredito from '../../components/CardVeredito.jsx'
 import Checklists from '../../components/Checklists.jsx'
 import { calcularVeredito, destaquesProjeto } from '../../calculations/veredito.js'
@@ -39,6 +40,7 @@ export default function Resultado() {
 
       <SecaoProtecaoGeral />
       <SecaoComplementares />
+      <ResultadoDocumento />
 
       <TabelasResumo />
       <SecaoQuadro />

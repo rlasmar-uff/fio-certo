@@ -67,6 +67,12 @@ export const TIPOS_COMODO = {
   // ferramenta não modela) — ver o tratamento especial de `tipo === 'outro'` em
   // `calcularQuantidadeTugMinima`, previsaoDeCarga.js.
   outro: { label: 'Outro (demais cômodos e dependências)', tugPorMetroPerimetro: 5, tugPotenciaBase: 100 },
+  // 4.2.1.2.3 b) — halls de serviço, salas de manutenção e de localização de equipamentos (casas de máquinas,
+  // salas de bombas, barriletes): ao menos 1 ponto de TUG e 1000 VA no mínimo nos circuitos terminais. Não
+  // confundir com a circulação interna de uma residência (S3 §4.3).
+  manutencao: { label: 'Hall de serviço / sala de manutenção ou de equipamentos', tugFixa: 1, tugPotenciaBase: 100, tugPotenciaMinimaVA: 1000 },
+  // Área externa, garagem ou dependência molhada/sujeita a lavagens (§5.1.3.2.2 b e d): DR obrigatório.
+  externa: { label: 'Área externa / garagem / dependência molhada', tugPorMetroPerimetro: 5, tugPotenciaBase: 100 },
   // §9.4.4.3.2 — "não são admitidas tomadas de corrente, em nenhum volume, dentro do local da
   // sauna": prevalece sobre o mínimo de tomadas do §9.5.2.2.1.
   sauna: { label: 'Sauna', tugFixa: 0, tugPotenciaBase: 100 },
@@ -143,7 +149,7 @@ export const METODO_INSTALACAO_PADRAO = 'B1'
 // Escada de seções nominais usada por esta ferramenta (subconjunto da escada da norma, que vai
 // de 0,5 a 1000 mm²). É a lista canônica para qualquer arredondamento "para a seção comercial
 // seguinte" — não usar a tabela de ampacidade para isso, são coisas diferentes.
-export const SECOES_NOMINAIS_MM2 = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120]
+export const SECOES_NOMINAIS_MM2 = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
 
 // Tabela 36 da NBR 5410 — condutores de COBRE, isolação PVC, 70°C no condutor, ambiente de
 // referência 30°C (ar) / 20°C (solo). Uma linha por seção, na ordem de coluna da tabela
@@ -178,6 +184,9 @@ export const TABELA_36_COBRE_PVC = [
   [    70,    151,  136,  139,  125,  192,  171,  168,  149,  213,  184,  183,  151],
   [    95,    182,  164,  167,  150,  232,  207,  201,  179,  258,  223,  216,  179],
   [   120,    210,  188,  192,  172,  269,  239,  232,  206,  299,  259,  246,  203],
+  [   150,    240,   216,   219,   196,   309,   275,   265,   236,   344,   299,   278,   230],
+  [   185,    273,   245,   248,   223,   353,   314,   300,   268,   392,   341,   312,   258],
+  [   240,    321,   286,   291,   261,   415,   370,   351,   313,   461,   403,   361,   297],
 ]
 
 // Tabela 37 da NBR 5410 — condutores de COBRE, isolação EPR ou XLPE, 90°C no condutor, mesmo
@@ -204,6 +213,9 @@ export const TABELA_37_COBRE_EPR = [
   [    70,    200,  179,  183,  164,  253,  222,  221,  194,  269,  229,  213,  178],
   [    95,    241,  216,  220,  197,  306,  269,  265,  233,  328,  278,  252,  211],
   [   120,    278,  249,  253,  227,  354,  312,  305,  268,  382,  322,  287,  240],
+  [   150,    318,   285,   290,   259,   407,   358,   349,   307,   441,   371,   324,   271],
+  [   185,    362,   324,   329,   295,   464,   408,   395,   348,   506,   424,   363,   304],
+  [   240,    424,   380,   386,   346,   546,   481,   462,   407,   599,   500,   419,   351],
 ]
 
 const INDICE_AMPACIDADE_PVC = new Map(
@@ -304,7 +316,20 @@ export const SECAO_MINIMA_MM2 = {
 export const PISO_PRATICO_ALIMENTADOR_MM2 = 10
 
 // Disjuntores termomagnéticos com correntes nominais padronizadas.
-export const DISJUNTORES_PADRONIZADOS = [10, 16, 20, 25, 32, 40, 50, 63, 70, 80, 100, 125, 150, 175, 200, 225, 250]
+// Série de cadastro da semana 7 do compilado (S7 §3): a NBR 5410 não lista correntes nominais, elas vêm
+// do catálogo. Cada linha (Creder, tabela 4.4, Legrand, curva C) tem as suas, e a capacidade de ruptura Icn
+// (127/230 V e 230/400 V). `polos`: correntes por número de polos (DX-H 1P só tem 80 A).
+export const DISJUNTORES_PADRONIZADOS = [4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125]
+export const LINHAS_DISJUNTOR = {
+  serie: { label: 'Série de cadastro (4 a 125 A), sem linha de fabricante', correntes: DISJUNTORES_PADRONIZADOS, icnKA: null },
+  'DX-E': { label: 'DX-E (6 kA, curva C): 4, 6, 10, 16, 20, 32, 50, 63 A', correntes: [4, 6, 10, 16, 20, 32, 50, 63], icnKA: 6 },
+  'DX-6000': { label: 'DX 6000 (6 kA, curva C): 4 a 63 A', correntes: [4, 6, 10, 16, 20, 25, 32, 40, 50, 63], icnKA: 6 },
+  'DX-H': { label: 'DX-H (10 kA, curva C): 1P 80 A; 2P/3P 80, 100, 125 A', correntes: [80, 100, 125], correntes1P: [80], icnKA: 10 },
+}
+export function correntesDaLinha(linha, polos = 2) {
+  const l = LINHAS_DISJUNTOR[linha] ?? LINHAS_DISJUNTOR.serie
+  return polos === 1 && l.correntes1P ? l.correntes1P : l.correntes
+}
 
 // Correntes nominais comerciais mais comuns de interruptores/disjuntores diferenciais residuais (DR).
 export const IDR_CORRENTES_PADRONIZADAS = [25, 40, 63, 80, 100]
@@ -326,8 +351,15 @@ export function calcularSecaoTerra(secaoFaseMm2) {
   if (secaoFaseMm2 === null || secaoFaseMm2 === undefined) return null
   if (secaoFaseMm2 <= 16) return secaoFaseMm2
   if (secaoFaseMm2 <= 35) return 16
-  const necessaria = secaoFaseMm2 / 2
-  return SECOES_NOMINAIS_MM2.find((secao) => secao >= necessaria) ?? null
+  // Tab. 58: quando S/2 não é seção padronizada, adota-se a padronizada MAIS PRÓXIMA (6.4.3.1.3) — pode ficar
+  // abaixo de S/2 (150 mm² → 75 → 70 mm²). No empate (120 mm² → 60: 50 e 70 equidistam) adota-se a superior,
+  // a favor da segurança; a norma não o resolve (S7 §5.1).
+  const alvo = secaoFaseMm2 / 2
+  return SECOES_NOMINAIS_MM2.reduce((melhor, secao) => {
+    const dMelhor = Math.abs(melhor - alvo)
+    const d = Math.abs(secao - alvo)
+    return d < dMelhor || (d === dMelhor && secao > melhor) ? secao : melhor
+  })
 }
 
 // NBR 5410 §6.2.6.2.6 / Tabela 48 — seção reduzida do condutor NEUTRO de um circuito trifásico
@@ -423,6 +455,22 @@ export const LIMITE_QUEDA_TERMINAL_PERCENTUAL = 4
 // para o terminal é `Math.min(LIMITE_QUEDA_TERMINAL_PERCENTUAL, LIMITE_QUEDA_TOTAL_PERCENTUAL -
 // quedaDoAlimentador)`, não 4% fixos.
 export const LIMITE_QUEDA_TOTAL_PERCENTUAL = 5
+
+// NBR 5410 §6.2.7.1 a) a d) — limite total por situação de alimentação (S6 §2). O acréscimo da nota 3
+// (0,005 ponto percentual por metro de linha principal acima de 100 m, no máximo 0,5 ponto) vale SÓ
+// nos casos de 7% (a, b, d); não aumenta o limite de 4% do circuito terminal nem o caso de 5%.
+export const FORNECIMENTOS = {
+  'secundario-distribuicao': { label: 'Demais casos em tensão secundária de distribuição — a partir do ponto de entrega (alínea c): 5%', limite: 5, acrescimo: false },
+  'transformador-unidade': { label: 'Transformador MT/BT da unidade consumidora — a partir dos terminais secundários (alínea a): 7%', limite: 7, acrescimo: true },
+  'transformador-distribuidora': { label: 'Transformador MT/BT da distribuidora, ponto de entrega no secundário (alínea b): 7%', limite: 7, acrescimo: true },
+  'gerador-proprio': { label: 'Grupo gerador próprio — a partir dos terminais do gerador (alínea d): 7%', limite: 7, acrescimo: true },
+}
+export const FORNECIMENTO_PADRAO = 'secundario-distribuicao'
+export function limiteQuedaTotal(tipo = FORNECIMENTO_PADRAO, linhaPrincipalM = 0) {
+  const f = FORNECIMENTOS[tipo] ?? FORNECIMENTOS[FORNECIMENTO_PADRAO]
+  const acrescimo = f.acrescimo ? Math.min(0.005 * Math.max(Number(linhaPrincipalM) - 100, 0), 0.5) : 0
+  return f.limite + acrescimo
+}
 
 // Tabela 40 da NBR 5410 — fator de correção de temperatura (FCT) da ampacidade, nas 4 colunas:
 // ambiente de referência 30°C (linhas ao ar) ou 20°C (linhas subterrâneas — método D), cada um
@@ -524,9 +572,9 @@ export const TABELA_FCA_AGRUPAMENTO = [
 // Tabela 42, referência 2 — "camada única sobre parede, piso, ou em bandeja não perfurada ou
 // prateleira" — é a linha que vale para o método C (cabo direto na parede/teto, sem eletroduto):
 // dissipa mais calor que dentro de um conduto fechado, por isso o fator é menos severo que o da
-// referência 1 para a mesma quantidade de circuitos. A linha da norma só preenche as colunas até
-// "9 a 11 circuitos" (0,70); as colunas 12-15, 16-19 e ≥20 ficam vazias para esta forma de
-// agrupamento — acima de 11 circuitos não há fator tabelado (ver `obterFatorAgrupamento`).
+// referência 1 para a mesma quantidade de circuitos. Na Tabela 42 a célula 0,70 desta linha é
+// MESCLADA: vale de "9 a 11" até "≥ 20" circuitos (conferido na imagem da página 116 do PDF e no
+// relatório da semana 5 do grupo de pesquisa). Por isso o último degrau é Infinity.
 export const TABELA_FCA_METODO_C = [
   { ateCircuitos: 1, fator: 1.0 },
   { ateCircuitos: 2, fator: 0.85 },
@@ -536,7 +584,7 @@ export const TABELA_FCA_METODO_C = [
   { ateCircuitos: 6, fator: 0.72 },
   { ateCircuitos: 7, fator: 0.72 },
   { ateCircuitos: 8, fator: 0.71 },
-  { ateCircuitos: 11, fator: 0.7 },
+  { ateCircuitos: Infinity, fator: 0.7 },
 ]
 
 // Tabela 45 — fator de agrupamento para linhas em ELETRODUTOS enterrados (método D; cabos
@@ -580,9 +628,8 @@ export function obterFatorAgrupamento(numeroCircuitos, metodoInstalacao = METODO
         : TABELA_FCA_AGRUPAMENTO
   // Fora do alcance da tabela da norma não existe fator: devolve null (dimensionamento NÃO
   // VERIFICADO), em vez de repetir o último valor tabelado — que seria permissivo, porque o fator
-  // real continua caindo com mais circuitos. Tabela 42, ref. 2 (camada única, método C): só tem
-  // valores até 11 circuitos (a linha não preenche as colunas 12-15, 16-19 e ≥20). Tabela 45
-  // (eletrodutos enterrados): só tabelada até 6 circuitos.
+  // real continua caindo com mais circuitos. Só a Tabela 45 (eletrodutos enterrados) é limitada:
+  // vai até 6 circuitos. Na Tabela 42, as duas referências cobrem qualquer quantidade.
   const linha = tabela.find((l) => n <= l.ateCircuitos)
   return linha?.fator ?? null
 }
@@ -637,6 +684,10 @@ export const TABELA_REATANCIA_OHM_KM_POR_MM2 = [
   { secao: 70, reatanciaOhmKm: 0.1 },
   { secao: 95, reatanciaOhmKm: 0.1 },
   { secao: 120, reatanciaOhmKm: 0.1 },
+  // 150-240 mm²: o catálogo usado termina em 120 mm² (0,10 Ω/km, estável desde 70 mm²); mantém-se 0,10.
+  { secao: 150, reatanciaOhmKm: 0.1 },
+  { secao: 185, reatanciaOhmKm: 0.1 },
+  { secao: 240, reatanciaOhmKm: 0.1 },
 ]
 
 // Converte a tabela acima (Ω/km) pra Ω/m, na seção mais próxima disponível — todas as seções que
@@ -659,8 +710,15 @@ export const TIPOS_CARGA = {
   capacitiva: { label: 'Capacitiva (raro em residências)', cosPhiPadrao: 0.9 },
 }
 
-export const POTENCIA_MAXIMA_CIRCUITO_ILUMINACAO_VA = 1500
-export const POTENCIA_MAXIMA_CIRCUITO_TUG_VA = 2000
+// A NBR 5410 não fixa limite de VA nem de nº de tomadas por circuito (compilado, S3 §7.2): isso depende da
+// corrente de projeto, da tensão, dos condutores e da proteção. O agrupamento de cômodos num circuito se
+// limita pela CORRENTE (escolha de projeto, editável). 16 A é o único teto de corrente que a norma cita
+// (9.5.3.3 a, circuito misto) e é o padrão aqui.
+export const CORRENTE_MAXIMA_CIRCUITO_PADRAO_A = 16
+export const CORRENTE_MAXIMA_CIRCUITO_MISTO_A = 16
+// 9.5.3.1 — equipamento de uso exclusivo ou virtualmente dedicado com corrente nominal SUPERIOR a 10 A
+// exige circuito independente (10 A exatos não impõem).
+export const LIMITE_CORRENTE_TUE_INDEPENDENTE_A = 10
 
 // Diâmetro externo aproximado de cabo flexível de cobre, isolação PVC, 450/750V — o tipo padrão
 // em instalação residencial embutida (mesmo cabo já assumido na Tabela 36/§6.2.5). NÃO vem da
@@ -682,56 +740,59 @@ export const POTENCIA_MAXIMA_CIRCUITO_TUG_VA = 2000
 // 12 seções, externo = condutor + 2·isolação + 2·cobertura + 0,2 mm. É bem mais grosso que o PVC
 // 750 V (a cobertura), então o eletroduto de um circuito EPR sai maior.
 // Seção sem diâmetro aqui → `eletroduto.js` recusa dimensionar (retorna `erro`) em vez de supor.
-export const DIAMETRO_EXTERNO_CONDUTOR_MM = {
-  pvc: {
-    1.5: 2.95,
-    2.5: 3.61,
-    4: 4.1,
-    6: 4.65,
-    10: 6.0,
-    16: 7.0,
-    25: 8.6,
-    35: 10.15,
-    50: 12.2,
-    70: 13.7,
-    95: 16.0,
-    120: 18.0,
+// Área externa (com isolação) do cabo por seção, em mm² — o que a taxa de ocupação do eletroduto usa
+// (§6.2.11.1.6 a: áreas pelos diâmetros EXTERNOS). A NBR 5410 não tabela isso; é dado de produto.
+// PVC 450/750 V: Creder 16ª ed., tabela 3.22, coluna "Total" (cabo Noflam BWF Flex), conforme o compilado do
+// Grupo de Pesquisa (S8 §3.3), de 1,5 a 185 mm². Outros cabos têm outras áreas: `projeto.areasCabo` substitui
+// estes valores pelo catálogo do produto realmente usado. EPR/XLPE: o documento não traz; mantém-se o cabo
+// HEPR 0,6/1 kV da Corfio (diâmetro externo nominal, página do produto, 29/09/2026).
+export const AREA_EXTERNA_CONDUTOR_MM2 = {
+  pvc: { 1.5: 6.6, 2.5: 10.2, 4: 13.2, 6: 16.6, 10: 28.3, 16: 38.5, 25: 58.1, 35: 78.5, 50: 116.9, 70: 147.4, 95: 201.1, 120: 254.5, 150: 311.0, 185: 397.6 },
+  epr: Object.fromEntries(
+    Object.entries({ 1.5: 4.95, 2.5: 5.35, 4: 5.85, 6: 6.45, 10: 7.6, 16: 8.6, 25: 10.4, 35: 11.95, 50: 13.6, 70: 15.5, 95: 17.5, 120: 19.2 }).map(
+      ([secao, diametro]) => [secao, (Math.PI / 4) * diametro * diametro],
+    ),
+  ),
+}
+// Diâmetro equivalente (mm) derivado da área, só para exibição.
+export const DIAMETRO_EXTERNO_CONDUTOR_MM = Object.fromEntries(
+  Object.entries(AREA_EXTERNA_CONDUTOR_MM2).map(([isolacao, areas]) => [
+    isolacao,
+    Object.fromEntries(Object.entries(areas).map(([secao, area]) => [secao, Math.sqrt((4 * area) / Math.PI)])),
+  ]),
+)
+
+// Catálogos de eletroduto (a NBR 5410 fixa a taxa de ocupação, não os diâmetros — S8 §3). Dado de produto do
+// Creder, 16ª ed., tabelas 10.4 e 10.5 (eletroduto Tigre, classe B): o DN do soldável NÃO equivale ao do
+// roscável (DN 20 soldável tem Di 18,0 mm; DN 20 roscável, 16,4 mm). Guardar tipo, DN, rosca e Di.
+export const CATALOGOS_ELETRODUTO = {
+  'pvc-roscavel': {
+    label: 'PVC rígido roscável, classe B (Tigre) — tab. 10.4',
+    itens: [
+      { dn: 20, rosca: '1/2"', di: 16.4 },
+      { dn: 25, rosca: '3/4"', di: 21.3 },
+      { dn: 32, rosca: '1"', di: 27.5 },
+      { dn: 40, rosca: '1.1/4"', di: 36.1 },
+      { dn: 50, rosca: '1.1/2"', di: 41.4 },
+      { dn: 60, rosca: '2"', di: 52.8 },
+      { dn: 75, rosca: '2.1/2"', di: 67.1 },
+      { dn: 85, rosca: '3"', di: 79.6 },
+    ],
   },
-  epr: {
-    1.5: 4.95,
-    2.5: 5.35,
-    4: 5.85,
-    6: 6.45,
-    10: 7.6,
-    16: 8.6,
-    25: 10.4,
-    35: 11.95,
-    50: 13.6,
-    70: 15.5,
-    95: 17.5,
-    120: 19.2,
+  'pvc-soldavel': {
+    label: 'PVC rígido soldável, classe B (Tigre) — tab. 10.5',
+    itens: [
+      { dn: 16, rosca: '—', di: 14.0 },
+      { dn: 20, rosca: '—', di: 18.0 },
+      { dn: 25, rosca: '—', di: 23.0 },
+      { dn: 32, rosca: '—', di: 30.0 },
+      { dn: 40, rosca: '—', di: 38.0 },
+      { dn: 50, rosca: '—', di: 47.8 },
+    ],
   },
 }
-
-// Eletrodutos de PVC rígido roscável, classe A — diâmetro interno útil por referência comercial.
-// Também não vem da NBR 5410: dimensão de PRODUTO do eletroduto, definida pela norma específica
-// do eletroduto (ABNT NBR 15465, antiga NBR 6150), não pela 5410. Valores típicos de catálogo;
-// podem variar ±1 mm entre fabricantes — ver nota de aproximação na tela de resultado.
-// Os diâmetros internos de 20 a 85 mm conferem com a Tabela 10.4 do Creder (Tigre, rosqueável: 16,4 ·
-// 21,3 · 27,5 · 36,1 · 41,4 · 52,8 · 67,1 · 79,6 mm). A linha de 16 mm (3/8", Di 12,8) saiu: não consta
-// nessa tabela (o menor rosqueável é o de 20 mm) nem na Tabela 3.23, e o 16 mm soldável da Tabela
-// 10.5 tem Di 14,0 — não havia fonte para os 12,8 mm.
-export const ELETRODUTOS_PVC_RIGIDO = [
-  { referencia: '1/2"', nominalMm: 20, diametroInternoMm: 16.4 },
-  { referencia: '3/4"', nominalMm: 25, diametroInternoMm: 21.3 },
-  { referencia: '1"', nominalMm: 32, diametroInternoMm: 27.5 },
-  { referencia: '1.1/4"', nominalMm: 40, diametroInternoMm: 36.1 },
-  { referencia: '1.1/2"', nominalMm: 50, diametroInternoMm: 41.4 },
-  { referencia: '2"', nominalMm: 60, diametroInternoMm: 52.8 },
-  { referencia: '2.1/2"', nominalMm: 75, diametroInternoMm: 67.1 },
-  { referencia: '3"', nominalMm: 85, diametroInternoMm: 79.6 },
-  { referencia: '4"', nominalMm: 110, diametroInternoMm: 103.1 },
-]
+export const CATALOGO_ELETRODUTO_PADRAO = 'pvc-roscavel'
+export const ELETRODUTOS_PVC_RIGIDO = CATALOGOS_ELETRODUTO['pvc-roscavel'].itens.map((e) => ({ referencia: e.rosca, nominalMm: e.dn, diametroInternoMm: e.di }))
 
 // NBR 5410 §6.2.11.1.6 a) — taxa de ocupação máxima do eletroduto: quociente entre a soma das
 // áreas das seções transversais dos condutores (pelo diâmetro EXTERNO) e a área útil do

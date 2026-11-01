@@ -45,3 +45,11 @@ Coisas que dependem de você, não do código. Atualizado a cada sprint. Marque 
 - [ ] **Informar a Icc fase-neutro** (concessionária) nos projetos reais: sem ela, Ikmin e seccionamento partem da Icc trifásica, e isso aparece como pendência.
 - [ ] **Definir a potência de reserva** por circuito (Tabela 59) nos projetos reais; sem declarar, o veredito fica com pendência.
 - [ ] **Catálogo de cabos e disjuntores do fabricante:** diâmetro externo, reatância, curva tempo-corrente e tipo de DR (AC/A/B).
+
+## Adequação ao compilado do Grupo de Pesquisa (nov/2026) — o que só o grupo pode fazer
+
+- [ ] **Confirmar com o grupo de pesquisa** as escolhas feitas por indicação deles: ρ = 1/58 nos casos de referência, só cobre, perfil de Creder como padrão de demanda e DR só onde a norma exige.
+- [ ] **k da Tabela 53 para EPR/XLPE** (cálculo do PE): o compilado não traz o valor; sem ele o cálculo do PE em EPR/XLPE fica pendente. Indicar o valor e a página.
+- [ ] **Identificar o documento de demanda da distribuidora** (documento, revisão, grupo de carga) nos projetos reais; sem isso a demanda continua "estimativa bibliográfica".
+- [ ] **Conferir a imagem da Tabela 3.12 do Creder e as equações do §4.5.3** (só existem como imagem no PDF do livro).
+- [ ] **Revisar a interface nova** (Instalação, Cômodos, Circuitos, Dimensionamento e Resultado) com um projeto real e dizer o que está confuso: são muitos campos novos.

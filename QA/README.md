@@ -13,7 +13,7 @@ node QA/scripts/verificar.mjs --verboso    # inclui o que passou
 
 Zero dependências — só precisa do node. Sai com código 1 se houver falha, então serve para CI.
 
-**Estado atual (01/11/2026): 302 conformes · 0 divergências.** Linha de base original
+**Estado atual (01/11/2026): 349 conformes · 0 divergências.** Linha de base original
 (16/09/2026): 50 conformes · 23 divergências. Se o total de divergências voltar a subir, algo
 regrediu — acompanhe esse número, não o de conformes (ele muda de tamanho a cada expansão de
 cobertura, inclusive para baixo quando asserções redundantes são consolidadas, sem perda real de
@@ -27,7 +27,8 @@ Histórico resumido (ver `relatorios/` para o detalhamento de cada rodada):
 | 17/09 – 29/09/2026 | Correção da auditoria inicial + expansões sucessivas (G7–G33: eletroduto, métodos de instalação, curto-circuito, balanceamento exato, Tabela 46/37/40/45, locais especiais, veredito, materiais, distribuidoras, planta) | 211 conformes · 0 divergências |
 | 30/09/2026 | Auditoria adversarial (G34) — releitura do zero contra o PDF | 211 conformes · 11 divergências |
 | 01/10/2026 | Correção da auditoria adversarial | 240 conformes · 0 divergências |
-| 01/11/2026 | Auditoria independente completa (G35–G44): queda fasorial do alimentador, Icc com neutro reduzido, tabelas contra o PDF por coordenadas, previsão de carga, fronteiras, entradas inválidas — ver `docs/AUDITORIA_NORMATIVA.md` | **302 conformes · 0 divergências** (inclui G45, conferência com o Creder) |
+| 01/11/2026 | Auditoria independente completa (G35–G44): queda fasorial do alimentador, Icc com neutro reduzido, tabelas contra o PDF por coordenadas, previsão de carga, fronteiras, entradas inválidas — ver `docs/AUDITORIA_NORMATIVA.md` | 302 conformes · 0 divergências (inclui G45, conferência com o Creder) |
+| 01/11/2026 | Adequação ao compilado do Grupo de Pesquisa, semanas 3 a 8 (G46): convenções de ρ, modo por impedância, limites 5%/7%, partida, Tabela 33, K2 por grupo (Tabelas 42–45), catálogo de eletroduto, disjuntores com Icn e I₂/In, PE por cálculo, Anexo F, DR por exigência, DPS esquema 1/2/3, demanda de Creder, casos de referência 1 a 6 — ver `docs/PLANO_ADEQUACAO_AO_DOCUMENTO.md` | **349 conformes · 0 divergências** |
 
 O total de conformes já caiu uma vez (136→116) sem perda de cobertura, quando o G2 foi consolidado
 de ~50 asserções por seção para 6 por coluna: doze células erradas na mesma coluna são **um**

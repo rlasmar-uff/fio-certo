@@ -1,4 +1,5 @@
 import { CONFORMIDADE } from '../conteudo/conformidade.js'
+import { RASTREABILIDADE, REFERENCIAS_COMPILADO } from '../conteudo/rastreabilidade.js'
 
 export default function Conformidade() {
   return (
@@ -40,6 +41,43 @@ export default function Conformidade() {
           </div>
         </section>
       ))}
+
+      <h2>Mapa de rastreabilidade</h2>
+      <p className="texto-fraco">
+        Do tema ao item da NBR 5410, à página e à seção do Creder, e ao ponto do site onde o requisito aparece. Nas
+        referências à NBR, "página" é a numeração impressa; "PDF" é a posição no arquivo (página impressa = PDF − 8).
+        O exemplar de Creder tem paginação de arquivo distinta da edição impressa; por isso se usam seção, tabela e posição no PDF.
+      </p>
+      {RASTREABILIDADE.map((mapa) => (
+        <section key={mapa.titulo} className="bloco-conformidade">
+          <h3>{mapa.titulo}</h3>
+          <div className="tabela-scroll">
+            <table className="tabela-resultado tabela-cartoes">
+              <thead>
+                <tr>
+                  {mapa.colunas.map((coluna) => (
+                    <th key={coluna} scope="col">{coluna}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {mapa.linhas.map((linha) => (
+                  <tr key={linha[0] + linha[1]}>
+                    {linha.map((celula, indice) => (
+                      <td key={mapa.colunas[indice]} data-label={mapa.colunas[indice]} className="celula-quebra">{celula}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
+      <ul className="texto-fraco">
+        {REFERENCIAS_COMPILADO.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
 
       <p className="texto-fraco">
         Referência: ABNT NBR 5410:2004, versão corrigida de 17.03.2008. A ferramenta não substitui o projeto

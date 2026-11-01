@@ -4,6 +4,7 @@ import SecaoComplementares from './SecaoComplementares.jsx'
 import TabelasResumo from './TabelasResumo.jsx'
 import SecaoQuadro from './SecaoQuadro.jsx'
 import SecaoMateriais from './SecaoMateriais.jsx'
+import ResultadoDocumento from './ResultadoDocumento.jsx'
 import CardVeredito from '../../components/CardVeredito.jsx'
 import Checklists from '../../components/Checklists.jsx'
 import { useProjeto } from '../../context/useProjeto.js'
@@ -76,6 +77,7 @@ export default function Memorial() {
       <CardVeredito veredito={calcularVeredito(projeto, calculo)} destaques={destaquesProjeto(projeto, calculo)} noMemorial />
       <SecaoProtecaoGeral />
       <SecaoComplementares />
+      <ResultadoDocumento />
       <TabelasResumo />
       <SecaoQuadro />
       <SecaoMateriais editavel={false} />
