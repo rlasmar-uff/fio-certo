@@ -2,12 +2,11 @@ import { ANGULO_FASE_GRAUS, ISOLACOES, obterReatanciaOhmMetro } from './constant
 
 // Condutividade do cobre (S·m/mm²) para a convenção de resistividade escolhida. 'operacao' (padrão)
 // = condutividade na temperatura de operação do condutor (70 °C PVC, 90 °C EPR/XLPE, ver `ISOLACOES`);
-// as convenções didáticas (ρ = 1/56 ou 1/58 Ω·mm²/m, semana 6 do compilado) valem para reproduzir os
+// a convenção didática (ρ = 1/58 Ω·mm²/m) vale para reproduzir os
 // exemplos do documento e DESPREZAM a reatância (os exemplos são modelos resistivos).
 export const CONVENCOES_RESISTIVIDADE = {
   operacao: { label: 'Temperatura de operação do condutor (70 °C PVC / 90 °C EPR) — cabo real', rho: null },
-  'cu-1/56': { label: 'Didática: cobre ρ = 1/56 Ω·mm²/m (Creder, exemplos da semana 6)', rho: 1 / 56 },
-  'cu-1/58': { label: 'Didática: cobre ρ = 1/58 Ω·mm²/m (Creder, tabelas 3.18/3.19 e casos da semana 8)', rho: 1 / 58 },
+  'cu-1/58': { label: 'Didática: cobre ρ = 1/58 Ω·mm²/m (Creder, tabelas 3.18/3.19 e casos de referência)', rho: 1 / 58 },
 }
 export const CONVENCAO_RESISTIVIDADE_PADRAO = 'operacao'
 

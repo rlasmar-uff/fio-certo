@@ -28,7 +28,7 @@ export default function InstalacaoDocumento() {
         <CampoSelecao
           chave="convencaoResistividade"
           label="Resistência do condutor"
-          ajuda="Cabo real: use a resistência na temperatura de operação. As convenções didáticas (ρ = 1/56 ou 1/58) servem para reproduzir os exemplos do compilado e desprezam a reatância."
+          ajuda="Cabo real: use a resistência na temperatura de operação. A convenção didática (ρ = 1/58) serve para reproduzir os exemplos do compilado e despreza a reatância."
           opcoes={Object.entries(CONVENCOES_RESISTIVIDADE).map(([chave, c]) => [chave, c.label])}
         />
         <Campo label="r do alimentador (opcional)" unidade="Ω/km" ajuda="Modo por impedância: informe r e x do cabo; a rotina usa um modo ou o outro, nunca os dois. Não aplique a correção de temperatura se o r do fabricante já estiver corrigido.">

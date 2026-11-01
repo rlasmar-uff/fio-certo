@@ -3,9 +3,9 @@ import { SECOES_NOMINAIS_MM2, calcularSecaoTerra } from './constantes.js'
 const proximaSecaoPadronizada = (secaoMm2) => SECOES_NOMINAIS_MM2.find((secao) => secao >= secaoMm2) ?? null
 
 // Fator k para o PE (semana 7 §4.1): Tabela 55 — veia de cabo multipolar ou PE enfeixado com outros condutores
-// (cobre/PVC 115; cobre/EPR-XLPE 143); Tabela 53 — PE isolado fora do cabo e não enfeixado (cobre/PVC 143). O
-// documento não traz o valor da Tabela 53 para EPR/XLPE: nesse caso o cálculo fica sem k (pendente).
-const K_PE = { tabela55: { pvc: 115, epr: 143 }, tabela53: { pvc: 143, epr: null } }
+// (cobre/PVC 115; cobre/EPR-XLPE 143); Tabela 53 — PE isolado fora do cabo e não enfeixado (cobre/PVC 143, EPR/XLPE 176; o
+// 133 do PVC acima de 300 mm² não se aplica: PE de residência é bem menor).
+const K_PE = { tabela55: { pvc: 115, epr: 143 }, tabela53: { pvc: 143, epr: 176 } }
 
 // NBR 5410 §6.4.3.1 — condutor de proteção (PE). Dois métodos aceitos pela norma: Tabela 58 (seção da fase
 // → PE) e o cálculo S ≥ √(I²·t)/k, com a corrente de falta presumida I e o tempo de atuação t ≤ 5 s do

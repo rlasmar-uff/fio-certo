@@ -13,13 +13,13 @@ Os pacotes P0 a P8 foram executados com as respostas do grupo às cinco decisõe
 
 | # | Resposta | Como ficou |
 |---|---|---|
-| Q1 | colocar as duas convenções | Instalação → "Resistência do condutor": temperatura de operação (padrão, cabo real), ρ = 1/56 e ρ = 1/58 (didáticas, sem reatância). Os casos de referência usam 1/58. |
+| Q1 | colocar as duas convenções | Instalação → "Resistência do condutor": temperatura de operação (padrão, cabo real), ρ = 1/58 (didática, sem reatância; a de 1/56 foi retirada a pedido). Os casos de referência usam 1/58. |
 | Q2 | só cobre, se o documento diz só cobre | Todas as tabelas e módulos são só de cobre; E/F/G entram como consulta (Tabelas 38 e 39) em Dimensionamento. Alumínio não existe na ferramenta. |
 | Q3 | remover os tetos de VA e "todo TUE em circuito próprio" | Removidos: o circuito é limitado pela corrente (padrão 16 A, 20 A no misto) e TUE só tem circuito próprio acima de 10 A. |
 | Q4 | DR por circuito exigido, "todos" como opção | Padrão `exigidos` (§5.1.3.2.2); `geral` e `grupos` colocam DR em todos os circuitos. |
 | Q5 | demanda de Creder como padrão | Perfil `creder` por parcelas é o padrão; continua rotulada "estimativa bibliográfica" até identificar distribuidora, documento, revisão e grupo de carga. |
 
-**Verificação:** `node QA/scripts/verificar.mjs` → 349 conformes, 0 divergências (G46 reproduz os testes das semanas 3 a 8 e os casos 1 a 6);
+**Verificação:** `node QA/scripts/verificar.mjs` → 350 conformes, 0 divergências (G46 reproduz os testes das semanas 3 a 8 e os casos 1 a 6);
 `npm run lint` limpo; `npm run build` ok; `npm run e2e` → 110 passam em Chromium, Firefox e WebKit (1 ignorado, o teste de PWA offline no WebKit).
 
 **Interface:** entradas em Instalação (fornecimento, convenção, impedância, dispositivos, PE, neutro, DPS, demanda), Cômodos (altura da iluminação,
@@ -29,7 +29,7 @@ partida, impedância e pontos de carga por circuito, consulta E/F/G) e saídas e
 Icn, DPS, Anexo F, PE, reserva); o mapa de rastreabilidade está em Conformidade.
 
 **Limites declarados:** a ferramenta não verifica a energia passante abaixo de 10 mm² (Tabela 30, NOTA 1), a curva real do disjuntor, a seletividade
-e o tipo de DR em relação às cargas; o k da Tabela 53 para EPR/XLPE no cálculo do PE não consta do documento e vira pendência.
+e o tipo de DR em relação às cargas. O k do PE fora do cabo vem da Tabela 53 da NBR 5410 (cobre: PVC 143, EPR/XLPE 176).
 
 ## 0. Uma correção minha, antes de tudo
 

@@ -95,6 +95,6 @@ Plano e decisões em `docs/PLANO_ADEQUACAO_AO_DOCUMENTO.md`. Resumo do que mudou
 - **DR e DPS:** DR por circuito exigido (padrão), classe AQ, esquema de conexão 1/2/3 e Iimp neutro-PE.
 - **Demanda:** perfil de Creder por parcelas como padrão, rotulado como estimativa bibliográfica.
 
-**Critérios existentes alterados (nenhum afrouxado, todos com conta refeita):** G8.3, G16.x, G27.2, G35.10, G36.1/36.3, G37.5, G39.6 e G42.1 acompanharam as novas séries de disjuntores e de seções, o modo de DR padrão e a nova área dos cabos. Nenhum critério foi removido; `verificar.mjs` passou de 302 para **349**.
+**Critérios existentes alterados (nenhum afrouxado, todos com conta refeita):** G8.3, G16.x, G27.2, G35.10, G36.1/36.3, G37.5, G39.6 e G42.1 acompanharam as novas séries de disjuntores e de seções, o modo de DR padrão e a nova área dos cabos. Nenhum critério foi removido; `verificar.mjs` passou de 302 para **350**.
 
 **e2e:** `rendimento` agora escolhe "potência de saída" antes de informar η; `M9` troca o método por maneira de instalar (11 → C); três rótulos novos foram renomeados para não colidirem com rótulos existentes. Novo `e2e/documento.spec.js` (5 roteiros).
