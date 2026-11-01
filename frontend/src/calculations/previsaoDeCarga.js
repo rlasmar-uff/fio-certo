@@ -1,5 +1,19 @@
 import { TIPOS_COMODO, potenciaTugPorPonto } from './constantes.js'
 
+// Tipo de cômodo desconhecido (arquivo/link adulterado, versão antiga): cai em "demais cômodos"
+// (§9.5.2.2.1 e) em vez de derrubar o cálculo com uma exceção. Não é uma aprovação silenciosa — o
+// veredito lista o tipo inválido como problema (ver `avaliarEntradas`, veredito.js).
+export function configTipoComodo(tipo) {
+  return TIPOS_COMODO[tipo] ?? TIPOS_COMODO.outro
+}
+
+// Fator de potência fora de (0, 1] não existe fisicamente: cosφ > 1 FAVORECERIA o resultado (VA
+// menor que os W), então vale 1 (carga resistiva) — e a entrada fica sinalizada como inválida.
+export function normalizarCosPhi(valor) {
+  const cosPhi = Number(valor)
+  return cosPhi > 0 && cosPhi <= 1 ? cosPhi : 1
+}
+
 // NBR 5410 §9.5.2.1.2 — carga MÍNIMA de iluminação:
 // até 6 m²: 100VA fixos. Acima de 6 m²: 100VA + 60VA a cada 4 m² INTEIROS adicionais — "4 m²
 // inteiros" é piso (floor), não teto: só o incremento completo conta (diferente da contagem de
@@ -18,7 +32,7 @@ export function calcularIluminacaoMinimaVA(area) {
 // entre as duas é só sobre ONDE o ponto pode ficar, algo que esta ferramenta não modela); acima
 // de 6 m², 1 ponto por 5 m de perímetro ou fração — mesma regra de "salas e dormitórios".
 export function calcularQuantidadeTugMinima(comodo) {
-  const config = TIPOS_COMODO[comodo.tipo]
+  const config = configTipoComodo(comodo.tipo)
 
   if (comodo.tipo === 'outro') {
     const area = Number(comodo.area) || 0
@@ -46,7 +60,7 @@ function somarTugPorQuantidade(quantidade, potenciaBase, limite600VA = 3) {
 // `limite600VA` (2 ou 3) vem de `calcularLimite600VA` — depende do projeto inteiro, não só
 // deste cômodo, por isso é recebido de fora em vez de fixo.
 export function calcularTugMinima(comodo, limite600VA = 3) {
-  const config = TIPOS_COMODO[comodo.tipo]
+  const config = configTipoComodo(comodo.tipo)
   const quantidade = calcularQuantidadeTugMinima(comodo)
   return { quantidade, totalVA: somarTugPorQuantidade(quantidade, config.tugPotenciaBase, limite600VA) }
 }
@@ -61,7 +75,7 @@ function valorManualInformado(valor) {
 // UI poder decidir se mostra a opção, sem duplicar a conta.
 export function contarPontos600VA(comodos) {
   return comodos.reduce((total, comodo) => {
-    const config = TIPOS_COMODO[comodo.tipo]
+    const config = configTipoComodo(comodo.tipo)
     if (config?.tugPotenciaBase !== 600) return total
     const quantidade = valorManualInformado(comodo.tugPontos)
       ? Number(comodo.tugPontos)
@@ -89,13 +103,26 @@ export function calcularLimite600VA(comodos, aplicarAlternativa = false) {
 // Soma a potência APARENTE (VA) dos equipamentos — para carga resistiva (cosφ = 1) isso
 // coincide com a potência ativa (W) do equipamento; para motores/compressores (cosφ < 1),
 // a potência aparente é maior, pois é ela que determina a corrente real do circuito.
+//
+// `rendimento` (η, 0 < η ≤ 1, opcional): a `potenciaW` cadastrada deve ser a potência ELÉTRICA que o
+// equipamento absorve. Para motores e compressores, cuja placa traz a potência MECÂNICA no eixo, a
+// absorvida é maior: P_elétrica = P_mecânica / η. Sem rendimento declarado vale η = 1 (a potência
+// informada já é a absorvida da rede). Valor fora de (0, 1] não pode melhorar o resultado: é
+// ignorado (η = 1) e a validação da tela o sinaliza.
+export function calcularPotenciaAparenteVA(equipamento) {
+  // Potência negativa não abate carga das demais: vale 0 (e é sinalizada como inválida).
+  const potenciaW = Math.max(0, Number(equipamento.potenciaW) || 0)
+  const cosPhi = normalizarCosPhi(equipamento.cosPhi)
+  const rendimentoInformado = Number(equipamento.rendimento)
+  const rendimento = rendimentoInformado > 0 && rendimentoInformado <= 1 ? rendimentoInformado : 1
+  const potenciaEletricaW = potenciaW / rendimento
+  return cosPhi > 0 ? potenciaEletricaW / cosPhi : potenciaEletricaW
+}
+
 export function calcularTueVA(comodo) {
   return (comodo.tue ?? []).reduce((total, equipamento) => {
-    const quantidade = Number(equipamento.quantidade) || 1
-    const potenciaAtivaW = Number(equipamento.potenciaW) || 0
-    const cosPhi = Number(equipamento.cosPhi) || 1
-    const potenciaVA = cosPhi > 0 ? potenciaAtivaW / cosPhi : potenciaAtivaW
-    return total + quantidade * potenciaVA
+    const quantidade = Number.isInteger(Number(equipamento.quantidade)) && Number(equipamento.quantidade) >= 1 ? Number(equipamento.quantidade) : 1
+    return total + quantidade * calcularPotenciaAparenteVA(equipamento)
   }, 0)
 }
 
@@ -116,7 +143,7 @@ export function calcularCargaComodo(comodo, limite600VA = 3) {
   const tugManual = valorManualInformado(comodo.tugPontos)
   const tugQuantidade = tugManual ? Number(comodo.tugPontos) : tugMinima.quantidade
   const tugVA = tugManual
-    ? somarTugPorQuantidade(tugQuantidade, TIPOS_COMODO[comodo.tipo].tugPotenciaBase, limite600VA)
+    ? somarTugPorQuantidade(tugQuantidade, configTipoComodo(comodo.tipo).tugPotenciaBase, limite600VA)
     : tugMinima.totalVA
   const tugAbaixoDoMinimo = tugManual && tugQuantidade < tugMinima.quantidade
 

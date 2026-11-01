@@ -524,8 +524,9 @@ export const TABELA_FCA_AGRUPAMENTO = [
 // Tabela 42, referência 2 — "camada única sobre parede, piso, ou em bandeja não perfurada ou
 // prateleira" — é a linha que vale para o método C (cabo direto na parede/teto, sem eletroduto):
 // dissipa mais calor que dentro de um conduto fechado, por isso o fator é menos severo que o da
-// referência 1 para a mesma quantidade de circuitos. A norma funde as faixas 9-11/12-15/16-19/≥20
-// num único valor (0,70), diferente da referência 1 (que tem um valor por faixa).
+// referência 1 para a mesma quantidade de circuitos. A linha da norma só preenche as colunas até
+// "9 a 11 circuitos" (0,70); as colunas 12-15, 16-19 e ≥20 ficam vazias para esta forma de
+// agrupamento — acima de 11 circuitos não há fator tabelado (ver `obterFatorAgrupamento`).
 export const TABELA_FCA_METODO_C = [
   { ateCircuitos: 1, fator: 1.0 },
   { ateCircuitos: 2, fator: 0.85 },
@@ -535,7 +536,7 @@ export const TABELA_FCA_METODO_C = [
   { ateCircuitos: 6, fator: 0.72 },
   { ateCircuitos: 7, fator: 0.72 },
   { ateCircuitos: 8, fator: 0.71 },
-  { ateCircuitos: Infinity, fator: 0.7 },
+  { ateCircuitos: 11, fator: 0.7 },
 ]
 
 // Tabela 45 — fator de agrupamento para linhas em ELETRODUTOS enterrados (método D; cabos
@@ -560,7 +561,7 @@ export const TABELA_45_AGRUPAMENTO_ENTERRADO = [
   { ateCircuitos: 3, fator: 0.7 },
   { ateCircuitos: 4, fator: 0.65 },
   { ateCircuitos: 5, fator: 0.6 },
-  { ateCircuitos: Infinity, fator: 0.6 },
+  { ateCircuitos: 6, fator: 0.6 },
 ]
 
 // `numeroCircuitos` nulo/ausente = 1 (nenhum agrupamento) — mas o padrão usado por esta
@@ -577,8 +578,13 @@ export function obterFatorAgrupamento(numeroCircuitos, metodoInstalacao = METODO
       : referencia === 'tabela42ref2'
         ? TABELA_FCA_METODO_C
         : TABELA_FCA_AGRUPAMENTO
+  // Fora do alcance da tabela da norma não existe fator: devolve null (dimensionamento NÃO
+  // VERIFICADO), em vez de repetir o último valor tabelado — que seria permissivo, porque o fator
+  // real continua caindo com mais circuitos. Tabela 42, ref. 2 (camada única, método C): só tem
+  // valores até 11 circuitos (a linha não preenche as colunas 12-15, 16-19 e ≥20). Tabela 45
+  // (eletrodutos enterrados): só tabelada até 6 circuitos.
   const linha = tabela.find((l) => n <= l.ateCircuitos)
-  return linha?.fator ?? tabela[tabela.length - 1].fator
+  return linha?.fator ?? null
 }
 
 // Condutividade do cobre NA TEMPERATURA DE OPERAÇÃO do condutor (Ω·mm²/m), usada na fórmula
@@ -615,6 +621,9 @@ export const ISOLACAO_PADRAO = 'pvc'
 // nas duas pontas (subestimava em seções pequenas, ~0,15-0,16 real; superestimava um pouco nas
 // grandes, ~0,10 real) — a própria fonte nota que a reatância é despresível abaixo de 50 mm², o
 // que explica por que a constante antiga nunca deu resultado absurdo, só impreciso.
+// Ângulos das fases (rotação A-B-C): A = 0°, B = -120°, C = +120°. Bifásico usa só A/B.
+export const ANGULO_FASE_GRAUS = [0, -120, 120]
+
 export const TABELA_REATANCIA_OHM_KM_POR_MM2 = [
   { secao: 1.5, reatanciaOhmKm: 0.16 },
   { secao: 2.5, reatanciaOhmKm: 0.15 },
@@ -661,6 +670,12 @@ export const POTENCIA_MAXIMA_CIRCUITO_TUG_VA = 2000
 // 29/09/2026: externo = condutor + 2·isolação nas 12 seções). Varia alguns décimos de mm entre fabricantes; usado só pelo
 // dimensionamento de eletroduto (`eletroduto.js`), nunca para ampacidade ou queda de tensão.
 //
+// Conferência com Hélio Creder, Instalações Elétricas, 16ª ed., Tabelas 3.22/3.23 (coluna "Total",
+// área do condutor com isolação; Ø = √(4A/π)): 1,5→2,90 · 2,5→3,604 (adotado 3,61) · 4→4,10 · 6→4,60 · 10→6,00 ·
+// 16→7,00 · 25→8,60 · 35→10,00 · 50→12,20 · 70→13,70 · 95→16,00 · 120→18,00 mm. Em cada seção vale o
+// MAIOR entre o catálogo Corfio e o livro (lado seguro: cabo mais grosso → eletroduto maior). O
+// catálogo ganhava em 1,5/6/35 mm²; o livro, em 2,5/4/50/70/95/120 mm² (até 8,7% de área a mais).
+//
 // EPR/XLPE: cabo unipolar flexível HEPR 90°C 0,6/1 kV (isolação + cobertura), o cabo de 90°C
 // usado em instalação embutida — fonte: página do produto da Corfio (cabo-flexivel-1kv-hepr),
 // "Diâmetro externo nominal", consultada em 29/09/2026. Conferência da transcrição: em todas as
@@ -670,17 +685,17 @@ export const POTENCIA_MAXIMA_CIRCUITO_TUG_VA = 2000
 export const DIAMETRO_EXTERNO_CONDUTOR_MM = {
   pvc: {
     1.5: 2.95,
-    2.5: 3.55,
-    4: 4.05,
+    2.5: 3.61,
+    4: 4.1,
     6: 4.65,
     10: 6.0,
     16: 7.0,
     25: 8.6,
     35: 10.15,
-    50: 11.8,
-    70: 13.5,
-    95: 15.7,
-    120: 17.2,
+    50: 12.2,
+    70: 13.7,
+    95: 16.0,
+    120: 18.0,
   },
   epr: {
     1.5: 4.95,
@@ -702,8 +717,11 @@ export const DIAMETRO_EXTERNO_CONDUTOR_MM = {
 // Também não vem da NBR 5410: dimensão de PRODUTO do eletroduto, definida pela norma específica
 // do eletroduto (ABNT NBR 15465, antiga NBR 6150), não pela 5410. Valores típicos de catálogo;
 // podem variar ±1 mm entre fabricantes — ver nota de aproximação na tela de resultado.
+// Os diâmetros internos de 20 a 85 mm conferem com a Tabela 10.4 do Creder (Tigre, rosqueável: 16,4 ·
+// 21,3 · 27,5 · 36,1 · 41,4 · 52,8 · 67,1 · 79,6 mm). A linha de 16 mm (3/8", Di 12,8) saiu: não consta
+// nessa tabela (o menor rosqueável é o de 20 mm) nem na Tabela 3.23, e o 16 mm soldável da Tabela
+// 10.5 tem Di 14,0 — não havia fonte para os 12,8 mm.
 export const ELETRODUTOS_PVC_RIGIDO = [
-  { referencia: '3/8"', nominalMm: 16, diametroInternoMm: 12.8 },
   { referencia: '1/2"', nominalMm: 20, diametroInternoMm: 16.4 },
   { referencia: '3/4"', nominalMm: 25, diametroInternoMm: 21.3 },
   { referencia: '1"', nominalMm: 32, diametroInternoMm: 27.5 },

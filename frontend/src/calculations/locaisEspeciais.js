@@ -59,6 +59,12 @@ function temBoxDeclarado(box) {
 // extração de texto) desenham essa faixa como uma "tampa" sobre o volume 1; sem poder conferir a
 // figura, adotou-se a leitura mais restritiva (permanece dentro de um volume protegido), nunca a
 // mais permissiva (ficaria de fora de qualquer volume).
+// Tolerância numérica das comparações com os limites da norma: as distâncias vêm de subtrações em
+// ponto flutuante (1,6 − 1 = 0,6000000000000001), e um ponto exatamente a 0,60 m não pode cair no
+// volume seguinte por causa de 1e-16. 1e-9 m (um nanômetro) é muito abaixo de qualquer medida real.
+const EPS_M = 1e-9
+const ate = (valor, limite) => valor <= limite + EPS_M
+
 export function classificarVolume(ponto, box) {
   const d = distanciaHorizontalM(ponto, box)
   const h = Number(ponto.alturaM)
@@ -72,21 +78,21 @@ export function classificarVolume(ponto, box) {
   // da projeção horizontal). Qualquer ponto acima disso, mesmo diretamente sobre o box, é a coluna
   // de ar que a própria norma já inclui no volume 1 (b): "limitado: pelo volume 0; ... e pelo
   // plano horizontal situado 2,25 m acima do fundo da banheira").
-  if (d === 0 && h === baseM) return 0
+  if (ate(d, 0) && Math.abs(h - baseM) <= EPS_M) return 0
 
   if (temBoxDeclarado(box)) {
-    if (d === 0) return h <= tetoVolume1 ? 1 : h <= 3 ? 2 : null
-    if (d <= 0.6) return h <= 3 ? 2 : null
-    if (d <= 3.0) return h <= 2.25 ? 3 : null
+    if (ate(d, 0)) return ate(h, tetoVolume1) ? 1 : ate(h, 3) ? 2 : null
+    if (ate(d, 0.6)) return ate(h, 3) ? 2 : null
+    if (ate(d, 3.0)) return ate(h, 2.25) ? 3 : null
     return null
   }
 
   // Sem box delimitado (chuveiro/ducha "solto", Figura 18): os 0,6 m contam a partir do próprio
   // ponto de referência do chuveiro (alternativa de §9.1.2.1 b). Faixas mantidas como antes desta
   // correção: volume 1 até 0,6 m, volume 2 até 1,2 m, volume 3 até 3,6 m.
-  if (d <= 0.6) return h <= tetoVolume1 ? 1 : h <= 3 ? 2 : null
-  if (d <= 1.2) return h <= 3 ? 2 : null
-  if (d <= 3.6) return h <= 2.25 ? 3 : null
+  if (ate(d, 0.6)) return ate(h, tetoVolume1) ? 1 : ate(h, 3) ? 2 : null
+  if (ate(d, 1.2)) return ate(h, 3) ? 2 : null
+  if (ate(d, 3.6)) return ate(h, 2.25) ? 3 : null
   return null
 }
 

@@ -1,4 +1,4 @@
-import { ISOLACOES, obterReatanciaOhmMetro } from './constantes.js'
+import { ANGULO_FASE_GRAUS, ISOLACOES, obterReatanciaOhmMetro } from './constantes.js'
 
 // Queda de tensão considerando resistência E reatância do condutor — não só a componente
 // resistiva (que só seria exata para cosφ = 1). ΔV% = ΔV / V × 100, com sinal de X positivo
@@ -44,3 +44,41 @@ export function calcularQuedaPercentual({
   return (quedaV / tensaoV) * 100
 }
 
+
+// Queda de tensão do alimentador por cálculo FASORIAL, fase a fase, com o neutro explícito — vale
+// para qualquer carga (desequilibrada, cosφ ≠ 1, capacitiva) sem a hipótese de "trifásico
+// equilibrado" de `calcularQuedaPercentual`. A tensão fase-neutro na carga é
+//   V_carga,i = V_fonte,i − Z_f·I_i − Z_n·(ΣI_j)
+// (a corrente de retorno ΣI_j volta pelo neutro e eleva o potencial do neutro na carga). Com carga
+// equilibrada ΣI = 0 e o neutro não pesa; num circuito monofásico (ΣI = I) vira (Z_f + Z_n)·I, o
+// mesmo "ida e volta" do caso a 2 condutores. A queda reportada é a da PIOR fase,
+// (|V_fonte| − |V_carga|)/|V_fonte| — módulo exato, sem a aproximação R·cosφ + X·senφ.
+// `fasores`: corrente de cada fase em A (re/im, sentido fonte→carga), da `calcularCorrentesVetoriais`.
+export function calcularQuedaAlimentadorFasorial({
+  fasores,
+  tensaoFaseNeutroV,
+  comprimentoM,
+  secaoFaseMm2,
+  secaoNeutroMm2,
+  isolacao = 'pvc',
+}) {
+  if (!secaoFaseMm2 || !secaoNeutroMm2 || !tensaoFaseNeutroV || !fasores?.length) return null
+  const condutividade = ISOLACOES[isolacao]?.condutividade ?? ISOLACOES.pvc.condutividade
+  const zFase = { re: comprimentoM / (condutividade * secaoFaseMm2), im: comprimentoM * obterReatanciaOhmMetro(secaoFaseMm2) }
+  const zNeutro = { re: comprimentoM / (condutividade * secaoNeutroMm2), im: comprimentoM * obterReatanciaOhmMetro(secaoNeutroMm2) }
+  const produto = (z, i) => ({ re: z.re * i.re - z.im * i.im, im: z.re * i.im + z.im * i.re })
+  const retorno = fasores.reduce((total, i) => ({ re: total.re + i.re, im: total.im + i.im }), { re: 0, im: 0 })
+  const dropNeutro = produto(zNeutro, retorno)
+
+  let pior = 0
+  fasores.forEach((corrente, indice) => {
+    const angulo = (ANGULO_FASE_GRAUS[indice] * Math.PI) / 180
+    const dropFase = produto(zFase, corrente)
+    const carga = {
+      re: tensaoFaseNeutroV * Math.cos(angulo) - dropFase.re - dropNeutro.re,
+      im: tensaoFaseNeutroV * Math.sin(angulo) - dropFase.im - dropNeutro.im,
+    }
+    pior = Math.max(pior, ((tensaoFaseNeutroV - Math.hypot(carga.re, carga.im)) / tensaoFaseNeutroV) * 100)
+  })
+  return pior
+}

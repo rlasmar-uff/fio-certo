@@ -49,6 +49,8 @@ export function casaModelo() {
     comodos: COMODOS,
     comprimentoRamalEntrada: '20',
     iccPresumidaA: '5000',
+    iccFaseNeutroA: '5000',
+    potenciaReservaPorCircuitoVA: '1000',
     esquemaAterramento: 'TN-C-S',
     condicaoAterramento: 'protegido-total',
   }

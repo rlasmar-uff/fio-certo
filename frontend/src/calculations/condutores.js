@@ -76,6 +76,7 @@ export function avaliarTrilhaSecao(tipoCircuito, parametros) {
     neutroCarregado = false,
     metodoInstalacao = METODO_INSTALACAO_PADRAO,
     isolacao = ISOLACAO_PADRAO,
+    calcularQueda = null,
   } = parametros
   const secaoMinimaNormativa = SECAO_MINIMA_MM2[tipoCircuito] ?? SECAO_MINIMA_MM2.tug
   const condutoresCarregados = TABELA_46_CONDUTORES_CARREGADOS[esquema]
@@ -88,16 +89,20 @@ export function avaliarTrilhaSecao(tipoCircuito, parametros) {
     const ampacidade = obterAmpacidade({ isolacao, metodo: metodoInstalacao, condutoresCarregados, secaoMm2: secao })
     const ampacidadeCorrigida = ampacidade * fatorTemperatura * fatorAgrupamento * fatorResistividadeSolo * fatorNeutroCarregado
     const atendeAmpacidade = ampacidadeCorrigida >= correnteNominalDisjuntorA
-    const quedaPercentual = calcularQuedaPercentual({
-      comprimentoM,
-      correnteA: correnteProjetoA,
-      secaoMm2: secao,
-      tensaoV,
-      cosPhi,
-      tipoCarga,
-      circuitoTrifasico,
-      isolacao,
-    })
+    // `calcularQueda(secao)` substitui a fórmula escalar quando o chamador tem um modelo melhor (o
+    // alimentador usa o fasorial por fase, com neutro — ver calcularQuedaAlimentadorFasorial).
+    const quedaPercentual = calcularQueda
+      ? calcularQueda(secao)
+      : calcularQuedaPercentual({
+          comprimentoM,
+          correnteA: correnteProjetoA,
+          secaoMm2: secao,
+          tensaoV,
+          cosPhi,
+          tipoCarga,
+          circuitoTrifasico,
+          isolacao,
+        })
     const atendeQueda = quedaPercentual === null || quedaPercentual <= limiteQuedaPercentual
 
     return {
@@ -195,8 +200,12 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
   // como "nenhuma seção verificável", com um erro que aponta a causa real, em vez de deixar a
   // aritmética (null × ampacidade) mascarar isso atrás de "nenhuma seção atende".
   const temperaturaForaDaFaixa = fatorTemperatura === null
+  // Mesmo raciocínio para o agrupamento: sem fator tabelado (mais circuitos que a tabela alcança),
+  // nada de reaproveitar o último valor — o dimensionamento fica não verificado.
+  const agrupamentoForaDaTabela = fatorAgrupamento === null
+  const semFatorTabelado = temperaturaForaDaFaixa || agrupamentoForaDaTabela
   const secaoMinimaNormativa = SECAO_MINIMA_MM2[circuito.tipo] ?? SECAO_MINIMA_MM2.tug
-  const { secaoPorAmpacidade, secaoMm2, ampacidadeA, ampacidadeTabelaA, trilha } = temperaturaForaDaFaixa
+  const { secaoPorAmpacidade, secaoMm2, ampacidadeA, ampacidadeTabelaA, trilha } = semFatorTabelado
     ? { secaoPorAmpacidade: null, secaoMm2: null, ampacidadeA: null, ampacidadeTabelaA: null, trilha: [] }
     : escolherSecao(circuito.tipo, {
         correnteNominalDisjuntorA: disjuntorA,
@@ -265,7 +274,9 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
     avisoCurtoCircuito: AVISO_CURTO_CIRCUITO,
     erro: temperaturaForaDaFaixa
       ? 'Temperatura ambiente informada está fora da faixa tabelada (Tabela 40) para a isolação escolhida — dimensionamento não verificado.'
-      : secaoMm2 === null
+      : agrupamentoForaDaTabela
+        ? 'Número de circuitos agrupados acima do que a tabela de agrupamento da norma cobre (Tabela 42, ref. 2: até 11; Tabela 45: até 6) — sem fator tabelado, dimensionamento não verificado.'
+        : secaoMm2 === null
         ? 'Nenhuma seção da tabela atende simultaneamente à corrente exigida e à queda de tensão disponível.'
         : null,
   }

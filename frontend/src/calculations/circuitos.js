@@ -1,7 +1,8 @@
-import { calcularCargaComodo, calcularLimite600VA } from './previsaoDeCarga.js'
+import { calcularCargaComodo, calcularLimite600VA, calcularPotenciaAparenteVA, normalizarCosPhi } from './previsaoDeCarga.js'
 import {
   POTENCIA_MAXIMA_CIRCUITO_ILUMINACAO_VA,
   POTENCIA_MAXIMA_CIRCUITO_TUG_VA,
+  ANGULO_FASE_GRAUS,
 } from './constantes.js'
 
 // Agrupa itens (cômodos) em circuitos, respeitando uma potência máxima por circuito — um cômodo
@@ -104,13 +105,14 @@ export function gerarCircuitos(comodos, configInstalacao, aplicarAlternativa600V
   // isso "quantidade" gera um circuito por unidade (2 chuveiros = 2 circuitos), não um só somado.
   const circuitosTue = comodos.flatMap((comodo) =>
     (comodo.tue ?? []).flatMap((equipamento) => {
-      const quantidade = Number(equipamento.quantidade) || 1
-      const cosPhi = Number(equipamento.cosPhi) || 1
-      const potenciaAtivaW = Number(equipamento.potenciaW) || 0
-      // Potência aparente (VA) = potência ativa (W) / cosφ — para carga resistiva pura
-      // (cosφ = 1) os dois valores coincidem; para motores/compressores, a corrente real
-      // é maior que P/V sozinho sugeriria.
-      const potenciaVA = cosPhi > 0 ? potenciaAtivaW / cosPhi : potenciaAtivaW
+      // Quantidade inválida (0, negativa, fracionária) vale 1: some em silêncio seria pior (o circuito
+      // inteiro deixaria de existir) — a entrada é sinalizada no veredito.
+      const quantidade = Number.isInteger(Number(equipamento.quantidade)) && Number(equipamento.quantidade) >= 1 ? Number(equipamento.quantidade) : 1
+      const cosPhi = normalizarCosPhi(equipamento.cosPhi)
+      // Potência aparente (VA) = potência elétrica absorvida (W / rendimento) / cosφ — para carga
+      // resistiva pura (η = cosφ = 1) coincide com os W; para motores/compressores, a corrente
+      // real é maior que P/V sozinho sugeriria (ver `calcularPotenciaAparenteVA`).
+      const potenciaVA = calcularPotenciaAparenteVA(equipamento)
       // "fase-fase" só é válido se a instalação realmente tiver mais de uma fase disponível
       // (numa monofásica não existe fase-fase — cai de volta pra fase-neutro por segurança).
       const ehFaseFase = equipamento.ligacao === 'fase-fase' && permiteFaseFase
@@ -300,7 +302,6 @@ export function balancearFases(circuitos, numeroFases) {
 // Ângulos de referência das fases (rotação A-B-C padrão) — fase 1 (A) = 0°, fase 2 (B) = -120°,
 // fase 3 (C) = +120°. Bifásico usa só A/B (mesma convenção já usada em `resolverAtribuicaoExata`
 // pra numeroFases===2: índices de fase 0 e 1, nunca 2).
-const ANGULO_FASE_GRAUS = [0, -120, 120]
 
 function paraRadianos(graus) {
   return (graus * Math.PI) / 180
@@ -389,5 +390,7 @@ export function calcularCorrentesVetoriais(circuitosComFase, numeroFases, tensao
   const somaIm = acumuladores.reduce((total, acumulador) => total + acumulador.im, 0)
   const correnteNeutroA = Math.sqrt(somaRe ** 2 + somaIm ** 2)
 
-  return { correntePorFaseA, correnteNeutroA }
+  // Fasores por fase (referidos à tensão fase-neutro de cada fase) — usados pela queda de tensão
+  // fasorial do alimentador (quedaDeTensao.js), que precisa do módulo E do ângulo de cada corrente.
+  return { correntePorFaseA, correnteNeutroA, fasoresFaseA: acumuladores.map(({ re, im }) => ({ re, im })) }
 }

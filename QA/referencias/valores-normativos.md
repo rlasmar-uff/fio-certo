@@ -1127,3 +1127,18 @@ proteção pode ser "por circuito ou por grupo de circuitos".
 
 A norma não dá regra de corrente nominal do DR, só que ele seja protegido contra sobrecorrente
 (§6.3.6.2.2). Critério desta ferramenta: In ≥ min(Σ In dos disjuntores do grupo, In do geral).
+
+---
+
+## Valores conferidos na auditoria de 01/11/2026
+
+Fonte: `NBR-5410.pdf`, extração por coordenadas (pdfplumber). Fixture das Tabelas 36/37 (cobre):
+`QA/referencias/pdf-tabelas-36-37.json` — comparada célula a célula em G36.1.
+
+- **Tabela 42, referência 2 (camada única, método C):** só tem valores até "9 a 11 circuitos" (0,70). As colunas 12–15, 16–19 e ≥ 20 **estão vazias** para essa linha. O motor devolve `null` acima de 11 circuitos.
+- **Tabela 45 (eletrodutos enterrados, condutor unipolar, espaçamento nulo):** 2→0,80; 3→0,70; 4→0,65; 5→0,60; 6→0,60. Sem valor acima de 6.
+- **Tabela 40, solo:** 20 °C = 1,00 (implícito); PVC não tem valor acima de 60 °C.
+- **Tabela 58:** S ≤ 16 → S; 16 < S ≤ 35 → 16; S > 35 → S/2, adotando a seção padronizada **mais próxima** (120 mm² → 60: empate entre 50 e 70, o motor usa 70).
+- **Tabela 59 NOTA:** "A capacidade de reserva deve ser considerada no cálculo do alimentador do respectivo quadro de distribuição."
+- **§6.2.7.1 NOTA 3:** nos casos a), b) e d), linhas principais acima de 100 m admitem +0,005 %/m (máx. +0,5 %); não se aplica ao caso c) modelado.
+- **§9.1.4.3.3:** interruptor/tomada a menos de 0,60 m da porta aberta de cabine de banho pré-fabricada — não implementado.

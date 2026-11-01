@@ -108,12 +108,12 @@ export function verificarCurtoCircuito({
 // Impedância de um laço fase+retorno (ida e volta) — SEMPRE 2 condutores, mesmo para o trecho do
 // alimentador trifásico: ao contrário da queda de tensão em operação normal balanceada (onde o
 // neutro não retorna corrente), um curto-circuito fase-neutro só percorre 1 fase + o neutro,
-// nunca as 3 fases. Usa a seção de FASE para os dois condutores do laço (mesmo quando o neutro
-// real está reduzido pela Tabela 48) — simplificação deliberadamente conservadora: um neutro mais
-// fino teria impedância real MAIOR (Icc real menor), então assumir a seção de fase nos dois
-// condutores subestima a impedância e superestima a Icc, no sentido seguro para I²t≤k²S² (mais
-// Icc assumida → mais difícil de passar, nunca o contrário). Reaproveita a mesma condutividade
-// (ISOLACOES) e reatância por seção (obterReatanciaOhmMetro) já usadas em quedaDeTensao.js.
+// nunca as 3 fases. Sem `secaoVoltaMm2`, o retorno tem a seção da FASE — o que SUBESTIMA a
+// impedância e SUPERESTIMA a Icc quando o neutro real é menor (Tabela 48). Isso é conservador só
+// para a energia passante I²t (Icc máxima), e PERMISSIVO para Ia ≤ Ikmin (Icc mínima): por isso
+// quem calcula a Icc mínima de um laço com neutro reduzido DEVE passar a seção real do neutro em
+// `secaoVoltaMm2` (ver protecaoGeral.js/projeto.js). Reaproveita a mesma condutividade (ISOLACOES)
+// e reatância por seção (obterReatanciaOhmMetro) já usadas em quedaDeTensao.js.
 //
 // `secaoVoltaMm2` permite um condutor de retorno de outra seção — é o laço de falta fase-PE do
 // seccionamento automático (§5.1.2.2.4.2 d), onde a volta é o PE (ou o PEN), e ali a seção menor é

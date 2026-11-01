@@ -37,3 +37,11 @@ Coisas que dependem de você, não do código. Atualizado a cada sprint. Marque 
   - Título e ano das normas de produto (NBR NM 60898, NM 247-3, 7286, 7287, 15465) já foram conferidos por busca em 30/09/2026 (ver `QA/referencias/fontes-externas.md`) — mas só contra descrições de sites de revenda de normas, não o texto comprado no Catálogo ABNT. Se você tiver acesso, uma conferência final é mais segura antes da entrega.
 - [ ] **Seminário (15 min):** o roteiro, com tempos, demonstração e plano B, está em `docs/roteiro-seminario.md`. Falta montar os slides, ensaiar e gerar o QR code do site publicado.
 - [ ] **UAT com pessoas de fora da equipe:** pedir a 2 ou 3 colegas que façam um projeto do zero sem ajuda e anotar onde travam.
+
+## Auditoria independente (nov/2026) — o que só você pode fazer
+
+- [x] **Conferência com Hélio Creder (16ª ed.)** — feita em 01/11/2026, ver `docs/AUDITORIA_NORMATIVA.md`. Falta só a leitura visual da Tab. 3.12 e das equações do §4.5.3 (imagens no PDF do livro).
+- [ ] **Validar com um projeto real** dimensionado por profissional habilitado (a maior lacuna para sair de "auxiliar com revisão profissional").
+- [ ] **Informar a Icc fase-neutro** (concessionária) nos projetos reais: sem ela, Ikmin e seccionamento partem da Icc trifásica, e isso aparece como pendência.
+- [ ] **Definir a potência de reserva** por circuito (Tabela 59) nos projetos reais; sem declarar, o veredito fica com pendência.
+- [ ] **Catálogo de cabos e disjuntores do fabricante:** diâmetro externo, reatância, curva tempo-corrente e tipo de DR (AC/A/B).

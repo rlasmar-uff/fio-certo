@@ -1668,6 +1668,22 @@ label.botao-secundario:focus-within {
   color: var(--cor-erro);
 }
 
+.limitacoes-veredito {
+  margin: 0 0 var(--esp-3);
+  font-size: var(--fs-sm);
+  color: var(--texto-fraco);
+}
+
+.limitacoes-veredito summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.limitacoes-veredito ul {
+  margin: var(--esp-2) 0 0;
+  padding-left: var(--esp-5);
+}
+
 .veredito-lista {
   list-style: none;
   margin: 0 0 var(--esp-3);

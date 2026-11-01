@@ -263,3 +263,21 @@ corrigido — o `ESCOPO.md` atual reflete o que existe de fato:
 | "capacidade de condução de corrente (tabelas 36-39)" | Tabela 36, métodos B1/B2/C (os três suportados) — `ESCOPO.md` já reflete isso |
 | "+ fatores de correção (tabelas 40-45)" | Tabela 40 completa + Tabela 42 referências 1 e 2 (as aplicáveis a B1/B2/C) implementadas |
 | "queda de tensão (§6.2.7 — limites de 7%/5%/4% conforme o trecho)" | 4% terminal cumulativo com 5% total (ponto de entrega em tensão secundária); 7% (transformador/gerador próprio) não modelado, e o `ESCOPO.md` já diz isso |
+
+---
+
+## Auditoria independente de 01/11/2026 (G35–G44)
+
+Detalhe completo em [`docs/MATRIZ_DE_CONFORMIDADE.md`](../../docs/MATRIZ_DE_CONFORMIDADE.md). Mudanças de status
+nesta matriz:
+
+| Cláusula | Antes | Agora | Critérios |
+|---|---|---|---|
+| §6.2.7.1 c) queda do alimentador | `OK` (equilibrado, cosφ = 1) | `OK` — cálculo fasorial por fase com neutro real | G35.1–G35.5 |
+| §6.3.4.3.2 a) Ikmin com neutro reduzido | `PARCIAL` (retorno na seção da fase, permissivo) | `PARCIAL` — retorno pelo neutro real (`iccQuadroMinA`) | G35.6–G35.10 |
+| Tabela 59 NOTA — reserva no alimentador | ausente | `OK` quando declarada; pendência quando não | G42.7 |
+| Tabelas 42 ref. 2 (> 11) e 45 (> 6) | extrapolava o último valor | `null` (não verificado) | G36.3, G39.6, G20.2 |
+| §9.1.2.1 fronteiras 0,60 m / 3,0 m | erro de ponto flutuante | corrigido | G43.1 |
+| §9.5.2.1.2 / §9.5.2.2.1 abaixo do mínimo | só aviso no cômodo | problema no veredito | G37.7 |
+| Entradas inválidas/ausentes | silenciosas ou exceção | problema/pendência | G44 |
+| Rendimento η | ausente | opcional (W/η/cosφ) | G37.5 |

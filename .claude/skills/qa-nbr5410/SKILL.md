@@ -51,7 +51,7 @@ a norma diz 110 A.
 
 ```bash
 node QA/scripts/verificar.mjs              # tudo
-node QA/scripts/verificar.mjs --grupo G4   # só um grupo (G1..G34 — a lista cresce; veja o topo de verificar.mjs)
+node QA/scripts/verificar.mjs --grupo G4   # só um grupo (G1..G44 — a lista cresce; veja o topo de verificar.mjs)
 node QA/scripts/verificar.mjs --verboso    # inclui os critérios que passaram
 ```
 
@@ -63,12 +63,12 @@ cabeçalho de cada `grupo(...)` em `verificar.mjs` é a fonte de verdade, não e
 **G4** condutores e coordenação da proteção · **G5** queda de tensão · **G6** alimentador,
 proteção geral e aterramento · **G22** locais especiais (banheiro/chuveiro) · **G32** fator de
 demanda por distribuidora · **G33** volumes do banheiro pela planta · **G34** achados de auditorias
-adversariais (cresce a cada rodada — ver `QA/relatorios/`).
+adversariais (cresce a cada rodada — ver `QA/relatorios/`) · **G35–G44** auditoria independente de nov/2026 (referência manual, PDF por coordenadas e implementação própria; ver `docs/AUDITORIA_NORMATIVA.md`).
 
 **FAIL não é bug do harness.** Cada falha é uma divergência conhecida entre o código e a norma,
 com cláusula e evidência numérica. **Não confie num número fixo de "linha de base" escrito aqui ou
 em qualquer lugar além do resultado do próprio comando** — este arquivo já ficou meses desatualizado
-dizendo "G1..G6, 50 conformes, 23 divergências" enquanto o projeto crescia para G1..G34 e 240
+dizendo "G1..G6, 50 conformes, 23 divergências" enquanto o projeto crescia para G1..G44 e 297
 conformes. O que importa sempre é: **0 divergências é o estado esperado**; qualquer FAIL é uma
 regressão ou um achado novo, nunca "normal". Depois de rodar, se quiser contexto histórico, leia
 `QA/README.md` (mantém a tabela de datas) — e, ao terminar uma auditoria ou correção, atualize

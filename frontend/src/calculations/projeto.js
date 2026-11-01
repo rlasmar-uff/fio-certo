@@ -12,7 +12,7 @@ import {
   verificarSeccionamentoTN,
   verificarSeccionamentoTT,
 } from './seccionamento.js'
-import { verificacoesComplementares, verificarSobrecarga } from './complementares.js'
+import { calcularReservaQuadro, verificacoesComplementares, verificarSobrecarga } from './complementares.js'
 import { verificarExistente } from './existente.js'
 import { ID_PERCURSO_ALIMENTADOR, verificarPercurso } from './percurso.js'
 import { IDR_SENSIBILIDADE_ALTA_MA, LIMITE_QUEDA_TERMINAL_PERCENTUAL, LIMITE_QUEDA_TOTAL_PERCENTUAL } from './constantes.js'
@@ -36,7 +36,27 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   // soma escalar de VA (`cargaPorFase`, mantida acima só pra explicar a decisão de balanceamento
   // na UI) como base da corrente que dimensiona o disjuntor geral/alimentador, e é a única forma
   // de calcular a corrente real do NEUTRO (nunca calculada antes). Ver circuitos.js.
-  const { correntePorFaseA, correnteNeutroA } = calcularCorrentesVetoriais(circuitosComFase, numeroFases, tensaoFaseNeutro)
+  // Tabela 59, NOTA: "a capacidade de reserva deve ser considerada no cálculo do alimentador do
+  // respectivo quadro de distribuição". A norma não diz com quantos VA — quem declara é o projetista
+  // (`potenciaReservaPorCircuitoVA`). Declarada, cada circuito de reserva entra como carga
+  // resistiva na fase menos carregada; não declarada, o alimentador NÃO inclui reserva e isso vira
+  // pendência do veredito (nunca "conforme" por omissão).
+  const reservaCircuitos = calcularReservaQuadro(circuitosComFase.length)
+  const reservaPorCircuitoVA = Number(projeto.potenciaReservaPorCircuitoVA) > 0 ? Number(projeto.potenciaReservaPorCircuitoVA) : null
+  const circuitosDeReserva = []
+  if (reservaPorCircuitoVA) {
+    const cargaFaseComReserva = [...cargaPorFase]
+    for (let i = 0; i < reservaCircuitos; i += 1) {
+      const fase = cargaFaseComReserva.indexOf(Math.min(...cargaFaseComReserva))
+      cargaFaseComReserva[fase] += reservaPorCircuitoVA
+      circuitosDeReserva.push({ potenciaVA: reservaPorCircuitoVA, cosPhi: 1, tipoCarga: 'resistiva', fases: [fase + 1] })
+    }
+  }
+  const { correntePorFaseA, correnteNeutroA, fasoresFaseA } = calcularCorrentesVetoriais(
+    [...circuitosComFase, ...circuitosDeReserva],
+    numeroFases,
+    tensaoFaseNeutro,
+  )
 
   const comprimentoRamalInformado = valorInformado(projeto.comprimentoRamalEntrada)
   const comprimentoRamalM = comprimentoRamalInformado ? Number(projeto.comprimentoRamalEntrada) || 0 : 0
@@ -50,6 +70,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   const protecaoGeralBase = dimensionarProtecaoGeral({
     correntePorFaseA,
     correnteNeutroA,
+    fasoresFaseA,
     numeroFases,
     tensaoFaseNeutro,
     comprimentoRamalM,
@@ -131,6 +152,9 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     secaoMm2: protecaoGeral.condutorFase.secaoMm2,
     isolacao: protecaoGeral.condutorFase.isolacao,
   }
+  // Laço fase-neutro: o retorno pelo neutro REAL do alimentador (pode ser reduzido — Tabela 48), e
+  // não pela seção de fase. O curto entre fases (`trechoAlimentador`) não passa pelo neutro.
+  const trechoAlimentadorFaseNeutro = { ...trechoAlimentador, secaoVoltaMm2: protecaoGeral.secaoNeutroMm2 }
   const iccQuadroFaseFaseA = propagarIccFaseFase({ tensaoFaseNeutroV: tensaoFaseNeutro, iccFonteA: iccAlimentadorA, trechos: [trechoAlimentador] })
   const dimensionados = dimensionadosBase.map((circuito) => {
     const terminal = { comprimentoM: circuito.comprimentoM, secaoMm2: circuito.secaoMm2, isolacao: circuito.isolacao, tensaoV: circuito.tensao }
@@ -138,7 +162,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
       ? null
       : circuito.ehFaseFase
         ? propagarIccFaseFase({ tensaoFaseNeutroV: tensaoFaseNeutro, iccFonteA: iccAlimentadorA, trechos: [trechoAlimentador, terminal] })
-        : propagarIccTerminal({ tensaoFaseNeutroV: tensaoFaseNeutro, iccFonteA: iccFaseNeutroA, alimentador: trechoAlimentador, terminal })
+        : propagarIccTerminal({ tensaoFaseNeutroV: tensaoFaseNeutro, iccFonteA: iccFaseNeutroA, alimentador: trechoAlimentadorFaseNeutro, terminal })
 
     const iccQuadroA = circuito.ehFaseFase && protecaoGeral.iccQuadroA !== null && iccQuadroFaseFaseA !== null
       ? Math.max(protecaoGeral.iccQuadroA, iccQuadroFaseFaseA)
@@ -299,6 +323,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     explicacoesFase: explicacoes,
     cargaPorFase,
     protecaoGeral,
+    reservaAlimentador: { circuitos: reservaCircuitos, potenciaPorCircuitoVA: reservaPorCircuitoVA, considerada: Boolean(reservaPorCircuitoVA) },
     dimensionados,
     limiteQuedaTerminalDisponivel,
     quedaAlimentadorPercentual,

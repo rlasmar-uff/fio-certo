@@ -376,6 +376,24 @@ export default function ComodoCard({ comodo, indice }) {
                             />
                           </Campo>
                         )}
+                        {(equipamento.tipoCarga ?? 'resistiva') === 'indutiva' && (
+                          <Campo
+                            label="Rendimento η (opcional)"
+                            ajuda="Para motor/compressor com a potência de placa no eixo. Em branco = a potência informada já é a absorvida da rede."
+                            erro={validarNumero(equipamento.rendimento, { maiorQueMin: true, max: 1 })}
+                          >
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={equipamento.rendimento ?? ''}
+                              onChange={(evento) => updateTue(comodo.id, equipamento.id, { rendimento: evento.target.value })}
+                              className="campo"
+                            />
+                          </Campo>
+                        )}
                       </div>
                     </div>
                   )

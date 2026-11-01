@@ -1,5 +1,5 @@
 import { avaliarTrilhaSecao, escolherDisjuntor } from './condutores.js'
-import { calcularQuedaPercentual } from './quedaDeTensao.js'
+import { calcularQuedaAlimentadorFasorial, calcularQuedaPercentual } from './quedaDeTensao.js'
 import { propagarIcc, verificarCurtoCircuito } from './curtoCircuito.js'
 import {
   CURVA_DISJUNTOR_PADRAO,
@@ -107,8 +107,29 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     comprimentoInformado = comprimentoM > 0,
     metodoInstalacao = METODO_INSTALACAO_PADRAO,
     isolacao = ISOLACAO_PADRAO,
+    fasoresFaseA = null,
+    numeroFases = 1,
+    neutroReduzidoDeclarado = false,
+    terceiraHarmonica = TERCEIRA_HARMONICA_PADRAO,
   } = opcoes
   const circuitoTrifasico = esquema.startsWith('trifasico')
+
+  // Queda do alimentador: com os fasores de corrente por fase (caminho do projeto completo), é
+  // fasorial por fase com o neutro real de cada seção candidata — correto para carga desequilibrada
+  // e cosφ ≠ 1. Sem eles (chamada isolada), cai na fórmula escalar de `calcularQuedaPercentual`,
+  // que só é exata para carga equilibrada e cosφ = 1 no trifásico — não use esse caminho para
+  // uma instalação real.
+  const quedaPorSecao = fasoresFaseA
+    ? (secao) =>
+        calcularQuedaAlimentadorFasorial({
+          fasores: fasoresFaseA,
+          tensaoFaseNeutroV: tensaoV,
+          comprimentoM,
+          secaoFaseMm2: secao,
+          secaoNeutroMm2: dimensionarCondutorNeutroGeral(secao, { neutroReduzidoDeclarado, numeroFases, terceiraHarmonica }),
+          isolacao,
+        })
+    : null
 
   const disjuntorA = escolherDisjuntor(correnteEntradaA)
   if (disjuntorA === null) {
@@ -122,6 +143,16 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
   // Temperatura declarada fora da faixa tabelada (Tabela 40) para a isolação/ambiente do
   // alimentador — mesma lógica de `dimensionarCircuito` (condutores.js): nunca extrapolar, nunca
   // deixar a aritmética (null × ampacidade) mascarar a causa real atrás de "nenhuma seção atende".
+  if (fatorAgrupamento === null) {
+    return {
+      ...condutorFaseComErro(
+        'Número de circuitos agrupados acima do que a tabela de agrupamento da norma cobre — sem fator tabelado, dimensionamento não verificado.',
+        comprimentoInformado,
+        isolacao,
+      ),
+      disjuntorA,
+    }
+  }
   if (fatorTemperatura === null) {
     return {
       ...condutorFaseComErro(
@@ -148,6 +179,7 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     neutroCarregado,
     metodoInstalacao,
     isolacao,
+    calcularQueda: quedaPorSecao,
   })
 
   const opcaoNormativa = trilha.find((linha) => linha.aprovada)
@@ -191,16 +223,19 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     fatorAgrupamento,
     fatorResistividadeSolo,
     comprimentoInformado,
-    quedaPercentual: calcularQuedaPercentual({
-      comprimentoM,
-      correnteA: correnteEntradaA,
-      secaoMm2,
-      tensaoV,
-      cosPhi: 1,
-      tipoCarga: 'resistiva',
-      circuitoTrifasico,
-      isolacao,
-    }),
+    quedaPercentual: quedaPorSecao
+      ? quedaPorSecao(secaoMm2)
+      : calcularQuedaPercentual({
+          comprimentoM,
+          correnteA: correnteEntradaA,
+          secaoMm2,
+          tensaoV,
+          cosPhi: 1,
+          tipoCarga: 'resistiva',
+          circuitoTrifasico,
+          isolacao,
+        }),
+    quedaFasorial: Boolean(quedaPorSecao),
     limitePercentual: LIMITE_QUEDA_TOTAL_PERCENTUAL,
     naoVerificado: !comprimentoInformado,
     erro: null,
@@ -247,6 +282,7 @@ export function dimensionarCondutorTerraGeral(secaoFaseMm2) {
 export function dimensionarProtecaoGeral({
   correntePorFaseA,
   correnteNeutroA,
+  fasoresFaseA = null,
   numeroFases,
   tensaoFaseNeutro,
   comprimentoRamalM,
@@ -293,6 +329,10 @@ export function dimensionarProtecaoGeral({
     comprimentoInformado,
     metodoInstalacao,
     isolacao,
+    fasoresFaseA,
+    numeroFases,
+    neutroReduzidoDeclarado,
+    terceiraHarmonica,
   })
   const idr = dimensionarIDR(condutorFase.disjuntorA, numeroFases)
   const dps = recomendarDPS(tensaoFaseNeutro, { alimentacaoAerea, regiaoAltoIndiceDescargas, exposicaoDescargaDireta })
@@ -313,11 +353,20 @@ export function dimensionarProtecaoGeral({
     iccFonteA: iccFaseNeutroA,
     trechos: [{ comprimentoM: comprimentoRamalM, secaoMm2: condutorFase.secaoMm2, isolacao }],
   })
+  // Icc MÍNIMA no quadro: o laço fase-neutro com o NEUTRO REAL do alimentador (pode ser menor que a
+  // fase pela Tabela 48). Neutro mais fino → impedância maior → Icc menor; é esta, não a de cima,
+  // que serve para Ia ≤ Ikmin (§6.3.4.3.2 a) e para o seccionamento — usar a seção de fase no
+  // retorno superestimaria Icc e aprovaria um disjuntor que talvez não dispare.
+  const iccQuadroMinA = propagarIcc({
+    tensaoFaseNeutroV: tensaoFaseNeutro,
+    iccFonteA: iccFaseNeutroA,
+    trechos: [{ comprimentoM: comprimentoRamalM, secaoMm2: condutorFase.secaoMm2, secaoVoltaMm2: secaoNeutroMm2, isolacao }],
+  })
   const curtoCircuito = verificarCurtoCircuito({
     correnteDisjuntorA: condutorFase.disjuntorA,
     curvaDisjuntor,
     iccPresumidaA: iccPresumidaA && iccFaseNeutroA ? Math.max(iccPresumidaA, iccFaseNeutroA) : iccPresumidaA,
-    iccMinimaA: comprimentoInformado ? iccQuadroA : null,
+    iccMinimaA: comprimentoInformado ? iccQuadroMinA : null,
     secaoMm2: condutorFase.secaoMm2,
     isolacao,
   })
@@ -351,5 +400,6 @@ export function dimensionarProtecaoGeral({
     secaoTerraMm2,
     curtoCircuito,
     iccQuadroA,
+    iccQuadroMinA,
   }
 }

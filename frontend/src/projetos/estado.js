@@ -64,6 +64,9 @@ export const ESTADO_INICIAL = {
   // nunca substitui o dimensionamento por NBR 5410). '' = nenhuma.
   distribuidoraId: '',
   curvaDisjuntorGeral: 'C',
+  // Tabela 59, NOTA — potência (VA) de cada circuito de reserva do quadro, para entrar no cálculo
+  // do alimentador. '' = reserva NÃO considerada (vira pendência no veredito).
+  potenciaReservaPorCircuitoVA: '',
   // §5.4.2.1.1/§6.3.5.2.1 b) — declarações sobre a instalação real que afetam só a recomendação
   // de DPS (exigência normativa vs. boa prática; Classe I além da Classe II). Default `false`:
   // sem declaração, a ferramenta continua recomendando Classe II como boa prática, sem alegar

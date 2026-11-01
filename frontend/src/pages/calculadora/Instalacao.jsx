@@ -34,6 +34,7 @@ export default function Instalacao() {
     setTerceiraHarmonica,
     setIccPresumidaA,
     setIccFaseNeutroA,
+    setPotenciaReservaPorCircuitoVA,
     setCurvaDisjuntorGeral,
     setAlimentacaoAerea,
     setRegiaoAltoIndiceDescargas,
@@ -216,6 +217,22 @@ export default function Instalacao() {
             value={projeto.iccFaseNeutroA}
             disabled={!projeto.iccPresumidaA}
             onChange={(evento) => setIccFaseNeutroA(evento.target.value)}
+          />
+        </Campo>
+        <Campo
+          label="Potência de cada circuito de reserva (opcional)"
+          unidade="VA"
+          ajuda="Tabela 59: a reserva do quadro deve entrar no cálculo do alimentador. Em branco = reserva NÃO considerada (fica como pendência)."
+          erro={validarNumero(projeto.potenciaReservaPorCircuitoVA, { maiorQueMin: true })}
+        >
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            step="1"
+            className="campo"
+            value={projeto.potenciaReservaPorCircuitoVA}
+            onChange={(evento) => setPotenciaReservaPorCircuitoVA(evento.target.value)}
           />
         </Campo>
         <Campo label="Curva dos disjuntores" ajuda="IEC 60898 — C é a mais comum em residências.">

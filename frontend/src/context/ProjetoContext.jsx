@@ -259,6 +259,10 @@ export function ProjetoProvider({ children }) {
         setProjeto((atual) => ({ ...atual, iccFaseNeutroA: valor }))
       },
 
+      setPotenciaReservaPorCircuitoVA(valor) {
+        setProjeto((atual) => ({ ...atual, potenciaReservaPorCircuitoVA: valor }))
+      },
+
       setDistribuidoraId(id) {
         setProjeto((atual) => ({ ...atual, distribuidoraId: id }))
       },

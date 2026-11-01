@@ -64,6 +64,14 @@ export default function CardVeredito({ veredito, destaques, noMemorial = false }
       </dl>
       {veredito.problemas.length > 0 && <Lista itens={veredito.problemas} variante="alerta" noMemorial={noMemorial} />}
       {veredito.pendencias.length > 0 && <Lista itens={veredito.pendencias} variante="atencao" noMemorial={noMemorial} />}
+      <details className="limitacoes-veredito" open={noMemorial}>
+        <summary>O que esta ferramenta não verifica ({veredito.limitacoes.length})</summary>
+        <ul>
+          {veredito.limitacoes.map((texto) => (
+            <li key={texto}>{texto}</li>
+          ))}
+        </ul>
+      </details>
       <p className="texto-fraco">
         Resultado de apoio ao projeto, com base na NBR 5410. Não substitui o projeto e a ART de um profissional habilitado.
       </p>
