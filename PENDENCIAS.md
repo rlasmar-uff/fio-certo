@@ -26,9 +26,10 @@ Coisas que dependem de você, não do código. Atualizado a cada sprint. Marque 
 
 ## Distribuidoras de energia (fator de demanda, N18)
 
-- [ ] **Baixar o PDF da norma da Copel (PR) e da Energisa** (MT/MS/TO/PB/SE/MG/RO/AC e outros). Os sites das duas bloquearam o download desta rede (erro 403/503, inclusive na página inicial) — precisa ser feito do seu computador. Copel: procure "NTC 901100" no site da Copel. Energisa: procure "NDU-001" no site da Energisa. Me manda os PDFs.
+- [x] **Energisa:** PDF da NDU-001 (versão 7.0, nov/2024) baixado em 24/11/2026 e salvo em `distribuidoras/energisa.pdf`, que fica fora do Git. A tabela já está no motor.
+- [ ] **Baixar o PDF da Copel (NTC 901100)** quando o site voltar: [link oficial](https://www.copel.com/hpcopel/normas/ntcArquivos.nsf/4F0C269A3EBCF33B03257F800070D966/$FILE/NTC%20901100%20Fornecimento%20em%20Tens%C3%A3o%20Secund%C3%A1ria.pdf). Em 24/11/2026 o servidor de normas da Copel estava fora do ar (erro 503). Salve como `distribuidoras/copel.pdf`.
 - [ ] **Se você tiver acesso à ABNT Catálogo (ou outro canal oficial), a NBR 10676:2011** ("Fornecimento de energia a edificações individuais em tensão secundária"). Três distribuidoras (CPFL, EDP São Paulo, Neoenergia) têm a mesma tabela de fator de demanda e citam essa norma; a cópia de 1999 que você tinha não é a mesma edição e não traz essa tabela. Não é obrigatório — hoje a ferramenta já usa a tabela de cada distribuidora direto do PDF dela, que é uma fonte válida por si só.
-- [ ] Se a sua instalação for de uma distribuidora que ainda não está na lista (além das 9 já cobertas e da Copel/Energisa pendentes), me diga qual — arrumo o PDF dela também.
+- [ ] Se a sua instalação for de uma distribuidora que ainda não está na lista (além das 10 já cobertas e da Copel pendente), me diga qual — arrumo o PDF dela também.
 
 ## Entregas da disciplina (08/12)
 

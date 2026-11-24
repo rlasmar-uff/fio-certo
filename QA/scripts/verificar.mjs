@@ -51,6 +51,7 @@ import { casaModelo } from '../../frontend/src/projetos/casaModelo.js'
 import { gerarArquivo, lerArquivo, codificarLink, decodificarLink } from '../../frontend/src/projetos/arquivo.js'
 import { normalizarProjeto } from '../../frontend/src/projetos/estado.js'
 import { listarMateriais } from '../../frontend/src/calculations/materiais.js'
+import { calcularDemandaConcessionaria } from '../../frontend/src/calculations/distribuidoras.js'
 import { montarQuadro } from '../../frontend/src/calculations/quadro.js'
 import { verificarExistente } from '../../frontend/src/calculations/existente.js'
 import { simularConsumo } from '../../frontend/src/calculations/consumo.js'
@@ -3039,6 +3040,51 @@ checar(
     matSemIcc.disjuntores[0].icnPadronizadaKA === 6 &&
     matSemIccSemDist.disjuntores[0].icnMinimoKA === null,
   `com Cemig: ${JSON.stringify(matSemIcc.disjuntores[0])}; sem distribuidora: ${JSON.stringify(matSemIccSemDist.disjuntores[0])}`,
+  'medio',
+)
+
+// Energisa (NDU-001 v7.0, Tabela 5, Nota III): mesmos percentuais da CPFL, mas somados faixa a faixa.
+// Conta à mão para 5,46 kW: 0,86+0,75+0,66+0,59+0,52 (5 primeiros kW) + 0,46×0,45 = 3,587 kW.
+const energisaD = comDistribuidora('energisa')
+checar(
+  'G32.9',
+  'N18',
+  'Energisa: 5,46 kW somados por faixa (Nota III da Tabela 5) → 3,587 kW, não 5,46×0,45 = 2,457 kW como na CPFL',
+  energisaD.demandaConcessionaria.aplicavel &&
+    energisaD.demandaConcessionaria.cumulativa &&
+    Math.abs(energisaD.demandaConcessionaria.demandaKw - 3.587) < 1e-9 &&
+    Math.abs(energisaD.demandaConcessionaria.fatorDemanda - 3.587 / 5.46) < 1e-9,
+  `demanda ${energisaD.demandaConcessionaria.demandaKw.toFixed(4)} kW, FD equivalente ${energisaD.demandaConcessionaria.fatorDemanda.toFixed(4)}`,
+  'medio',
+)
+
+// 12 kW: 10 primeiros kW somam 5,16 kW; os 2 kW restantes a 24% = 0,48 → 5,64 kW. Acima de 75 kW a
+// Tabela 5 não cobre: não aplicável, sem extrapolar.
+const energisa12 = calcularDemandaConcessionaria('energisa', 12000)
+const energisa80 = calcularDemandaConcessionaria('energisa', 80000)
+checar(
+  'G32.10',
+  'N18',
+  'Energisa: 12 kW → 5,64 kW (última faixa a 24%); 80 kW (acima dos 75 kW da tabela) → não aplicável',
+  Math.abs(energisa12.demandaKw - 5.64) < 1e-9 &&
+    energisa80.aplicavel === false &&
+    /faixa conferida/.test(energisa80.motivo),
+  `12 kW → ${energisa12.demandaKw.toFixed(4)} kW; 80 kW → ${JSON.stringify({ aplicavel: energisa80.aplicavel, motivo: energisa80.motivo })}`,
+  'medio',
+)
+
+// §8.7.1 da NDU-001: disjuntor da entrada com Icn mínima de 5 kA, para qualquer corrente nominal.
+const matEnergisa = listarMateriais(
+  { ...semIcc, distribuidoraId: 'energisa' },
+  { configInstalacao: cfgDist, ...calcularProjetoCompleto({ ...semIcc, distribuidoraId: 'energisa' }, cfgDist) },
+  {},
+)
+checar(
+  'G32.11',
+  '§5.3.5.5.1 / N18',
+  'Piso de Icn da Energisa no disjuntor geral (NDU-001 §8.7.1): mínimo 5 kA, mesmo sem Icc declarada',
+  matEnergisa.disjuntores[0].icnMinimoKA === 5,
+  JSON.stringify(matEnergisa.disjuntores[0]),
   'medio',
 )
 

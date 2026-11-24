@@ -140,6 +140,44 @@ export const DISTRIBUIDORAS = {
     // fator-demanda-concessionarias.md). Sem tabela para calcular.
     semTabelaPropria: true,
   },
+  energisa: {
+    nome: 'Energisa (MT, MS, TO, PB, SE, MG, RO, AC e outras)',
+    documento: 'NDU-001, versão 7.0, novembro/2024, Tabela 5',
+    // Mesmos percentuais da CPFL/EDP SP/Neoenergia, mas a Nota III da Tabela 5 manda aplicar cada
+    // percentual só à parcela da carga dentro da sua faixa e somar ("o valor percentual de cada faixa
+    // é acumulativo, ou seja, é a soma dos valores de cada faixa") — não um fator único sobre a carga
+    // inteira. A última faixa da tabela vai até 75 kW; acima disso fica "não conferido".
+    tabelaCumulativa: true,
+    tabelaIluminacaoTomadas: [
+      { ateKw: 1, fd: 0.86 },
+      { ateKw: 2, fd: 0.75 },
+      { ateKw: 3, fd: 0.66 },
+      { ateKw: 4, fd: 0.59 },
+      { ateKw: 5, fd: 0.52 },
+      { ateKw: 6, fd: 0.45 },
+      { ateKw: 7, fd: 0.4 },
+      { ateKw: 8, fd: 0.35 },
+      { ateKw: 9, fd: 0.31 },
+      { ateKw: 10, fd: 0.27 },
+      { ateKw: 75, fd: 0.24 },
+    ],
+    // §8.7.1: disjuntor da entrada com capacidade de interrupção mínima de 5 kA (ABNT NBR NM 60898),
+    // para qualquer corrente nominal das Tabelas 16 a 23.
+    icnMinimoGeralKA: () => 5,
+  },
+}
+
+// Soma faixa a faixa (Energisa, Nota III da Tabela 5): cada fd vale só para a parcela da carga entre
+// o limite da faixa anterior e o `ateKw` da faixa.
+function demandaCumulativaKw(tabela, cargaKw) {
+  let demanda = 0
+  let inicio = 0
+  for (const { ateKw, fd } of tabela) {
+    demanda += (Math.min(cargaKw, ateKw) - inicio) * fd
+    if (cargaKw <= ateKw) break
+    inicio = ateKw
+  }
+  return demanda
 }
 
 // `cargaIluminacaoTomadasVA`: soma de `totais.iluminacaoVA + totais.tugVA`
@@ -160,6 +198,12 @@ export function calcularDemandaConcessionaria(distribuidoraId, cargaIluminacaoTo
   const faixa = distribuidora.tabelaIluminacaoTomadas.find((item) => cargaInstaladaKw <= item.ateKw)
   if (!faixa) {
     return { distribuidora, aplicavel: false, motivo: 'carga acima da faixa conferida desta tabela', cargaInstaladaKw }
+  }
+  if (distribuidora.tabelaCumulativa) {
+    const demandaKw = demandaCumulativaKw(distribuidora.tabelaIluminacaoTomadas, cargaInstaladaKw)
+    // `fatorDemanda` aqui é o fator equivalente (demanda ÷ carga), só para exibição.
+    const fatorDemanda = cargaInstaladaKw > 0 ? demandaKw / cargaInstaladaKw : faixa.fd
+    return { distribuidora, aplicavel: true, cargaInstaladaKw, fatorDemanda, demandaKw, cumulativa: true }
   }
   return { distribuidora, aplicavel: true, cargaInstaladaKw, fatorDemanda: faixa.fd, demandaKw: cargaInstaladaKw * faixa.fd }
 }

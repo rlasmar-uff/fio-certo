@@ -141,7 +141,9 @@ export default function SecaoComplementares() {
                 {calculo.demandaConcessionaria.aplicavel ? (
                   <>
                     Iluminação e tomadas: carga instalada {kw(calculo.demandaConcessionaria.cargaInstaladaKw)} ×
-                    fator de demanda {(calculo.demandaConcessionaria.fatorDemanda * 100).toFixed(0)}% ={' '}
+                    fator de demanda {calculo.demandaConcessionaria.cumulativa && 'equivalente '}
+                    {(calculo.demandaConcessionaria.fatorDemanda * 100).toFixed(0)}%
+                    {calculo.demandaConcessionaria.cumulativa && ' (cada percentual aplicado só à parcela da carga na sua faixa, e somado)'} ={' '}
                     <strong>{kw(calculo.demandaConcessionaria.demandaKw)}</strong>
                     {calculo.demandaConcessionaria.semReducao && ' (a norma desta distribuidora não reduz carga residencial)'}, segundo{' '}
                     {calculo.demandaConcessionaria.distribuidora.nome} ({calculo.demandaConcessionaria.distribuidora.documento}). O

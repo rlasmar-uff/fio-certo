@@ -242,14 +242,15 @@ a extração literal de cada PDF oficial, com o número de linha de origem de ca
 
 | Item | Status | Implementação | Verificação |
 |---|---|---|---|
-| Demanda de iluminação/tomadas por distribuidora | `OK` (9 distribuidoras) | `calcularDemandaConcessionaria` (`distribuidoras.js`), com a carga já somada por `previsaoDeCarga.js`; 3 das 9 (CPFL, EDP SP, Neoenergia) têm a tabela idêntica entre si, conferida contra os 3 PDFs oficiais | G32.1-G32.3 |
+| Demanda de iluminação/tomadas por distribuidora | `OK` (10 distribuidoras) | `calcularDemandaConcessionaria` (`distribuidoras.js`), com a carga já somada por `previsaoDeCarga.js`; 3 das 9 (CPFL, EDP SP, Neoenergia) têm a tabela idêntica entre si, conferida contra os 3 PDFs oficiais | G32.1-G32.3 |
 | Distribuidoras sem redução residencial (Celesc, EDP ES) | `OK` | `semReducaoResidencial: true` — FD = 1 sempre, declarado, não um zero silencioso | G32.5 |
 | Distribuidora sem tabela própria (Enel) | `OK` | `semTabelaPropria: true` — `aplicavel: false` com o motivo, nunca um valor chutado | G32.6 |
 | Carga acima da faixa conferida de uma tabela (Light, acima de 9 kW) | `OK` | recusa calcular, não extrapola | G32.7 |
 | Piso de Icn do disjuntor geral (Cemig) | `OK` | `icnMinimoGeralKA`, usado em `materiais.js` só para o disjuntor do tipo "geral"; nunca reduz o que já seria maior por outra via | G32.8 |
 | Chuveiro, ar-condicionado, motor (demais termos da fórmula `D=a+b+c+...`) | `PARCIAL` | fora desta versão — exigiria categorizar o TUE cadastrado por tipo de uso (ver `FUTURO.md`) | — |
 | Categoria de atendimento / padrão de entrada por faixa de carga | `PARCIAL` | fora desta versão — tabelas desalinhadas na extração e variam por estado dentro do mesmo grupo | — |
-| Copel (PR), Energisa (vários estados) | ausente | sites bloquearam o download desta rede; falta o PDF, que só o usuário consegue baixar | — |
+| Energisa (vários estados): tabela somada por faixa e piso de Icn de 5 kA | `OK` | `tabelaCumulativa: true` (NDU-001 v7.0, Tabela 5, Nota III) e `icnMinimoGeralKA: () => 5` (§8.7.1) | G32.9-G32.11 |
+| Copel (PR) | ausente | link oficial achado, mas o servidor de normas da Copel estava fora do ar em 24/11/2026 (HTTP 503); falta baixar o PDF | — |
 
 ---
 

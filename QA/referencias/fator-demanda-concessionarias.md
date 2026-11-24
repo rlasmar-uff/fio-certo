@@ -18,8 +18,8 @@ valor veio de memória, resumo ou site de terceiro.
 | Neoenergia (Coelba/Celpe/Cosern/Elektro/Brasília) | DIS-NOR-030, rev. 07, 17/04/2026 | Sim | `distribuidoras/neoenergia.pdf` |
 | EDP São Paulo | PT.DT.PDN.03.14.020, v.06, 23/03/2022 | Sim | `distribuidoras/edp_sp.pdf` |
 | EDP Espírito Santo | PT.DT.PDN.00061, v.12, 06/04/2023 | Sim | `distribuidoras/edp_es.pdf` |
-| **Copel (PR)** | NTC 901100 | **Não** — site com bloqueio (WAF/Akamai, HTTP 403/503 mesmo na página inicial) a partir desta rede. Precisa do PDF baixado manualmente. | — |
-| **Energisa (MT/MS/TO/PB/SE/MG/RO/AC e outros)** | NDU-001 | **Não** — mesmo bloqueio (HTTP 403 no domínio inteiro). Precisa do PDF baixado manualmente. | — |
+| **Copel (PR)** | NTC 901100 | **Não** — em 24/11/2026 o link oficial foi achado em copel.com/site/materiais-normativos/ (`/hpcopel/normas/ntcArquivos.nsf/4F0C269A3EBCF33B03257F800070D966/$FILE/NTC 901100 Fornecimento em Tensão Secundária.pdf`), mas o servidor de normas estava fora do ar (HTTP 503 "Application is not available", também no navegador). Tentar de novo depois. | — |
+| Energisa (MT/MS/TO/PB/SE/MG/RO/AC e outros) | NDU-001, versão 7.0, nov/2024 | Sim — 24/11/2026, baixado pelo usuário no navegador (o site recusa download por script, HTTP 403) | `distribuidoras/energisa.pdf` |
 
 ---
 
@@ -379,6 +379,55 @@ exemplo ("4 chuveiros + 2 torneiras + 1 ferro..."). Cita NBR 10676 no texto (§7
 
 ---
 
+## Energisa (MT, MS, TO, PB, SE, MG, RO, AC e outras)
+
+NDU-001, versão 7.0, novembro/2024. `distribuidoras/energisa.txt`, extraído com pdf.js em modo
+layout (171 páginas; os números entre colchetes são linhas desse `.txt`). Integrada ao motor em
+24/11/2026 (`distribuidoras.js`, G32.9–G32.11).
+
+### Fórmula (§9.1) [1544-1577]
+
+`D (kVA) = d (kW) / 0,92`, com `d = d1 + d2 + ... + d7`: d1 iluminação e tomadas (Tabela 5); d2
+aquecimento de água: chuveiro, aquecedor, torneira (Tabela 6); d3 secadora, micro-ondas, lava-louça,
+hidromassagem (Tabela 7); d4 fogões e fornos (Tabela 8); d5 ar-condicionado (Tabelas 10/11); d6
+motores e solda motor-gerador (Tabelas 12/13); d7 solda a transformador e raios-X (Tabela 14).
+O motor só usa d1, em kW (mesmo escopo das outras distribuidoras); a divisão por 0,92 não é aplicada.
+
+### Tabela 5 — iluminação e tomadas de uso geral, linha "Residência" [1743-1758] — **limpa**
+
+0–1 kW: 86% · 1–2: 75% · 2–3: 66% · 3–4: 59% · 4–5: 52% · 5–6: 45% · 6–7: 40% · 7–8: 35% ·
+8–9: 31% · 9–10: 27% · **10–75 kW: 24%** (a tabela para em 75 kW).
+
+Os percentuais são os mesmos da CPFL/EDP SP/Neoenergia, **mas a Nota III [1823-1824] muda o
+cálculo**: "No cálculo da demanda residencial o valor percentual de cada faixa é acumulativo, ou
+seja, é a soma dos valores de cada faixa". Cada percentual vale só para a parcela da carga dentro da
+sua faixa. Para 5,46 kW: 0,86 + 0,75 + 0,66 + 0,59 + 0,52 + 0,46 × 0,45 = **3,587 kW** (na CPFL, com
+um fator único sobre a carga inteira, a mesma carga dá 2,457 kW).
+
+### Tabelas 6, 7, 8, 10 e 11 (fora do escopo atual do motor, transcritas para uso futuro) — **limpas**
+
+- **Tabela 6 — aquecimento de água, por nº de aparelhos** [1831-1848]: 1: 100 · 2: 75 · 3: 70 ·
+  4: 66 · 5: 62 · 6: 59 · 7: 56 · 8: 53 · 9: 51 · 10: 49 · 11: 47 · 12: 45 · 13: 43 · 14: 41 ·
+  15: 40 · 16: 39 · 17: 38 · 18: 37 · 19: 36 · 20: 35 · 21: 34 · 22: 33 · 23: 32 · 24: 31 ·
+  acima de 24: 30 (%). É a mesma curva da Tabela 6.4 da Light, não a da família CPFL.
+- **Tabela 7 — secadora, lava-louça, micro-ondas, hidromassagem** [1849-1858]: 1: 100 · 2 a 4: 70 ·
+  5 a 6: 60 · 7 a 9: 50 · acima de 9: 45 (%).
+- **Tabela 8 — fogões e fornos elétricos** [1863-1873]: 1: 100 · 2: 60 · 3: 48 · 4: 40 · 5: 37 ·
+  6: 35 · 7: 33 · 8: 32 · 9: 31 · 10 a 11: 30 · 12 a 15: 28 · 16 a 20: 27 · 21 a 25: 26 ·
+  acima de 25: 25 (%).
+- **Tabela 10 — ar-condicionado residencial** [1894-1906]: 1: 100 · 2: 88 · 3: 82 · 4: 78 · 5: 76 ·
+  6: 74 · 7: 72 · 8: 71 · 9 a 11: 70 · 12 a 14: 68 · 15 a 16: 67 · 17 a 22: 66 · 23 a 30: 65 ·
+  31 a 50: 64 · acima de 50: 62 (%). Diferente da CPFL (100% até 10 aparelhos): já reduz a partir
+  do 2º.
+- **Tabela 11 — ar-condicionado não residencial** [1907-1917]: igual à Tabela 9 da CPFL.
+
+### Capacidade de interrupção mínima do disjuntor da entrada (§8.7.1) [1373-1378] — **limpa**
+
+"capacidade de interrupção mínima de 5 kA, conforme ABNT NBR NM 60898", para qualquer corrente
+nominal das Tabelas 16 a 23. No motor: `icnMinimoGeralKA: () => 5`.
+
+---
+
 ## NBR 10676:2011 — a possível origem comum
 
 **Achado central desta rodada.** Cinco das nove distribuidoras com PDF baixado (CPFL, EDP SP, Enel,
@@ -430,7 +479,7 @@ uma origem comum não confirmada nesta rodada. A cópia de 1999 fica só como re
 | 8 | Celesc | — | **Não** | 3-10 kA conforme norma de produto (desalinhado) |
 | 9 | EDP ES | — | **Não** | Não encontrado |
 | 10 | Copel | não obtido | — | — |
-| 11 | Energisa | não obtido | — | — |
+| 11 | Energisa | Mesmos percentuais da família, mas somados por faixa (Nota III) | Sim | **5 kA para qualquer corrente (limpo)** |
 
 **Recomendação:** eu pausaria a extração aqui, sem escrever código ainda, e voltaria para você com
 estes achados antes de decidir o desenho (ver conversa). Continuar mecanicamente as 9 tabelas sem
