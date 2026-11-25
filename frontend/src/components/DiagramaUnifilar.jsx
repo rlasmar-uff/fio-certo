@@ -109,29 +109,43 @@ export default function DiagramaUnifilar({ projeto, calculo }) {
         {/* Barramento principal */}
         <line x1={xEntrada} y1={Y_BARRA} x2={largura - MARGEM} y2={Y_BARRA} className="unifilar-barra" />
 
-        {/* DPS */}
-        <line x1={xDps} y1={Y_BARRA} x2={xDps} y2={Y_DR} className="unifilar-traco" />
-        <Caixa x={xDps} y={Y_DR} texto="DPS" largura={44} />
-        <line x1={xDps} y1={Y_DR + 22} x2={xDps} y2={Y_DR + 34} className="unifilar-traco" />
-        <Terra x={xDps} y={Y_DR + 34} />
-        <text x={xDps} y={Y_DR + 70} textAnchor="middle" className="unifilar-texto">
-          Classe {pg.dps?.classe ?? 'II'}
-        </text>
+        {/* DPS — só quando exigido pela norma (§5.4.2.1.1) */}
+        {pg.dps?.exigidaPelaNorma && (
+          <>
+            <line x1={xDps} y1={Y_BARRA} x2={xDps} y2={Y_DR} className="unifilar-traco" />
+            <Caixa x={xDps} y={Y_DR} texto="DPS" largura={44} />
+            <line x1={xDps} y1={Y_DR + 22} x2={xDps} y2={Y_DR + 34} className="unifilar-traco" />
+            <Terra x={xDps} y={Y_DR + 34} />
+            <text x={xDps} y={Y_DR + 70} textAnchor="middle" className="unifilar-texto">
+              {calculo.complementares?.dps?.esquemaConexao ? `esquema ${calculo.complementares.dps.esquemaConexao.esquema}` : 'DPS'}
+            </text>
+          </>
+        )}
 
         {colunasGrupo.map(({ grupo, xs, centro }) => (
-          <g key={grupo.numero}>
-            <line x1={centro} y1={Y_BARRA} x2={centro} y2={Y_DR} className="unifilar-traco" />
-            <Caixa x={centro} y={Y_DR} texto="DR" />
-            <text x={centro + 6} y={Y_DR - 6} className="unifilar-texto">
-              {grupo.dr ? `${grupo.dr.correnteA ?? '—'} A · ${grupo.dr.sensibilidadeMA} mA` : 'DR —'}
-            </text>
-            <line x1={centro} y1={Y_DR + 22} x2={centro} y2={Y_SUBBARRA} className="unifilar-traco" />
-            {xs.length > 0 && <line x1={xs[0]} y1={Y_SUBBARRA} x2={xs.at(-1)} y2={Y_SUBBARRA} className="unifilar-barra" />}
+          <g key={grupo.numero ?? 'sem-dr'}>
+            {grupo.dr === null && grupo.numero === null ? (
+              // Circuitos sem DR (modo "exigidos"): saem direto do barramento principal.
+              <text x={centro} y={Y_DR + 14} textAnchor="middle" className="unifilar-texto">
+                sem DR
+              </text>
+            ) : (
+              <>
+                <line x1={centro} y1={Y_BARRA} x2={centro} y2={Y_DR} className="unifilar-traco" />
+                <Caixa x={centro} y={Y_DR} texto={grupo.numero ? `DR ${grupo.numero}` : 'DR'} largura={grupo.numero ? 48 : 40} />
+                <text x={centro + 28} y={Y_DR - 6} className="unifilar-texto">
+                  {grupo.dr ? `${grupo.dr.correnteA ?? '—'} A · ${grupo.dr.sensibilidadeMA} mA` : '—'}
+                </text>
+                <line x1={centro} y1={Y_DR + 22} x2={centro} y2={Y_SUBBARRA} className="unifilar-traco" />
+                {xs.length > 0 && <line x1={xs[0]} y1={Y_SUBBARRA} x2={xs.at(-1)} y2={Y_SUBBARRA} className="unifilar-barra" />}
+              </>
+            )}
             {grupo.circuitos.map((circuito, indice) => {
               const cx = xs[indice]
+              const semDR = grupo.dr === null && grupo.numero === null
               return (
                 <g key={circuito.id}>
-                  <line x1={cx} y1={Y_SUBBARRA} x2={cx} y2={Y_DISJUNTOR} className="unifilar-traco" />
+                  <line x1={cx} y1={semDR ? Y_BARRA : Y_SUBBARRA} x2={cx} y2={Y_DISJUNTOR} className="unifilar-traco" />
                   <Disjuntor x={cx} y={Y_DISJUNTOR} />
                   <line x1={cx} y1={Y_DISJUNTOR + 14} x2={cx} y2={Y_FIM} className="unifilar-traco" />
                   <text x={cx} y={Y_FIM + 14} textAnchor="middle" className="unifilar-texto unifilar-forte">

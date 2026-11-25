@@ -11,7 +11,7 @@ import {
   LIMITE_QUEDA_TOTAL_PERCENTUAL,
   METODO_INSTALACAO_PADRAO,
   METODOS_INSTALACAO,
-  PISO_PRATICO_ALIMENTADOR_MM2,
+  SECAO_MINIMA_PEN_MM2,
   SECAO_MINIMA_MM2,
   TABELA_46_CONDUTORES_CARREGADOS,
   TAXAS_TERCEIRA_HARMONICA,
@@ -31,9 +31,10 @@ export function dimensionarDisjuntorGeral(correnteEntradaA, correntes) {
   return escolherDisjuntor(correnteEntradaA, correntes)
 }
 
-// NBR 5410 §5.1.3.2.2 — DR de alta sensibilidade (≤ 30 mA) obrigatório para circuitos de
-// tomadas em geral e áreas internas molhadas; aqui é dimensionado um IDR geral, à montante de
-// todos os circuitos, com corrente nominal padronizada ≥ corrente do disjuntor geral.
+// NBR 5410 §5.1.3.2.2 — DR de alta sensibilidade (≤ 30 mA) obrigatório nos casos das alíneas a) a d)
+// (local com banheira ou chuveiro, tomadas externas ou que alimentam o exterior, áreas molhadas de
+// habitação). No modo "geral", um IDR único a montante de todos os circuitos, com corrente nominal
+// padronizada ≥ corrente do disjuntor geral.
 export function dimensionarIDR(correnteDisjuntorGeralA, numeroFases) {
   if (correnteDisjuntorGeralA === null) return null
   const correnteA = IDR_CORRENTES_PADRONIZADAS.find((corrente) => corrente >= correnteDisjuntorGeralA) ?? null
@@ -50,8 +51,9 @@ export function dimensionarIDR(correnteDisjuntorGeralA, numeroFases) {
 //   por linha aérea (total ou parcial) E a região tem alto índice de descargas atmosféricas
 //   (influência externa AQ2, >25 dias de trovoada/ano) — ou a região é AQ3 (Tabela 15, não
 //   embutida aqui: mapeamento geográfico completo do Brasil foge do escopo desta ferramenta,
-//   mesma lógica de outras declarações opt-in como a Tabela 48/Icc). Fora dessas condições, DPS
-//   continua recomendação de boa prática, não uma exigência normativa.
+//   mesma lógica de outras declarações opt-in como a Tabela 48/Icc). Fora dessas condições o DPS
+//   não é exigido; a norma admite especificá-lo mesmo assim (§6.3.5.2.1), mas a ferramenta não o
+//   inclui no quadro nem na lista de materiais.
 // - §6.3.5.2.1 b): quando o objetivo é proteção contra descarga atmosférica DIRETA sobre a
 //   edificação ou nas proximidades (edificação isolada, alta, ou com para-raios/SPDA próprio), o
 //   mercado chama isso de Classe I — usado JUNTO com a Classe II (§6.3.5.2.1 a, surtos
@@ -68,14 +70,20 @@ export function recomendarDPS(tensaoFaseNeutro, opcoes = {}) {
   const exigidaPelaNorma = (alimentacaoAerea && aq2) || aq3
 
   return {
-    classe: exposicaoDescargaDireta ? 'I+II' : 'II',
+    // A NBR 5410 não usa "Classe I/II" (nomenclatura de mercado): fala em DPS contra sobretensões
+    // transmitidas pela linha (§6.3.5.2.1 a, In ≥ 5 kA) e, contra descarga direta, com corrente de
+    // impulso Iimp (§6.3.5.2.4 d).
+    rotulo: exposicaoDescargaDireta ? 'DPS (In e Iimp)' : 'DPS (In)',
+    descricao: exposicaoDescargaDireta
+      ? 'no ponto de entrada, contra sobretensões da linha (§6.3.5.2.1 a) e contra descarga direta, com Iimp (§6.3.5.2.4 d)'
+      : 'no ponto de entrada, contra sobretensões transmitidas pela linha (§6.3.5.2.1 a)',
     tensaoMaximaOperacaoV: recomendarTensaoDps(tensaoFaseNeutro),
     exigidaPelaNorma,
     motivoExigencia: exigidaPelaNorma
       ? aq3 && !(alimentacaoAerea && aq2)
         ? 'exigência normativa — NBR 5410 §5.4.2.1.1 b) (região AQ3, exposição direta dos componentes)'
         : 'exigência normativa — NBR 5410 §5.4.2.1.1 a) (alimentação aérea em região de alto índice de descargas atmosféricas)'
-      : 'recomendação de boa prática — a NBR 5410 só torna o DPS exigência normativa com alimentação aérea em região de alto índice de descargas (§5.4.2.1.1 a) ou região AQ3, Tabela 15 (§5.4.2.1.1 b)',
+      : 'não exigido nesta instalação: a NBR 5410 exige DPS com alimentação aérea em região AQ2 (§5.4.2.1.1 a) ou em região AQ3 (§5.4.2.1.1 b); fora disso, ele pode ser especificado (§6.3.5.2.1)',
   }
 }
 
@@ -84,8 +92,8 @@ function condutorFaseComErro(erro, comprimentoInformado, isolacao = ISOLACAO_PAD
     disjuntorA: null,
     trilha: [],
     secaoMinimaNormativa: SECAO_MINIMA_MM2.geral,
-    pisoPraticoMm2: PISO_PRATICO_ALIMENTADOR_MM2,
-    elevadaPeloPisoPratico: false,
+    secaoMinimaPenMm2: null,
+    elevadaPeloPEN: false,
     secaoMm2: null,
     ampacidadeA: null,
     ampacidadeTabelaA: null,
@@ -98,12 +106,11 @@ function condutorFaseComErro(erro, comprimentoInformado, isolacao = ISOLACAO_PAD
 }
 
 // Seção do condutor fase do alimentador (ramal de entrada até o quadro geral): mesmo critério
-// duplo (ampacidade CORRIGIDA + queda de tensão) já usado nos circuitos terminais, mas com:
-// (1) a seção mínima NORMATIVA real de um circuito de distribuição (2,5 mm² — §6.2.6.1.1/Tabela
-// 47, cabo isolado; os 10 mm² da tabela são de condutor NU); (2) um piso PRÁTICO de 10 mm²
-// aplicado por padrão por cima do mínimo normativo (exigência típica de concessionária, não da
-// NBR — ver `PISO_PRATICO_ALIMENTADOR_MM2`); (3) o orçamento de queda TOTAL do §6.2.7.1 c) (5%),
-// não o de 4% do circuito terminal — o alimentador consome deste mesmo orçamento total.
+// duplo (ampacidade CORRIGIDA + queda de tensão) já usado nos circuitos terminais, com:
+// (1) a seção mínima da Tabela 47 (2,5 mm², circuito de força, cabo isolado); (2) no TN-C-S, 10 mm²,
+// porque o neutro do alimentador é o PEN (§6.4.3.4.1) e não pode ser menor que a fase sem as condições
+// da Tabela 48 — ver `SECAO_MINIMA_PEN_MM2`; (3) o orçamento de queda TOTAL do §6.2.7.1, não o de 4% do
+// circuito terminal — o alimentador consome deste mesmo orçamento total.
 export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, tensaoV, opcoes = {}) {
   const {
     fatorTemperatura = 1,
@@ -124,8 +131,10 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     impedancia = null,
     limiteQuedaTotalPercentual = LIMITE_QUEDA_TOTAL_PERCENTUAL,
     disjuntores,
+    trechoPEN = false,
   } = opcoes
   const circuitoTrifasico = esquema.startsWith('trifasico')
+  const secaoMinimaPenMm2 = trechoPEN ? SECAO_MINIMA_PEN_MM2 : null
 
   // Queda do alimentador: com os fasores de corrente por fase (caminho do projeto completo), é
   // fasorial por fase com o neutro real de cada seção candidata — correto para carga desequilibrada
@@ -212,14 +221,11 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     }
   }
 
-  // Mesmo quando uma seção menor já atenderia a NBR 5410 sozinha, o piso prático de 10 mm² é
-  // aplicado por padrão — sem ele, o resultado seria "conforme à norma" mas não instalável, já
-  // que toda concessionária brasileira exige pelo menos essa seção no ramal de entrada. O piso
-  // nunca pode DIMINUIR a seção: se a corrente já exige mais que 10 mm² (ex.: disjuntor de 80 A
-  // exige 25 mm² pela ampacidade), usa-se a seção maior — o piso só eleva, nunca substitui.
-  const secaoComPiso = Math.max(opcaoNormativa.secao, PISO_PRATICO_ALIMENTADOR_MM2)
-  const opcaoFinal = trilha.find((linha) => linha.secao === secaoComPiso) ?? opcaoNormativa
-  const elevadaPeloPisoPratico = secaoComPiso > opcaoNormativa.secao
+  // §6.4.3.4.1 — no TN-C-S o PEN (neutro do alimentador) tem no mínimo 10 mm²; a fase acompanha (ver
+  // `SECAO_MINIMA_PEN_MM2`). Só eleva, nunca reduz o que a corrente e a queda já exigem.
+  const secaoComPEN = Math.max(opcaoNormativa.secao, secaoMinimaPenMm2 ?? 0)
+  const opcaoFinal = trilha.find((linha) => linha.secao === secaoComPEN) ?? opcaoNormativa
+  const elevadaPeloPEN = secaoComPEN > opcaoNormativa.secao
   const secaoMm2 = opcaoFinal.secao
 
   return {
@@ -231,8 +237,8 @@ export function dimensionarCondutorFaseGeral(correnteEntradaA, comprimentoM, ten
     condutoresCarregados: TABELA_46_CONDUTORES_CARREGADOS[esquema],
     neutroCarregado,
     secaoMinimaNormativa: SECAO_MINIMA_MM2.geral,
-    pisoPraticoMm2: PISO_PRATICO_ALIMENTADOR_MM2,
-    elevadaPeloPisoPratico,
+    secaoMinimaPenMm2,
+    elevadaPeloPEN,
     secaoMm2,
     ampacidadeA: opcaoFinal.ampacidadeCorrigida,
     ampacidadeTabelaA: opcaoFinal.ampacidade,
@@ -333,6 +339,7 @@ export function dimensionarProtecaoGeral({
   alimentacaoAerea = false,
   regiaoAltoIndiceDescargas = false,
   exposicaoDescargaDireta = false,
+  esquemaAterramento = '',
 }) {
   const correnteEntradaA = Math.max(...correntePorFaseA)
   // Método D (enterrado) referencia a temperatura do SOLO (20°C), não a do ar (30°C) — a mesma
@@ -370,7 +377,8 @@ export function dimensionarProtecaoGeral({
     convencao,
     impedancia: impedanciaAlimentador,
     limiteQuedaTotalPercentual,
-    disjuntores: correntesDisjuntor ? correntesDisjuntor(numeroFases >= 2 ? 2 : 1) : undefined,
+    disjuntores: correntesDisjuntor,
+    trechoPEN: esquemaAterramento === 'TN-C-S',
   })
   const idr = dimensionarIDR(condutorFase.disjuntorA, numeroFases)
   const dps = recomendarDPS(tensaoFaseNeutro, { alimentacaoAerea, regiaoAltoIndiceDescargas, exposicaoDescargaDireta, classeAQ })

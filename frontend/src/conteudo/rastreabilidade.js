@@ -12,7 +12,7 @@ export const RASTREABILIDADE = [
       ['Potência de TUG', '9.5.2.2.2; p. 184; PDF 192', '3.3.3; PDF 90', 'Cômodos'],
       ['Uso específico', '4.2.1.2.3; p. 13; PDF 21', '3.3.4; PDF 90', 'Cômodos (TUE)'],
       ['Circuitos e aquecedores', '4.2.5; 9.5.2.3; 9.5.3; 9.5.4', '3.4; PDF 90–91', 'Circuitos'],
-      ['Demanda residencial', '4.2.1.1.2; p. 12; PDF 20', '3.8; Tabela 3.20 e exemplo; PDF 132–134', 'Proteção e resultado'],
+      ['Não-simultaneidade (demanda)', '4.2.1.1.2; p. 12; PDF 20 — sem tabela na norma: carga cheia', '3.8 (não usado)', 'Memorial (parâmetros de projeto)'],
       ['Balanceamento', '4.2.5.6; p. 18; PDF 26', '3.4; PDF 90', 'Circuitos'],
     ],
   },

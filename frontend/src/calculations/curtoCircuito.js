@@ -72,21 +72,8 @@ export function verificarCurtoCircuito({
     }
   }
 
-  // Tabela 30, NOTA 1 — k não é normalizado abaixo de 10 mm² (a faixa de praticamente todo
-  // circuito terminal residencial). `obterK` devolve `null` nesse caso; sem um k confiável, o
-  // critério fica "não verificado" — nunca "conforme" por acidente de `null * secaoMm2 === 0`.
+  // Tabela 30: k = 115 (PVC ≤ 300 mm²) ou 143 (EPR/XLPE), em qualquer seção — ver `obterK`.
   const k = obterK({ isolacao, secaoMm2 })
-  if (k === null) {
-    return {
-      verificado: false,
-      conforme: null,
-      limiarInstantaneoA,
-      motivo:
-        `Seção de ${secaoMm2} mm² fica abaixo de 10 mm² — a Tabela 30 (NOTA 1) não normaliza o fator k nessa faixa, ` +
-        'então o critério I²t ≤ k²S² não pode ser verificado com o valor de k desta ferramenta.',
-    }
-  }
-
   const energiaPassanteA2s = iccPresumidaA ** 2 * TEMPO_DISPARO_INSTANTANEO_S
   const energiaSuportadaA2s = (k * secaoMm2) ** 2
   const conforme = energiaPassanteA2s <= energiaSuportadaA2s
@@ -95,6 +82,8 @@ export function verificarCurtoCircuito({
     verificado: true,
     conforme,
     limiarInstantaneoA,
+    k,
+    tempoS: TEMPO_DISPARO_INSTANTANEO_S,
     energiaPassanteA2s,
     energiaSuportadaA2s,
     motivo: conforme

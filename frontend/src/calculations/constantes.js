@@ -104,7 +104,7 @@ export const METODOS_INSTALACAO = {
   A1: {
     label: 'A1 — fios em eletroduto embutido em parede isolante',
     descricao:
-      'Condutores isolados (fios soltos) em eletroduto embutido em parede termicamente isolante (drywall, wood frame, steel frame — §6.2.5.1.2, nota 1). Dissipa pior que B1, mesma situação só que sem alvenaria maciça ao redor do eletroduto.',
+      'Condutores isolados em eletroduto embutido em parede termicamente isolante: face externa estanque, isolação térmica e face interna de madeira ou material análogo (§6.2.5.1.2, nota 1). Não é a parede de gesso acartonado (drywall): ela é espaço de construção (Tabela 33, nota 5), maneiras 21 a 25, métodos B1/B2.',
     referenciaAgrupamento: 'tabela42ref1',
     enterrado: false,
   },
@@ -137,9 +137,9 @@ export const METODOS_INSTALACAO = {
     enterrado: false,
   },
   D: {
-    label: 'D — cabo em eletroduto enterrado',
+    label: 'D — em eletroduto enterrado',
     descricao:
-      'Cabo multipolar em eletroduto (metálico, plástico ou de barro) enterrado no solo, a 0,7 m de profundidade (§6.2.5.1.2, nota 4) — o ramal de entrada enterrado. Ampacidade referida a 20°C de solo, não 30°C de ar; agrupamento pela Tabela 45, não pela 42.',
+      'Cabos em eletroduto enterrado no solo (maneiras 61, 61A e 63 da Tabela 33). Capacidade referida a 20 °C de solo, não a 30 °C de ar; agrupamento pela Tabela 45, na sub-tabela de condutores isolados ou cabos unipolares (a mais severa) quando não há grupo informado.',
     referenciaAgrupamento: 'tabela45',
     enterrado: true,
   },
@@ -308,28 +308,16 @@ export const SECAO_MINIMA_MM2 = {
   geral: 2.5,
 }
 
-// Piso PRÁTICO do alimentador (10 mm²) — não é um mínimo da NBR 5410 (na Tabela 47, 10 mm² é a
-// linha de CONDUTORES NUS; para cabo isolado o mínimo normativo é os 2,5 mm² acima). É uma
-// exigência típica das normas de fornecimento das concessionárias (Enel, Light, CPFL etc.),
-// mantida como piso por padrão porque é o que qualquer concessionária brasileira vai exigir na
-// prática — sem ela, o alimentador ficaria "conforme a NBR" mas não instalável.
-export const PISO_PRATICO_ALIMENTADOR_MM2 = 10
+// §6.4.3.4.1 — o condutor PEN não pode ter seção inferior a 10 mm² em cobre. No TN-C-S o trecho PEN é o
+// alimentador até o quadro; como o neutro de circuito monofásico tem a mesma seção da fase (§6.2.6.2.2) e o
+// de circuito com duas ou três fases não pode ser inferior à fase sem as condições da Tabela 48, o
+// alimentador TN-C-S parte de 10 mm². Fora do TN-C-S o mínimo é o da Tabela 47 (2,5 mm², circuito de força).
+export const SECAO_MINIMA_PEN_MM2 = 10
 
-// Disjuntores termomagnéticos com correntes nominais padronizadas.
-// Série de cadastro da semana 7 do compilado (S7 §3): a NBR 5410 não lista correntes nominais, elas vêm
-// do catálogo. Cada linha (Creder, tabela 4.4, Legrand, curva C) tem as suas, e a capacidade de ruptura Icn
-// (127/230 V e 230/400 V). `polos`: correntes por número de polos (DX-H 1P só tem 80 A).
+// Correntes nominais de disjuntor consideradas na escolha de In (§5.3.4.1 a). A NBR 5410 não lista
+// correntes nominais: elas são características do dispositivo (norma de produto, NBR NM 60898). A série é
+// genérica, sem fabricante; a capacidade de interrupção (Icn) é informada pelo usuário (§5.3.5.5.1).
 export const DISJUNTORES_PADRONIZADOS = [4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125]
-export const LINHAS_DISJUNTOR = {
-  serie: { label: 'Série de cadastro (4 a 125 A), sem linha de fabricante', correntes: DISJUNTORES_PADRONIZADOS, icnKA: null },
-  'DX-E': { label: 'DX-E (6 kA, curva C): 4, 6, 10, 16, 20, 32, 50, 63 A', correntes: [4, 6, 10, 16, 20, 32, 50, 63], icnKA: 6 },
-  'DX-6000': { label: 'DX 6000 (6 kA, curva C): 4 a 63 A', correntes: [4, 6, 10, 16, 20, 25, 32, 40, 50, 63], icnKA: 6 },
-  'DX-H': { label: 'DX-H (10 kA, curva C): 1P 80 A; 2P/3P 80, 100, 125 A', correntes: [80, 100, 125], correntes1P: [80], icnKA: 10 },
-}
-export function correntesDaLinha(linha, polos = 2) {
-  const l = LINHAS_DISJUNTOR[linha] ?? LINHAS_DISJUNTOR.serie
-  return polos === 1 && l.correntes1P ? l.correntes1P : l.correntes
-}
 
 // Correntes nominais comerciais mais comuns de interruptores/disjuntores diferenciais residuais (DR).
 export const IDR_CORRENTES_PADRONIZADAS = [25, 40, 63, 80, 100]
@@ -339,8 +327,7 @@ export const IDR_CORRENTES_PADRONIZADAS = [25, 40, 63, 80, 100]
 // externas): DR de alta sensibilidade, corrente diferencial-residual nominal ≤ 30 mA.
 export const IDR_SENSIBILIDADE_ALTA_MA = 30
 
-// Tensão máxima de operação contínua (Uc) mais usada comercialmente para DPS Classe II em
-// instalações residenciais, conforme a tensão fase-neutro da rede.
+// Valor comercial de Uc que atende o mínimo da Tabela 49 (1,1·Uo): 175 V em 127 V e 275 V em 220 V.
 export function recomendarTensaoDps(tensaoFaseNeutro) {
   return tensaoFaseNeutro <= 127 ? 175 : 275
 }
@@ -389,22 +376,17 @@ export function obterSecaoNeutroReduzida(secaoFaseMm2) {
   return linha?.secaoNeutro ?? secaoFaseMm2
 }
 
-// NBR 5410 §5.3.5.5.2 / Tabela 30 — fator k da fórmula I²·t ≤ k²·S² (proteção contra
-// curto-circuito), cobre, por isolação. PVC: 115 até 300 mm² (a única faixa que esta ferramenta
-// alcança — maior seção considerada: 120 mm²), 103 acima disso. EPR/XLPE: 143 (a fonte extraída
-// não registra quebra de faixa para esta isolação dentro do que foi conferido — não inventar uma).
-//
-// NOTA 1 da própria Tabela 30: "Outros valores de k, para os casos mencionados abaixo, ainda não
-// estão normalizados: condutores de pequena seção (principalmente para seções inferiores a
-// 10 mm²)". É a faixa de praticamente todo circuito terminal residencial (1,5/2,5/4/6 mm²) — por
-// isso `null` aqui, não um valor emprestado da faixa maior: mesmo padrão de "nunca extrapolar" já
-// usado em `obterFatorTemperatura`/`obterFatorResistividadeSolo`. Quem chama precisa tratar
-// `null` como "não verificável", nunca multiplicar direto (ver `verificarCurtoCircuito`).
+// NBR 5410 §5.3.5.5.2 / Tabela 30 — fator k da fórmula I²·t ≤ k²·S², cobre: PVC 115 para S ≤ 300 mm²
+// e 103 acima; EPR/XLPE 143. A tabela não tem limite inferior de seção. A NOTA 1 diz que "outros valores
+// de k" (mais precisos) para condutores de pequena seção ainda não estão normalizados — ou seja, o valor
+// normalizado é o da tabela, e ele é o mesmo k da Tabela 55, que esta ferramenta já usa no PE de qualquer
+// seção. A nota aparece como ressalva no memorial (`RESSALVA_K_PEQUENA_SECAO`).
 export function obterK({ isolacao = 'pvc', secaoMm2 } = {}) {
-  if (secaoMm2 !== null && secaoMm2 !== undefined && secaoMm2 < 10) return null
   if (isolacao === 'epr') return 143
   return secaoMm2 !== null && secaoMm2 !== undefined && secaoMm2 > 300 ? 103 : 115
 }
+export const RESSALVA_K_PEQUENA_SECAO =
+  'Tabela 30, NOTA 1: para seções inferiores a 10 mm², outros valores de k (mais precisos) ainda não estão normalizados; usa-se o valor da tabela.'
 
 // Multiplicador de disparo instantâneo (magnético) dos disjuntores termomagnéticos residenciais,
 // conforme as curvas da IEC 60898 — dado do DISJUNTOR, não da NBR 5410 (a norma só define o
@@ -601,8 +583,7 @@ export const TABELA_FCA_METODO_C = [
 // do eletroduto é calculada sobre ele) — por isso é a segunda sub-tabela, mais severa, que se
 // aplica aqui; usar a de cabo multipolar (corrigido em 30/09/2026) combinaria um fator de
 // agrupamento mais permissivo com uma geometria de condutor que não é a dele. Só tabelada até 6
-// circuitos; mesmo critério das duas tabelas de agrupamento acima (Tabela 42 refs. 1/2): mantém o
-// último fator tabelado como piso, em vez de extrapolar um valor pior sem base normativa.
+// circuitos: acima disso `obterFatorAgrupamento` devolve null (não verificado), sem extrapolar.
 export const TABELA_45_AGRUPAMENTO_ENTERRADO = [
   { ateCircuitos: 1, fator: 1.0 },
   { ateCircuitos: 2, fator: 0.8 },
@@ -762,12 +743,12 @@ export const DIAMETRO_EXTERNO_CONDUTOR_MM = Object.fromEntries(
   ]),
 )
 
-// Catálogos de eletroduto (a NBR 5410 fixa a taxa de ocupação, não os diâmetros — S8 §3). Dado de produto do
-// Creder, 16ª ed., tabelas 10.4 e 10.5 (eletroduto Tigre, classe B): o DN do soldável NÃO equivale ao do
-// roscável (DN 20 soldável tem Di 18,0 mm; DN 20 roscável, 16,4 mm). Guardar tipo, DN, rosca e Di.
+// Diâmetros internos de eletroduto: a NBR 5410 fixa a taxa de ocupação (§6.2.11.1.6 a), não os diâmetros,
+// que são dado de produto (aqui, Creder, 16ª ed., tabelas 10.4 e 10.5, PVC rígido classe B). O DN do
+// soldável NÃO equivale ao do roscável (DN 20 soldável tem Di 18,0 mm; DN 20 roscável, 16,4 mm).
 export const CATALOGOS_ELETRODUTO = {
   'pvc-roscavel': {
-    label: 'PVC rígido roscável, classe B (Tigre) — tab. 10.4',
+    label: 'PVC rígido roscável, classe B — Creder, tab. 10.4',
     itens: [
       { dn: 20, rosca: '1/2"', di: 16.4 },
       { dn: 25, rosca: '3/4"', di: 21.3 },
@@ -780,7 +761,7 @@ export const CATALOGOS_ELETRODUTO = {
     ],
   },
   'pvc-soldavel': {
-    label: 'PVC rígido soldável, classe B (Tigre) — tab. 10.5',
+    label: 'PVC rígido soldável, classe B — Creder, tab. 10.5',
     itens: [
       { dn: 16, rosca: '—', di: 14.0 },
       { dn: 20, rosca: '—', di: 18.0 },

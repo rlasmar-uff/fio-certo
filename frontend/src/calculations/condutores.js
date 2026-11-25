@@ -80,6 +80,7 @@ export function avaliarTrilhaSecao(tipoCircuito, parametros) {
     convencao,
     impedancia = null,
     secaoRetornoMm2 = null,
+    secaoMinimaCurtoMm2 = null,
   } = parametros
   const secaoMinimaNormativa = SECAO_MINIMA_MM2[tipoCircuito] ?? SECAO_MINIMA_MM2.tug
   const condutoresCarregados = TABELA_46_CONDUTORES_CARREGADOS[esquema]
@@ -110,6 +111,8 @@ export function avaliarTrilhaSecao(tipoCircuito, parametros) {
           secaoRetornoMm2,
         })
     const atendeQueda = quedaPercentual === null || quedaPercentual <= limiteQuedaPercentual
+    // §6.2.6.1.2 c) / §5.3.5.5.2 — com a Icc conhecida, a seção também precisa suportar I²t ≤ k²S².
+    const atendeCurto = secaoMinimaCurtoMm2 === null || secao >= secaoMinimaCurtoMm2 - 1e-9
 
     return {
       secao,
@@ -118,7 +121,8 @@ export function avaliarTrilhaSecao(tipoCircuito, parametros) {
       atendeAmpacidade,
       quedaPercentual,
       atendeQueda,
-      aprovada: atendeAmpacidade && atendeQueda,
+      atendeCurto,
+      aprovada: atendeAmpacidade && atendeQueda && atendeCurto,
     }
   })
 }
@@ -134,10 +138,12 @@ export function escolherSecao(tipoCircuito, parametros) {
   // guardada à parte para mostrar quando a distância exige um cabo maior que isso.
   const opcaoPorAmpacidade = trilha.find((linha) => linha.atendeAmpacidade)
   const opcaoFinal = trilha.find((linha) => linha.aprovada)
+  const opcaoSemCurto = trilha.find((linha) => linha.atendeAmpacidade && linha.atendeQueda)
 
   return {
     secaoMinimaNormativa,
     trilha,
+    secaoSemCurto: opcaoSemCurto?.secao ?? null,
     secaoPorAmpacidade: opcaoPorAmpacidade?.secao ?? null,
     secaoMm2: opcaoFinal?.secao ?? null,
     ampacidadeA: opcaoFinal?.ampacidadeCorrigida ?? null,
@@ -163,6 +169,7 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
     impedancia = null,
     secaoRetornoMm2 = null,
     disjuntores = DISJUNTORES_PADRONIZADOS,
+    secaoMinimaCurtoMm2 = null,
   } = opcoes
 
   // Tabela 46 — derivado do próprio circuito, nunca recebido de fora: um circuito terminal é
@@ -215,8 +222,8 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
   const agrupamentoForaDaTabela = fatorAgrupamento === null
   const semFatorTabelado = temperaturaForaDaFaixa || agrupamentoForaDaTabela
   const secaoMinimaNormativa = SECAO_MINIMA_MM2[circuito.tipo] ?? SECAO_MINIMA_MM2.tug
-  const { secaoPorAmpacidade, secaoMm2, ampacidadeA, ampacidadeTabelaA, trilha } = semFatorTabelado
-    ? { secaoPorAmpacidade: null, secaoMm2: null, ampacidadeA: null, ampacidadeTabelaA: null, trilha: [] }
+  const { secaoPorAmpacidade, secaoSemCurto, secaoMm2, ampacidadeA, ampacidadeTabelaA, trilha } = semFatorTabelado
+    ? { secaoPorAmpacidade: null, secaoSemCurto: null, secaoMm2: null, ampacidadeA: null, ampacidadeTabelaA: null, trilha: [] }
     : escolherSecao(circuito.tipo, {
         correnteNominalDisjuntorA: disjuntorA,
         correnteProjetoA,
@@ -234,6 +241,7 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
         convencao,
         impedancia,
         secaoRetornoMm2,
+        secaoMinimaCurtoMm2,
       })
 
   const quedaPercentual =
@@ -280,7 +288,11 @@ export function dimensionarCircuito(circuito, comprimentoM = 0, opcoes = {}) {
     // adotada. Antes só era calculado para o alimentador; todo circuito terminal também precisa.
     secaoTerraMm2: calcularSecaoTerra(secaoMm2),
     trilhaSecao: trilha,
-    elevadaPorQuedaDeTensao: secaoPorAmpacidade !== null && secaoMm2 !== null && secaoMm2 > secaoPorAmpacidade,
+    elevadaPorQuedaDeTensao: secaoPorAmpacidade !== null && secaoSemCurto !== null && secaoSemCurto > secaoPorAmpacidade,
+    // §6.2.6.1.2 c) — seção aumentada só para suportar a energia de curto-circuito (I²t ≤ k²S²).
+    secaoMinimaCurtoMm2,
+    elevadaPorCurto: secaoSemCurto !== null && secaoMm2 !== null && secaoMm2 > secaoSemCurto,
+    secaoSemCurto,
     quedaPercentual,
     quedaVolts: quedaPercentual === null ? null : (quedaPercentual * circuito.tensao) / 100,
     quedaAdmissivelVolts: (limiteQuedaPercentual * circuito.tensao) / 100,
@@ -353,6 +365,7 @@ export function dimensionarCircuitos(circuitos, comprimentosPorId = {}, opcoes =
       impedancia,
       secaoRetornoMm2: secaoRetorno,
       disjuntores: opcoes.correntesDisjuntor ? opcoes.correntesDisjuntor(circuito.ehFaseFase ? 2 : 1) : undefined,
+      secaoMinimaCurtoMm2: opcoes.secaoMinimaCurtoPorId?.[circuito.id] ?? null,
     })
   })
 }

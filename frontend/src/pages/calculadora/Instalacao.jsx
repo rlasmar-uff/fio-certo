@@ -16,7 +16,7 @@ import {
   listarTemperaturasDisponiveis,
   resolverConfigInstalacao,
 } from '../../calculations/constantes.js'
-import { DISTRIBUIDORAS } from '../../calculations/distribuidoras.js'
+import { CampoMarcar, CampoTexto } from '../../components/CamposProjeto.jsx'
 import { ROUTES } from '../../routes.js'
 import InstalacaoDocumento from './InstalacaoDocumento.jsx'
 
@@ -42,7 +42,6 @@ export default function Instalacao() {
     setEsquemaAterramento,
     setCondicaoAterramento,
     setResistenciaAterramentoOhm,
-    setDistribuidoraId,
   } = useProjeto()
   const { numeroFases, tensaoFaseFase } = calculo.configInstalacao
   const secaoFase = calculo.protecaoGeral.condutorFase.secaoMm2
@@ -52,8 +51,19 @@ export default function Instalacao() {
     <EtapaCalculadora
       titulo="Dados da instalação"
       clausulas="§6.2.7.1 · §5.3.5"
-      referenciaNorma="Estes dados valem para a instalação inteira: a tensão define a corrente de cada circuito, e o ramal de entrada consome parte do limite total de 5% de queda de tensão a partir do ponto de entrega (§6.2.7.1 c) antes dos circuitos terminais. A Icc presumida habilita a verificação de curto-circuito (§5.3.5)."
+      referenciaNorma={`Estes dados valem para a instalação inteira: a tensão define a corrente de cada circuito, e o ramal de entrada consome parte do limite total de ${calculo.limiteQuedaTotalPercentual.toLocaleString('pt-BR')}% de queda de tensão (§6.2.7.1) antes dos circuitos terminais. A Icc presumida habilita a verificação de curto-circuito (§5.3.5).`}
     >
+      <h2>Identificação (memorial, §6.1.8.1)</h2>
+      <div className="grade-campos grade-campos-larga">
+        <CampoTexto chave="cliente" label="Cliente (opcional)" />
+        <CampoTexto chave="endereco" label="Endereço da instalação (opcional)" />
+        <CampoTexto chave="responsavelTecnico" label="Responsável técnico (opcional)" />
+        <CampoTexto chave="registroProfissional" label="Registro profissional (CREA/CFT, opcional)" />
+        <CampoTexto chave="numeroART" label="Nº da ART/TRT (opcional)" />
+        <CampoTexto chave="revisao" label="Revisão do documento" />
+      </div>
+
+      <h2>Alimentação</h2>
       <div className="grade-campos grade-campos-larga">
         <Campo
           label="Tensão fase-neutro na sua região"
@@ -66,7 +76,7 @@ export default function Instalacao() {
           >
             {TENSOES_FASE_NEUTRO.map((tensao) => (
               <option key={tensao} value={tensao}>
-                {tensao}V {tensao === 127 ? '(mais comum no Brasil)' : '(parte do RJ, PR, SC e outras regiões)'}
+                {tensao} V
               </option>
             ))}
           </select>
@@ -117,7 +127,7 @@ export default function Instalacao() {
       {projeto.comprimentoRamalEntrada === '' && (
         <p className="texto-atencao">
           Sem o comprimento do ramal, a queda de tensão do alimentador não é verificada e os circuitos
-          recebem o limite cheio de 4%.
+          recebem o limite cheio de 4% (§6.2.7.2).
         </p>
       )}
 
@@ -259,34 +269,10 @@ export default function Instalacao() {
         para os dos circuitos.
       </Nota>
 
-      <h2>Distribuidora (opcional)</h2>
-      <div className="grade-campos grade-campos-larga">
-        <Campo
-          label="Distribuidora"
-          ajuda="Só para comparar com a demanda de iluminação/tomadas que ela calcularia. Não muda o dimensionamento."
-        >
-          <select className="campo" value={projeto.distribuidoraId} onChange={(evento) => setDistribuidoraId(evento.target.value)}>
-            <option value="">nenhuma / não informado</option>
-            {Object.entries(DISTRIBUIDORAS).map(([id, distribuidora]) => (
-              <option key={id} value={id}>
-                {distribuidora.nome}
-              </option>
-            ))}
-          </select>
-        </Campo>
-      </div>
-      <Nota titulo="Para que serve a distribuidora?">
-        Cada distribuidora tem sua própria norma de fornecimento, com fator de demanda próprio para
-        iluminação e tomadas (algumas não reduzem nada) — não é a mesma coisa em todo o Brasil, e não
-        é conteúdo da NBR 5410. A demanda calculada aqui aparece só para comparação no Resultado; o
-        alimentador e o disjuntor geral continuam dimensionados pela soma cheia das cargas (mais
-        segura). Chuveiro, ar-condicionado e motor ainda não entram nessa conta.
-      </Nota>
-
       <h2>Proteção contra surtos (DPS)</h2>
       <p className="texto-fraco">
-        Fatos sobre a instalação real. Na dúvida, deixe desmarcado: o DPS Classe II continua
-        recomendado como boa prática.
+        Fatos sobre a instalação real. A NBR 5410 exige DPS com alimentação aérea em região AQ2, ou em
+        região AQ3 (§5.4.2.1.1); fora disso ele não é exigido.
       </p>
       <label className="campo-checkbox">
         <input
@@ -302,7 +288,7 @@ export default function Instalacao() {
           checked={projeto.regiaoAltoIndiceDescargas}
           onChange={(evento) => setRegiaoAltoIndiceDescargas(evento.target.checked)}
         />
-        A região tem mais de 25 dias de trovoada por ano (AQ2/AQ3, Tabela 15).
+        A região tem mais de 25 dias de trovoada por ano (AQ2, Tabela 15).
       </label>
       <label className="campo-checkbox">
         <input
@@ -311,11 +297,11 @@ export default function Instalacao() {
           onChange={(evento) => setExposicaoDescargaDireta(evento.target.checked)}
         />
         A edificação está exposta a descarga atmosférica direta (isolada, alta ou com para-raios
-        próprio) — indica DPS Classe I além da Classe II.
+        próprio) — o DPS precisa também de corrente de impulso Iimp (§6.3.5.2.1 b, §6.3.5.2.4 d).
       </label>
       <Nota titulo='O que é a "Tabela 15"?'>
         <p>
-          É a Tabela 15 da própria NBR 5410 (§4.2.6.1.12): só 3 códigos de exposição a descargas
+          É a Tabela 15 da própria NBR 5410 (§4.2.6.1.12): três códigos de exposição a descargas
           atmosféricas, sem mapa geográfico.
         </p>
         <table className="tabela-resultado">
@@ -324,23 +310,27 @@ export default function Instalacao() {
               <th>Código</th>
               <th>Classificação</th>
               <th>Características</th>
+              <th>Aplicações e exemplos</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>AQ1</td>
               <td>Desprezíveis</td>
+              <td>≤ 25 dias por ano</td>
               <td>—</td>
             </tr>
             <tr>
               <td>AQ2</td>
               <td>Indiretas</td>
-              <td>≤ 25 dias de trovoada por ano</td>
+              <td>&gt; 25 dias por ano; riscos provenientes da rede de alimentação</td>
+              <td>Instalações alimentadas por redes aéreas</td>
             </tr>
             <tr>
               <td>AQ3</td>
               <td>Diretas</td>
-              <td>&gt; 25 dias de trovoada por ano — redes aéreas</td>
+              <td>Riscos provenientes da exposição dos componentes da instalação</td>
+              <td>Partes da instalação situadas no exterior das edificações</td>
             </tr>
           </tbody>
         </table>
@@ -421,8 +411,10 @@ export default function Instalacao() {
           <Nota titulo="Por que declarar a 3ª harmônica?">
             Ela governa dois critérios opostos: acima de 15% o neutro passa a ser condutor carregado
             (fator 0,86, §6.2.5.6.1); até 15%, e só então, o neutro pode ser reduzido pela Tabela 48
-            (§6.2.6.2.6). Sem declarar, nenhum dos dois é aplicado. Lâmpadas de descarga,
-            fluorescentes e fontes chaveadas costumam passar de 15%.
+            (§6.2.6.2.6). Sem declarar, nenhum dos dois é aplicado. A norma cita como exemplo de
+            taxa acima de 15% circuitos de luminárias com lâmpadas de descarga, incluindo as
+            fluorescentes; e acima de 33%, circuitos que alimentam principalmente computadores
+            (§6.2.6.2.3 e §6.2.6.2.5, notas).
           </Nota>
         )}
         {METODOS_INSTALACAO[projeto.metodoInstalacaoAlimentador]?.enterrado && (
@@ -434,16 +426,24 @@ export default function Instalacao() {
         )}
 
         {neutroPodeReduzir && (
-          <label className="campo-checkbox">
-            <input
-              type="checkbox"
-              checked={projeto.neutroReduzidoDeclarado}
-              onChange={(evento) => setNeutroReduzidoDeclarado(evento.target.checked)}
-            />
-            Reduzir a seção do neutro (Tabela 48, §6.2.6.2.6) — só marque se valerem: (a) circuito
-            trifásico presumivelmente equilibrado; (b) neutro protegido contra sobrecorrente. A 3ª
-            condição (3ª harmônica ≤ 15%) é o campo acima.
-          </label>
+          <fieldset className="grade-checks">
+            <legend>Neutro reduzido (Tabela 48, §6.2.6.2.6) — as três condições valem ao mesmo tempo</legend>
+            <label className="campo-checkbox">
+              <input
+                type="checkbox"
+                checked={projeto.neutroReduzidoDeclarado}
+                onChange={(evento) => setNeutroReduzidoDeclarado(evento.target.checked)}
+              />
+              Reduzir a seção do neutro do alimentador
+            </label>
+            {projeto.neutroReduzidoDeclarado && (
+              <>
+                <CampoMarcar chave="neutroEquilibrado">a) o circuito é presumivelmente equilibrado em serviço normal</CampoMarcar>
+                <CampoMarcar chave="neutroProtegido">c) o neutro é protegido contra sobrecorrentes (§5.3.2.2)</CampoMarcar>
+                <p className="texto-fraco">b) a taxa de 3ª harmônica e múltiplos não passa de 15%: declare no campo acima.</p>
+              </>
+            )}
+          </fieldset>
         )}
       </details>
 

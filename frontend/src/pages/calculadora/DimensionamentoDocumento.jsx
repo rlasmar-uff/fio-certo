@@ -22,8 +22,9 @@ export function Agrupamentos() {
     <>
       <h2>Agrupamentos e eletrodutos compartilhados</h2>
       <p>
-        Por padrão cada circuito é dimensionado como se estivesse com os demais em feixe (Tabela 42, linha 1). Se circuitos reais dividem o
-        mesmo eletroduto, bandeja ou vala, monte o grupo: o fator K2 sai da tabela da forma escolhida e o eletroduto soma todos os condutores.
+        Por padrão cada circuito é corrigido pelo número de circuitos que atendem o mesmo cômodo (agrupamento por cômodo). Se o percurso
+        real for outro — circuitos que dividem o mesmo eletroduto, bandeja ou vala —, monte o grupo: o fator K2 sai da tabela da forma
+        escolhida e o eletroduto soma todos os condutores.
       </p>
       {grupos.map((grupo) => {
         const resultado = resultados.get(grupo.id)

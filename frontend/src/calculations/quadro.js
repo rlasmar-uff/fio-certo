@@ -3,6 +3,13 @@
 // dimensionado. Largura em módulos DIN (1 módulo = 1 polo, 18 mm) — ordem de grandeza de
 // catálogo, não dado da NBR 5410; confira no fabricante (DR e DPS variam).
 
+// Número de DPS por esquema de conexão (§6.3.5.2.2, figura 13): 1 = um por fase, ao PE/PEN; 2 = um por
+// fase ao PE e um entre neutro e PE; 3 = um por fase ao neutro e um entre neutro e PE.
+export function modulosDPS(esquemaConexao, numeroFases) {
+  if (esquemaConexao === 1) return numeroFases
+  return numeroFases + 1
+}
+
 // Cada circuito fase-fase ocupa 2 polos; fase-neutro, 1 (o neutro não é seccionado, §6.3.2.2).
 export function montarQuadro(calculo) {
   const { protecaoGeral: pg, dimensionados, complementares, configInstalacao } = calculo
@@ -25,12 +32,16 @@ export function montarQuadro(calculo) {
     polos: numeroFases,
     modulos: numeroFases,
   })
-  // DPS no quadro: esquema de conexão 2 (§6.3.5.2.3 a) — entre cada fase e PE e entre neutro e PE.
-  posicoes.push({ tipo: 'dps', rotulo: `Classe ${pg.dps?.classe ?? 'II'}`, detalhe: 'DPS', polos: numeroFases + 1, modulos: numeroFases + 1 })
+  // DPS: só quando a NBR 5410 o exige (§5.4.2.1.1); a quantidade segue o esquema de conexão (§6.3.5.2.2).
+  const esquemaDPS = complementares.dps?.esquemaConexao?.esquema ?? null
+  if (pg.dps?.exigidaPelaNorma) {
+    const n = modulosDPS(esquemaDPS, numeroFases)
+    posicoes.push({ tipo: 'dps', rotulo: pg.dps.rotulo, detalhe: esquemaDPS ? `DPS · esquema ${esquemaDPS}` : 'DPS', polos: n, modulos: n })
+  }
 
   const { drs } = pg
   const grupos = []
-  if (drs?.modo === 'grupos') {
+  if (drs?.modo === 'grupos' || drs?.modo === 'exigidos') {
     if (drs.montante && pg.idr) {
       posicoes.push({
         tipo: 'dr',
@@ -52,6 +63,12 @@ export function montarQuadro(calculo) {
         modulos: grupo.polos,
       })
       posicoes.push(...circuitos.map(disjuntor))
+    }
+    // Modo "exigidos": os circuitos em que a norma não exige DR saem direto do barramento.
+    const semDR = dimensionados.filter((circuito) => !circuito.sobDR)
+    if (semDR.length) {
+      grupos.push({ numero: null, dr: null, circuitos: semDR })
+      posicoes.push(...semDR.map(disjuntor))
     }
   } else {
     const idr = pg.idr

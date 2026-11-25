@@ -5,7 +5,6 @@ import { ROUTES } from '../../routes.js'
 import { ClausulaInfo } from '../../components/RefNorma.jsx'
 
 const kA = (valor) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kA`
-const kw = (valor) => `${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kW`
 
 function Linha({ item, clausula, status, rotulo, children }) {
   return (
@@ -31,7 +30,7 @@ function Linha({ item, clausula, status, rotulo, children }) {
 // Verificações da NBR 5410 que não mudam seções nem disjuntores: requisitos mínimos para
 // especificar a compra e conferências que dependem de declarações do usuário.
 export default function SecaoComplementares() {
-  const { calculo } = useProjeto()
+  const { projeto, calculo } = useProjeto()
   const { complementares: c, dimensionados, protecaoGeral } = calculo
   const secc = calculo.seccionamento
   const tn = {
@@ -40,6 +39,7 @@ export default function SecaoComplementares() {
     naoVerificados: dimensionados.filter((circuito) => circuito.seccionamento && !circuito.seccionamento.verificado).length,
   }
   const sobrecargaOk = dimensionados.every((circuito) => circuito.sobrecarga?.conforme !== false) && protecaoGeral.sobrecarga?.conforme !== false
+  const sobrecargaPendente = dimensionados.some((circuito) => circuito.sobrecarga && circuito.sobrecarga.conforme === null)
 
   return (
     <>
@@ -111,8 +111,8 @@ export default function SecaoComplementares() {
             <Linha
               item="Capacidade de interrupção"
               clausula="§5.3.5.5.1"
-              status={c.capacidadeInterrupcao ? '' : 'atencao'}
-              rotulo={c.capacidadeInterrupcao ? 'especificar' : 'falta a Icc'}
+              status={!c.capacidadeInterrupcao ? 'atencao' : c.capacidadeInterrupcao.conforme === false ? 'alerta' : c.capacidadeInterrupcao.conforme ? 'ok' : ''}
+              rotulo={!c.capacidadeInterrupcao ? 'falta a Icc' : c.capacidadeInterrupcao.conforme === false ? 'não conforme' : c.capacidadeInterrupcao.conforme ? 'conforme' : 'especificar'}
             >
               {c.capacidadeInterrupcao ? (
                 <>
@@ -123,6 +123,9 @@ export default function SecaoComplementares() {
                       · disjuntores dos circuitos: Icn ≥ <strong>{kA(c.capacidadeInterrupcao.terminaisKA)}</strong> (Icc no quadro)
                     </>
                   )}
+                  {c.capacidadeInterrupcao.icnKA !== null
+                    ? ` · Icn informada: ${kA(c.capacidadeInterrupcao.icnKA)}.`
+                    : ' · informe a Icn dos disjuntores na etapa de Instalação para comparar.'}
                 </>
               ) : (
                 <>
@@ -132,32 +135,18 @@ export default function SecaoComplementares() {
               )}
             </Linha>
 
-            <Linha item="Sobrecarga: I₂ ≤ 1,45·Iz" clausula="§5.3.4.1 b" status={sobrecargaOk ? 'ok' : 'alerta'} rotulo={sobrecargaOk ? 'conforme' : 'não conforme'}>
-              Com disjuntor IEC 60898 (I₂ = 1,45·In), equivale a In ≤ Iz — conferido em todos os circuitos e no alimentador.
+            <Linha
+              item={`Sobrecarga: I₂ ≤ ${projeto.sobrecargaProlongada ? 'Iz' : '1,45·Iz'}`}
+              clausula="§5.3.4.1 b"
+              status={sobrecargaPendente ? 'atencao' : sobrecargaOk ? 'ok' : 'alerta'}
+              rotulo={sobrecargaPendente ? 'falta I₂/In' : sobrecargaOk ? 'conforme' : 'não conforme'}
+            >
+              {projeto.tipoDispositivo === 'outro'
+                ? `Dispositivo com I₂/In informada pelo fabricante${projeto.relacaoI2InOutro ? ` (${projeto.relacaoI2InOutro})` : ' (não informada)'}`
+                : 'Disjuntor NBR NM 60898: I₂ = 1,45·In'}
+              {projeto.sobrecargaProlongada ? '; sobrecarga prolongada (nota de §5.3.4.1): vale I₂ ≤ Iz' : '; com isso a condição equivale a In ≤ Iz'} —
+              conferido em todos os circuitos e no alimentador.
             </Linha>
-
-            {calculo.demandaConcessionaria && (
-              <Linha item="Demanda pela distribuidora (informativo)" clausula="—" status="" rotulo="não é NBR 5410">
-                {calculo.demandaConcessionaria.aplicavel ? (
-                  <>
-                    Iluminação e tomadas: carga instalada {kw(calculo.demandaConcessionaria.cargaInstaladaKw)} ×
-                    fator de demanda {calculo.demandaConcessionaria.cumulativa && 'equivalente '}
-                    {(calculo.demandaConcessionaria.fatorDemanda * 100).toFixed(0)}%
-                    {calculo.demandaConcessionaria.cumulativa && ' (cada percentual aplicado só à parcela da carga na sua faixa, e somado)'} ={' '}
-                    <strong>{kw(calculo.demandaConcessionaria.demandaKw)}</strong>
-                    {calculo.demandaConcessionaria.semReducao && ' (a norma desta distribuidora não reduz carga residencial)'}, segundo{' '}
-                    {calculo.demandaConcessionaria.distribuidora.nome} ({calculo.demandaConcessionaria.distribuidora.documento}). O
-                    alimentador e o disjuntor geral continuam dimensionados pela soma cheia das cargas, sem redução — só
-                    iluminação/tomadas entram nesta comparação; chuveiro, ar-condicionado e motor ainda não.
-                  </>
-                ) : (
-                  <>
-                    {calculo.demandaConcessionaria.distribuidora.nome} {calculo.demandaConcessionaria.motivo} — sem valor para
-                    mostrar aqui.
-                  </>
-                )}
-              </Linha>
-            )}
 
             <Linha item="Equipotencialização principal" clausula="§6.4.4.1.1" status="" rotulo="especificar">
               {c.equipotencializacao.principalMm2 ? (
@@ -183,7 +172,10 @@ export default function SecaoComplementares() {
             {calculo.locaisEspeciais.piscina && (
               <Linha item="Piscina" clausula="§9.2.3.1.4 · §9.2.4.3.3" status="" rotulo="especificar">
                 {calculo.locaisEspeciais.piscina.comodos.join(', ')}: equipotencialização suplementar dos volumes 0, 1 e 2
-                obrigatória; volumes 0 e 1 só com SELV até 12 V. No volume 2, todos os circuitos já estão sob DR de 30 mA.
+                obrigatória; volumes 0 e 1 só com SELV até 12 V (§9.2.3.1.1). No volume 2:{' '}
+                {dimensionados.filter((circuito) => circuito.exigenciaDR?.motivos.some((motivo) => motivo.includes('piscina'))).every((circuito) => circuito.sobDR)
+                  ? 'os circuitos do local da piscina estão sob DR de 30 mA (§9.2.3.1.2 b, §9.2.4.3.3 b).'
+                  : 'há circuito do local da piscina sem DR — proteja-o por DR de 30 mA, SELV ou separação elétrica.'}
               </Linha>
             )}
 
@@ -233,7 +225,7 @@ export default function SecaoComplementares() {
             <Linha item="DPS — especificação mínima" clausula="§6.3.5.2.4 · §6.3.5.2.9" status="" rotulo="especificar">
               Up ≤ <strong>{c.dps.upMaximoKV.toLocaleString('pt-BR')} kV</strong> · Uc ≥{' '}
               <strong>{Math.ceil(c.dps.ucMinimoFaseV)} V</strong> (fase-neutro/PE; neutro-PE ≥ {c.dps.ucMinimoNeutroPeV} V) · In ≥{' '}
-              <strong>{c.dps.inMinimoKA} kA</strong> por modo ({c.dps.inMinimoNeutroPeKA} kA no neutro-PE, esquema de conexão 3)
+              <strong>{c.dps.inMinimoKA} kA</strong> por modo{c.dps.esquema3 ? ` (${c.dps.inMinimoNeutroPeKA} kA no neutro-PE, esquema de conexão 3)` : ''}
               {c.dps.iimpMinimoKA && (
                 <>
                   {' '}

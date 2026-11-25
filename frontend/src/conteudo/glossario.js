@@ -11,7 +11,10 @@ export const GLOSSARIO = {
   FCT: { nome: 'Fator de correção de temperatura', definicao: 'Reduz a capacidade do condutor quando a temperatura ambiente difere da de referência (Tabela 40).' },
   FCA: { nome: 'Fator de correção de agrupamento', definicao: 'Reduz a capacidade do condutor quando vários circuitos passam juntos e se aquecem mutuamente (Tabelas 42 e 45).' },
   TUG: { nome: 'Tomada de uso geral', definicao: 'Tomada para aparelhos portáteis, sem equipamento definido; a quantidade mínima e a potência vêm do §9.5.2.2.' },
-  TUE: { nome: 'Tomada de uso específico', definicao: 'Ponto para um equipamento determinado (chuveiro, forno, ar-condicionado), com potência conhecida e circuito próprio.' },
+  TUE: {
+    nome: 'Tomada de uso específico',
+    definicao: 'Ponto para um equipamento determinado (chuveiro, forno, ar-condicionado), com a potência do equipamento (§4.2.1.2.3 c). Circuito independente obrigatório acima de 10 A (§9.5.3.1).',
+  },
   'cosφ': { nome: 'Fator de potência', definicao: 'Relação entre potência ativa (W) e aparente (VA). Resistências têm cosφ = 1; motores, menos que 1.' },
   Icc: {
     nome: 'Corrente de curto-circuito presumida',

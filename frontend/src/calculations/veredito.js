@@ -21,8 +21,10 @@ export function destaquesProjeto(projeto, calculo) {
   const { totais } = calcularPrevisaoDeCarga(projeto.comodos, projeto.aplicarAlternativa600VA)
   const { drs, idr, condutorFase, secaoNeutroMm2, secaoTerraMm2, disjuntorGeralA } = protecaoGeral
   const dr =
-    drs.modo === 'grupos'
-      ? `${drs.grupos.length} DR(s) de 30 mA${idr ? ` + ${idr.sensibilidadeMA} mA tipo S` : ''}`
+    drs.modo !== 'geral'
+      ? drs.grupos.length
+        ? `${drs.grupos.length === 1 ? `1 DR ${drs.grupos[0].correnteA ?? '—'} A` : `${drs.grupos.length} DRs`} · 30 mA${idr ? ` + ${idr.sensibilidadeMA} mA tipo S` : ''}`
+        : 'nenhum exigido'
       : idr?.correnteA
         ? `${idr.correnteA} A · ${idr.sensibilidadeMA} mA`
         : '—'
@@ -88,13 +90,14 @@ export function avaliarEntradas(projeto, config = null) {
 // O que esta ferramenta NÃO verifica, sempre — independente dos dados informados. Aparece junto do
 // veredito (inclusive no memorial) para que "conforme" nunca seja lido como aprovação integral.
 export const LIMITACOES_FERRAMENTA = [
-  'Energia passante (I²t ≤ k²S²) nos circuitos de seção abaixo de 10 mm²: a Tabela 30 (NOTA 1) não normaliza o fator k nessa faixa — quase todo circuito terminal residencial.',
   'Curva tempo-corrente real do disjuntor: só o limite superior da faixa magnética da IEC 60898 (B 5·In, C 10·In, D 20·In) é usado; abaixo dele o disparo fica "não verificado".',
+  'Energia passante I²t: estimada com a Icc presumida e 10 ms de atuação (disparo instantâneo); a integral de Joule real do disjuntor é dado do fabricante.',
   'Seletividade entre dispositivos de proteção e coordenação de DPS em cascata.',
   'Harmônicas além da 3ª ordem e neutro de seção maior que a fase (Anexo F), quando a taxa de 3ª harmônica passa de 33%.',
-  'Tipo do DR (AC/A/B) em relação às cargas, e a verificação em campo (continuidade, isolação, resistência de aterramento).',
-  'Padrão de entrada e exigências das distribuidoras: só informativo.',
-  'A reatância dos condutores vem de catálogo de fabricante (a NBR 5410 não a tabela).',
+  'Adequação do tipo do DR (AC/A/B) às cargas (§6.3.3.2.2 e .3) e a verificação em campo (Cap. 7: continuidade, isolamento, resistência de aterramento).',
+  'Fator de demanda: a NBR 5410 manda considerar a não-simultaneidade (§4.2.1.1.2) mas não traz tabela; a ferramenta adota fator 1,00 (carga cheia).',
+  'Padrão de entrada e exigências da distribuidora: fora do escopo da NBR 5410.',
+  'Resistência e reatância dos condutores, diâmetros de cabo e eletroduto e correntes nominais de disjuntor vêm de dados de produto (a NBR 5410 não os tabela).',
 ]
 
 export function calcularVeredito(projeto, calculo) {
@@ -145,6 +148,17 @@ export function calcularVeredito(projeto, calculo) {
   const semComprimento = contar(dimensionados, (circuito) => circuito.naoVerificado)
   if (semComprimento) pendencias.push({ texto: `${semComprimento} circuito(s) sem comprimento (queda de tensão)`, etapa: 'circuitos' })
   if (!projeto.iccPresumidaA) pendencias.push({ texto: 'Icc presumida (curto-circuito e capacidade de interrupção)', etapa: 'instalacao' })
+  else {
+    // Com a Icc informada, o curto-circuito ainda pode ficar sem verificar (comprimento faltando, ou Icc na
+    // ponta abaixo do disparo instantâneo garantido): é pendência, nunca "conforme" por omissão.
+    const ccNaoVerificado = dimensionados.filter((circuito) => !circuito.curtoCircuito?.verificado && !circuito.erro).length
+    if (ccNaoVerificado) pendencias.push({ texto: `Curto-circuito não verificado em ${ccNaoVerificado} circuito(s) (§5.3.5, §6.3.4.3.2)`, etapa: 'dimensionamento' })
+    if (!protecaoGeral.curtoCircuito.verificado) pendencias.push({ texto: `Curto-circuito do alimentador não verificado: ${protecaoGeral.curtoCircuito.motivo}`, etapa: 'instalacao' })
+  }
+  if (protecaoGeral.drs.modo === 'geral' && protecaoGeral.idr && protecaoGeral.idr.correnteA === null)
+    pendencias.push({ texto: 'DR geral: corrente nominal acima da série considerada (100 A) — especifique pelo fabricante ou divida em DRs por grupo', etapa: 'circuitos' })
+  if (projeto.tipoDR === 'AC' && dimensionados.some((circuito) => circuito.sobDR))
+    pendencias.push({ texto: 'DR tipo AC: só admitido onde não se prevê corrente de falta não senoidal (§6.3.3.2.3); com componente contínua, tipo A (§6.3.3.2.2)', etapa: 'instalacao' })
   if (!seccionamento.esquema) pendencias.push({ texto: 'Esquema de aterramento (seccionamento automático)', etapa: 'instalacao' })
   else {
     const seccNaoVerificado = contar(dimensionados, (circuito) => circuito.seccionamento && !circuito.seccionamento.verificado)
@@ -152,7 +166,9 @@ export function calcularVeredito(projeto, calculo) {
   }
   const bancadasSemInformar = contar(complementares.bancadas, (bancada) => bancada.conforme === null)
   if (bancadasSemInformar) pendencias.push({ texto: 'Tomadas da bancada da pia', etapa: 'comodos' })
-  if (protecaoGeral.drs.avisoIntempestivo) pendencias.push({ texto: 'DR único para todos os circuitos (risco de disparo por fuga somada)', etapa: 'circuitos' })
+  // §6.3.3.2.6 — a fuga das cargas não é dado de entrada: fica como conferência em obra.
+  if (protecaoGeral.drs.avisoIntempestivo)
+    pendencias.push({ texto: 'DR com mais de um circuito: conferir em obra que a fuga normal fica abaixo de 50 % de IΔn (§6.3.3.2.6)', etapa: 'circuitos' })
   // Tabela 59, NOTA — reserva do quadro no cálculo do alimentador.
   if (!calculo.reservaAlimentador?.considerada)
     pendencias.push({ texto: 'Reserva do quadro (Tabela 59) não considerada no alimentador: informe a potência por circuito de reserva', etapa: 'instalacao' })
@@ -176,10 +192,6 @@ export function calcularVeredito(projeto, calculo) {
     pendencias.push({ texto: 'Neutro reduzido pedido, mas faltam confirmar o circuito equilibrado e o neutro protegido contra sobrecorrentes (6.2.6.2.6): o neutro não foi reduzido', etapa: 'instalacao' })
   if (protecaoGeral.neutroHarmonicas?.aplicavel) pendencias.push({ texto: `Neutro com 3ª harmônica acima de 33%: corrente de neutro estimada ${protecaoGeral.neutroHarmonicas.correnteNeutroA.toFixed(1)} A (anexo F) — verificação complementar, a seção do neutro não foi dimensionada`, etapa: 'instalacao' })
   if (calculo.complementares?.dps && protecaoGeral.dps?.exigidaPelaNorma && !projeto.esquemaAterramento) pendencias.push({ texto: 'DPS exigido pela norma: declare o esquema de aterramento para definir o esquema de conexão e a tensão Uc', etapa: 'instalacao' })
-  if (dimensionados.some((c) => c.exigenciaDR?.exige && /chuveiro/i.test(c.nome))) {
-    const nua = projeto.comodos.some((comodo) => (comodo.tue ?? []).some((e) => e.resistenciaNua))
-    if (nua) pendencias.push({ texto: 'Chuveiro de resistência nua: DR de alta sensibilidade não convive com ele, por causa da corrente de fuga (Creder, S8 §4.2) — use resistência blindada', etapa: 'comodos' })
-  }
   if (complementares.motores.length) pendencias.push({ texto: `${complementares.motores.length} motor(es) acima de 3,7 kW: consultar a distribuidora`, etapa: 'comodos' })
 
   return {

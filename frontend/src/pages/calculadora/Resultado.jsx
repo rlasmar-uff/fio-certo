@@ -57,9 +57,6 @@ export default function Resultado() {
         <Link className="botao-secundario" to={ROUTES.comparar}>
           Comparar cenários
         </Link>
-        <Link className="botao-secundario" to={ROUTES.consumo}>
-          Simular consumo
-        </Link>
         <Link className="botao-secundario" to={ROUTES.projetos}>
           Exportar ou compartilhar
         </Link>

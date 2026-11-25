@@ -1,14 +1,13 @@
 import Campo from '../../components/Campo.jsx'
 import Nota from '../../components/Nota.jsx'
-import { CampoMarcar, CampoNumero, CampoSelecao, CampoTexto } from '../../components/CamposProjeto.jsx'
+import { CampoMarcar, CampoNumero, CampoSelecao } from '../../components/CamposProjeto.jsx'
 import { useProjeto } from '../../context/useProjeto.js'
-import { FORNECIMENTOS, LINHAS_DISJUNTOR } from '../../calculations/constantes.js'
+import { FORNECIMENTOS } from '../../calculations/constantes.js'
 import { CONVENCOES_RESISTIVIDADE } from '../../calculations/quedaDeTensao.js'
-import { PERFIS_DEMANDA } from '../../calculations/demanda.js'
 import { MANEIRAS_INSTALAR, metodoDaManeira } from '../../calculations/agrupamento.js'
 
 // Painéis das semanas 6 a 8 do compilado do Grupo de Pesquisa: limites de queda, convenção de resistividade,
-// modo por impedância, dispositivos (linha, Icn, I₂/In), PE por cálculo, DPS (classe AQ), neutro e demanda.
+// modo por impedância, dispositivos (Icn, I₂/In, tipo do DR), PE por cálculo, DPS (classe AQ) e neutro.
 export default function InstalacaoDocumento() {
   const { projeto, setCampo, calculo } = useProjeto()
   const numeroFases = calculo.configInstalacao.numeroFases
@@ -59,17 +58,14 @@ export default function InstalacaoDocumento() {
         </Campo>
       </div>
 
-      <h2>Dispositivos de proteção (§5.3, §5.1.3.2, semana 7)</h2>
+      <h2>Dispositivos de proteção (§5.3, §5.1.3.2, §6.3.3.2)</h2>
       <div className="grade-campos grade-campos-larga">
-        <CampoSelecao
-          chave="linhaDisjuntor"
-          label="Linha de disjuntores"
-          ajuda="A NBR 5410 não lista correntes nominais: elas vêm do catálogo (Creder, tabela 4.4). A linha define as correntes disponíveis e a capacidade de ruptura Icn."
-          opcoes={Object.entries(LINHAS_DISJUNTOR).map(([chave, l]) => [chave, l.label])}
+        <CampoNumero
+          chave="icnDisjuntorKA"
+          label="Icn dos disjuntores (opcional)"
+          unidade="kA"
+          ajuda="Capacidade de interrupção do disjuntor que será comprado (característica do produto). É comparada com a Icc presumida no ponto de instalação (§5.3.5.5.1)."
         />
-        {projeto.linhaDisjuntor === 'serie' && (
-          <CampoNumero chave="icnDisjuntorKA" label="Icn do disjuntor (opcional)" unidade="kA" ajuda="Sem linha de fabricante, informe a capacidade de ruptura para compará-la com a Icc presumida (§5.3.5.5.1)." />
-        )}
         <CampoSelecao
           chave="tipoDispositivo"
           label="Tipo do dispositivo de sobrecarga"
@@ -80,8 +76,8 @@ export default function InstalacaoDocumento() {
         <CampoSelecao
           chave="tipoDR"
           label="Tipo do DR"
-          ajuda="AC: só correntes senoidais. A: também com componente contínua. B: também corrente contínua lisa. Escolha pela carga."
-          opcoes={[['AC', 'AC'], ['A', 'A'], ['B', 'B']]}
+          ajuda="§6.3.3.2.2: onde a corrente de falta pode ter componente contínua, só DR que a detecte (tipo A, nota). §6.3.3.2.3: tipo AC só onde não se prevê falta não senoidal."
+          opcoes={[['A', 'A'], ['AC', 'AC'], ['B', 'B']]}
         />
       </div>
       <CampoMarcar chave="sobrecargaProlongada">
@@ -96,15 +92,9 @@ export default function InstalacaoDocumento() {
       <CampoMarcar chave="peForaDoCabo">O PE passa fora do cabo e do conduto das fases (6.4.3.1.4): mínimo de 2,5 mm² com proteção mecânica e 4 mm² sem.</CampoMarcar>
       {projeto.peForaDoCabo && <CampoMarcar chave="peProtecaoMecanica">O PE tem proteção contra danos mecânicos.</CampoMarcar>}
 
-      {numeroFases >= 2 && (
+      {numeroFases >= 2 && projeto.terceiraHarmonica === 'acima-33' && (
         <>
-          <h2>Neutro e 3ª harmônica (§6.2.6.2)</h2>
-          {numeroFases === 3 && projeto.neutroReduzidoDeclarado && (
-            <>
-              <CampoMarcar chave="neutroEquilibrado">O circuito é presumivelmente equilibrado em serviço normal (6.2.6.2.6 a).</CampoMarcar>
-              <CampoMarcar chave="neutroProtegido">O neutro é protegido contra sobrecorrentes (6.2.6.2.6 c, conforme 5.3.2.2).</CampoMarcar>
-            </>
-          )}
+          <h2>Neutro e 3ª harmônica (§6.2.6.2, Anexo F)</h2>
           {projeto.terceiraHarmonica === 'acima-33' && (
             <div className="grade-campos grade-campos-larga">
               <CampoNumero chave="h3Percentual" label="Taxa de 3ª harmônica estimada (opcional)" unidade="%" ajuda="Anexo F: com a taxa, a ferramenta calcula a corrente de neutro; sem ela, usa f = 1,73 (3F+N) ou 1,41 (2F+N). É verificação complementar — o neutro não é dimensionado automaticamente." />
@@ -124,22 +114,10 @@ export default function InstalacaoDocumento() {
       </div>
       <CampoMarcar chave="dpsMontanteDoDR">O DPS fica a montante do DR (no TT, isso obriga o esquema de conexão 3, 6.3.5.2.6 b).</CampoMarcar>
 
-      <h2>Demanda (semana 3, §8–9)</h2>
-      <div className="grade-campos grade-campos-larga">
-        <CampoSelecao
-          chave="perfilDemanda"
-          label="Perfil de demanda"
-          ajuda="O perfil de Creder (tabela 3.20) é bibliográfico e didático, aplicado por parcelas de carga. Cargas de uso específico ficam a 100%."
-          opcoes={Object.entries(PERFIS_DEMANDA).map(([chave, p]) => [chave, p.label])}
-        />
-        <CampoTexto chave="demandaDocumento" label="Documento de demanda" ajuda="Para deixar de ser 'estimativa bibliográfica': identifique distribuidora (acima), documento, revisão e grupo de carga." />
-        <CampoTexto chave="demandaRevisao" label="Revisão do documento" />
-        <CampoTexto chave="demandaGrupo" label="Grupo de carga abrangido" />
-      </div>
-      <Nota titulo="O que a demanda faz e não faz">
-        A demanda é uma estimativa da carga simultânea e não reduz pontos de tomada nem a potência nominal de equipamentos. A
-        ferramenta continua dimensionando o alimentador pela carga cheia (lado seguro): a demanda não fornece, sozinha, a corrente de cada
-        fase.
+      <Nota titulo="Fator de demanda">
+        A NBR 5410 manda considerar a possibilidade de não-simultaneidade (§4.2.1.1.2), mas não traz tabela de fatores
+        de demanda. A ferramenta dimensiona o alimentador pela carga cheia (fator 1,00), e o memorial registra esse fator
+        como parâmetro de projeto (§6.1.8.1 f).
       </Nota>
     </>
   )

@@ -66,8 +66,8 @@ export function montarChecklists(projeto, calculo) {
     ),
     item('Reapertar as conexões em até 90 dias após a entrada em operação e depois em intervalos regulares.', '§8.3.2.2 NOTA'),
   ]
-  if (drs.modo === 'geral' && drs.avisoIntempestivo) {
-    quadro.push(item('Com um só DR, conferir que a fuga normal da instalação fica abaixo de 50% de IΔn (15 mA); se não, dividir em grupos.', '§6.3.3.2.6'))
+  if (drs.avisoIntempestivo) {
+    quadro.push(item('Em cada DR com mais de um circuito, conferir que a fuga normal dos circuitos dele fica abaixo de 50% de IΔn (15 mA); se não, dividir os circuitos entre mais DRs.', '§6.3.3.2.6'))
   }
 
   const condutores = [

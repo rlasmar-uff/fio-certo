@@ -27,10 +27,10 @@ const COMODOS = [
     area: '4',
     perimetro: '8',
     tue: [
-      { id: 'ex-chuveiro', nome: 'Chuveiro', quantidade: 1, potenciaW: '5500', ligacao: 'fase-fase', tipoCarga: 'resistiva', cosPhi: 1 },
+      { id: 'ex-chuveiro', nome: 'Chuveiro', quantidade: 1, potenciaW: '5500', ligacao: 'fase-fase', tipoCarga: 'resistiva', cosPhi: 1, aquecedorAgua: true, conexao: 'direta' },
     ],
   },
-  { id: 'ex-varanda', nome: 'Varanda', tipo: 'outro', area: '6', perimetro: '10' },
+  { id: 'ex-varanda', nome: 'Varanda', tipo: 'varanda', area: '6', perimetro: '10' },
 ].map((comodo) => ({
   iluminacaoQuantidade: '',
   iluminacaoPotenciaUnitariaW: '',
@@ -50,7 +50,7 @@ export function casaModelo() {
     comprimentoRamalEntrada: '20',
     iccPresumidaA: '5000',
     iccFaseNeutroA: '5000',
-    linhaDisjuntor: 'DX-6000',
+    icnDisjuntorKA: '6',
     potenciaReservaPorCircuitoVA: '1000',
     esquemaAterramento: 'TN-C-S',
     condicaoAterramento: 'protegido-total',
@@ -59,10 +59,6 @@ export function casaModelo() {
   // então não são fixados à mão aqui.
   const circuitos = gerarCircuitos(projeto.comodos, resolverConfigInstalacao(projeto.tipoInstalacao, projeto.tensaoFaseNeutro))
   projeto.comprimentos = Object.fromEntries(circuitos.map((circuito) => [circuito.id, COMPRIMENTO_POR_TIPO_M[circuito.tipo]]))
-  // DR por grupo (§6.3.3.2.6): iluminação e tomadas gerais / cozinha e serviço / equipamentos.
-  projeto.modoDR = 'grupos'
-  projeto.grupoDR = Object.fromEntries(
-    circuitos.map((circuito) => [circuito.id, circuito.tipo === 'tue' ? 3 : circuito.id.startsWith('tug-servico') ? 2 : 1]),
-  )
+  // DR no modo padrão: só nos circuitos em que a norma o exige (§5.1.3.2.2).
   return projeto
 }

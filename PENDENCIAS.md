@@ -24,12 +24,9 @@ Coisas que dependem de você, não do código. Atualizado a cada sprint. Marque 
 - [ ] **Instalar o site como app no celular** (menu do navegador → "Adicionar à tela inicial") depois do deploy e abrir sem internet.
 - [ ] **Testar no Safari/iPhone**, se tiver acesso. Os testes automáticos já rodam em Chrome, Firefox e WebKit (o motor do Safari) no computador; falta o celular de verdade, principalmente o modo offline, que o WebKit do Playwright não consegue testar.
 
-## Distribuidoras de energia (fator de demanda, N18)
+## Distribuidoras de energia (fator de demanda)
 
-- [x] **Energisa:** PDF da NDU-001 (versão 7.0, nov/2024) baixado em 24/11/2026 e salvo em `distribuidoras/energisa.pdf`, que fica fora do Git. A tabela já está no motor.
-- [ ] **Baixar o PDF da Copel (NTC 901100)** quando o site voltar: [link oficial](https://www.copel.com/hpcopel/normas/ntcArquivos.nsf/4F0C269A3EBCF33B03257F800070D966/$FILE/NTC%20901100%20Fornecimento%20em%20Tens%C3%A3o%20Secund%C3%A1ria.pdf). Em 24/11/2026 o servidor de normas da Copel estava fora do ar (erro 503). Salve como `distribuidoras/copel.pdf`.
-- [ ] **Se você tiver acesso à ABNT Catálogo (ou outro canal oficial), a NBR 10676:2011** ("Fornecimento de energia a edificações individuais em tensão secundária"). Três distribuidoras (CPFL, EDP São Paulo, Neoenergia) têm a mesma tabela de fator de demanda e citam essa norma; a cópia de 1999 que você tinha não é a mesma edição e não traz essa tabela. Não é obrigatório — hoje a ferramenta já usa a tabela de cada distribuidora direto do PDF dela, que é uma fonte válida por si só.
-- [ ] Se a sua instalação for de uma distribuidora que ainda não está na lista (além das 10 já cobertas e da Copel pendente), me diga qual — arrumo o PDF dela também.
+- [x] **Encerrado em 24/11/2026:** a ferramenta segue só a NBR 5410, que não tem tabela de fator de demanda (§4.2.1.1.2). O cálculo usa carga cheia (1,00) e não há mais seletor de distribuidora, então a Copel e a NBR 10676 deixaram de ser necessárias. Os PDFs já baixados ficam em `distribuidoras/`, fora do Git.
 
 ## Entregas da disciplina (08/12)
 
@@ -49,7 +46,7 @@ Coisas que dependem de você, não do código. Atualizado a cada sprint. Marque 
 
 ## Adequação ao compilado do Grupo de Pesquisa (nov/2026) — o que só o grupo pode fazer
 
-- [ ] **Confirmar com o grupo de pesquisa** as escolhas feitas por indicação deles: ρ = 1/58 nos casos de referência, só cobre, perfil de Creder como padrão de demanda e DR só onde a norma exige.
+- [ ] **Confirmar com o grupo de pesquisa** as escolhas feitas por indicação deles: ρ = 1/58 nos casos de referência, só cobre, carga cheia (fator de demanda 1,00) e DR só onde a norma exige.
 - [ ] **Identificar o documento de demanda da distribuidora** (documento, revisão, grupo de carga) nos projetos reais; sem isso a demanda continua "estimativa bibliográfica".
 - [ ] **Conferir a imagem da Tabela 3.12 do Creder e as equações do §4.5.3** (só existem como imagem no PDF do livro).
 - [ ] **Revisar a interface nova** (Instalação, Cômodos, Circuitos, Dimensionamento e Resultado) com um projeto real e dizer o que está confuso: são muitos campos novos.

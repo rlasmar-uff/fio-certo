@@ -91,7 +91,7 @@ export default function SecaoMateriais({ editavel = true }) {
             colunas={['Diâmetro', 'Metros']}
             linhas={m.eletrodutos.map((eletroduto) => [`${eletroduto.referencia} (DN ${eletroduto.nominalMm})`, `${eletroduto.metros} m`])}
           />
-          <Nota>
+          <Nota aberta={!editavel}>
             Conta um eletroduto por circuito, do quadro ao ponto mais distante. Na obra, circuitos que dividem o mesmo trecho
             usam menos metros, mas o diâmetro desse trecho tem de ser recalculado com todos os condutores juntos (§6.2.11.1.6).
           </Nota>
@@ -108,17 +108,19 @@ export default function SecaoMateriais({ editavel = true }) {
               : `${d.descricao} · NBR NM 60898 · Icn: informe a Icc na etapa de Instalação`,
             d.quantidade,
           ]),
-          ...m.drs.map((d) => [`${d.descricao} · tipo A (IEC 61008-2-1)`, d.quantidade]),
-          ...m.dps.map((d) => [`${d.descricao} · classe II (IEC 61643-1)${m.dpsExigido ? '' : ' — recomendado'}`, d.quantidade]),
+          ...m.drs.map((d) => [`${d.descricao} (IEC 61008-2-1 / 61009-2-1)`, d.quantidade]),
+          ...m.dps.map((d) => [`${d.descricao} · IEC 61643-1 (§6.3.5.2.4)`, d.quantidade]),
           [`Espaço de reserva (Tabela 59)`, `${m.quadro.reserva} circuitos`],
           [`Largura estimada do quadro`, `≥ ${m.quadro.modulos} módulos DIN`],
         ]}
       />
-      <Nota>
+      <Nota aberta={!editavel}>
         Largura em módulos DIN de 18 mm, 1 por polo; DR e DPS podem ocupar mais, conforme o fabricante. A curva é a informada
-        na etapa de Instalação para todos os disjuntores. A Icn sobe para o próximo valor padronizado da NBR NM 60898. O DR
-        sugerido é o tipo A, que detecta também falta com componente contínua (§6.3.3.2.2), possível em aparelhos com
-        eletrônica de potência; o tipo AC só serve onde não se prevê falta que não seja senoidal (§6.3.3.2.3).
+        na etapa de Instalação para todos os disjuntores. A Icn mínima é a Icc presumida no ponto (§5.3.5.5.1), arredondada
+        para o próximo valor padronizado da NBR NM 60898. O tipo do DR é o escolhido na etapa de Instalação: onde a falta pode
+        ter componente contínua, só DR que a detecte, como o tipo A (§6.3.3.2.2); o tipo AC só onde não se prevê falta não
+        senoidal (§6.3.3.2.3).
+        {!m.dpsExigido && ' DPS não exigido nesta instalação (§5.4.2.1.1): fora da lista.'}
       </Nota>
 
       <h3>Pontos</h3>

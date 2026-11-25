@@ -87,7 +87,10 @@ function InstalacaoExistente({ circuito, valor, aoMudar }) {
               </li>
             ))}
           </ul>
-          <p className="texto-fraco">O seccionamento considera o DR de 30 mA do projeto. Se a instalação não tiver DR, ele não vale.</p>
+          <p className="texto-fraco">
+            O seccionamento considera o DR de 30 mA só se este circuito estiver sob DR no projeto
+            {circuito.sobDR ? ' (está)' : ' (não está: vale só o disjuntor)'}.
+          </p>
         </>
       )}
     </div>
@@ -173,7 +176,16 @@ export default function Dimensionamento() {
     updateTrecho,
     removeTrecho,
   } = useProjeto()
-  const { circuitos, dimensionados, quedaAlimentadorPercentual, limiteQuedaTerminalDisponivel } = calculo
+  const { dimensionados, quedaAlimentadorPercentual, limiteQuedaTerminalDisponivel, limiteQuedaTotalPercentual } = calculo
+  const limiteTotal = `${limiteQuedaTotalPercentual.toLocaleString('pt-BR')}%`
+  const textoAgrupamento = (agrupamento) =>
+    !agrupamento
+      ? ''
+      : agrupamento.origem === 'grupo'
+        ? `grupo "${agrupamento.grupo}", ${agrupamento.n} circuito(s)`
+        : agrupamento.origem === 'global'
+          ? `${agrupamento.n} circuito(s), número informado`
+          : `${agrupamento.n} circuito(s) no cômodo mais carregado do percurso (agrupamento por cômodo)`
 
   return (
     <EtapaCalculadora
@@ -190,8 +202,13 @@ export default function Dimensionamento() {
           <p>
             Cada circuito recebe a menor seção que atende <strong>ao mesmo tempo</strong> à corrente do
             disjuntor e à queda de tensão. O alimentador já consome{' '}
-            <strong>{quedaAlimentadorPercentual.toFixed(2)}%</strong> dos 5% totais, então cada circuito
-            tem até <strong>{limiteQuedaTerminalDisponivel.toFixed(2)}%</strong>.
+            <strong>{quedaAlimentadorPercentual.toFixed(2)}%</strong> dos {limiteTotal} totais (§6.2.7.1), então cada circuito
+            tem até <strong>{limiteQuedaTerminalDisponivel.toFixed(2)}%</strong> (nunca mais que 4%, §6.2.7.2).
+          </p>
+          <p className="texto-fraco">
+            Agrupamento (Tabelas 42 a 45): sem grupo nem número informado, cada circuito é corrigido pelo número de circuitos que
+            atendem o mesmo cômodo — no cômodo mais carregado do seu percurso (§6.2.5.8). Monte grupos abaixo se o percurso real
+            for outro.
           </p>
 
           {!projeto.iccPresumidaA && (
@@ -309,7 +326,7 @@ export default function Dimensionamento() {
                       <dd>{circuito.comprimentoInformado ? `${circuito.comprimentoM} m` : 'não informado'}</dd>
                     </div>
                     <div>
-                      <dt>Sobrecarga: <Termo sigla="I₂" /> ≤ 1,45·Iz</dt>
+                      <dt>Sobrecarga: <Termo sigla="I₂" /> ≤ {circuito.sobrecarga?.prolongada ? 'Iz' : '1,45·Iz'}</dt>
                       <dd>
                         {circuito.sobrecarga
                           ? `${circuito.sobrecarga.i2A.toFixed(1)} A ≤ ${circuito.sobrecarga.limiteA.toFixed(1)} A`
@@ -331,7 +348,15 @@ export default function Dimensionamento() {
                         <dd>
                           {circuito.seccionamento.zsOhm !== undefined
                             ? `Zs ${circuito.seccionamento.zsOhm.toFixed(3)} Ω · ${
-                                circuito.seccionamento.porDisjuntor ? 'pelo disjuntor e pelo DR' : circuito.seccionamento.porDR ? 'pelo DR' : 'não atende'
+                                circuito.seccionamento.porDisjuntor && circuito.seccionamento.porDR
+                                  ? 'pelo disjuntor e pelo DR'
+                                  : circuito.seccionamento.porDisjuntor
+                                    ? 'pelo disjuntor'
+                                    : circuito.seccionamento.porDR
+                                      ? 'pelo DR'
+                                      : circuito.seccionamento.verificado
+                                        ? 'não atende'
+                                        : 'não verificado'
                               }`
                             : circuito.seccionamento.raMaximaOhm
                               ? `TT: RA ≤ ${circuito.seccionamento.raMaximaOhm.toFixed(0)} Ω`
@@ -408,8 +433,9 @@ export default function Dimensionamento() {
                       ) : (
                         <>
                           fatores de correção: temperatura ×{circuito.fatorTemperatura.toFixed(2)} (Tabela 40) ×
-                          agrupamento ×{circuito.fatorAgrupamento.toFixed(2)} ({nomeReferenciaAgrupamento(circuito.metodoInstalacao)},{' '}
-                          {projeto.numeroCircuitosAgrupadosManual || circuitos.length} circuitos agrupados)
+                          agrupamento ×{circuito.fatorAgrupamento.toFixed(2)} (
+                          {circuito.agrupamento?.origem === 'grupo' ? 'grupo informado' : nomeReferenciaAgrupamento(circuito.metodoInstalacao)},{' '}
+                          {textoAgrupamento(circuito.agrupamento)})
                           {circuito.fatorResistividadeSolo != null && circuito.fatorResistividadeSolo !== 1 && (
                             <> × resistividade do solo ×{circuito.fatorResistividadeSolo.toFixed(2)} (Tabela 41)</>
                           )}
@@ -419,7 +445,7 @@ export default function Dimensionamento() {
                     </li>
                     <li>
                       queda de tensão: até <strong>{circuito.limitePercentual.toFixed(2)}%</strong> neste circuito
-                      (§6.2.7.2 permite 4% no trecho terminal, dentro dos 5% totais do §6.2.7.1 c).
+                      (§6.2.7.2 permite 4% no trecho terminal, dentro dos {limiteTotal} totais do §6.2.7.1).
                     </li>
                     {circuito.eletroduto && (
                       <li>
@@ -549,8 +575,8 @@ export default function Dimensionamento() {
           <details className="detalhes-calculo">
             <summary>Condições de instalação (avançado)</summary>
             <p className="texto-fraco">
-              Padrão: PVC, 30°C e todos os {circuitos.length} circuitos agrupados no mesmo eletroduto (pior
-              caso razoável). Mude só se a instalação real for diferente.
+              Padrão: PVC, 30°C e agrupamento por cômodo. Preencher "Circuitos agrupados" aplica o mesmo número a todos
+              os circuitos (os grupos montados acima continuam valendo para os seus circuitos).
             </p>
             <div className="grade-campos">
               <Campo label="Isolação dos condutores" ajuda="Tabela 36 (PVC) ou 37 (EPR/XLPE).">
@@ -584,7 +610,7 @@ export default function Dimensionamento() {
               </Campo>
               <Campo
                 label="Circuitos agrupados"
-                ajuda={`Tabela 42 — automático: ${circuitos.length}.`}
+                ajuda="Tabelas 42 a 45 — em branco: agrupamento por cômodo."
                 erro={validarNumero(projeto.numeroCircuitosAgrupadosManual, { min: 1, inteiro: true })}
               >
                 <input
@@ -593,7 +619,7 @@ export default function Dimensionamento() {
                   min="1"
                   step="1"
                   className="campo"
-                  placeholder={String(circuitos.length)}
+                  placeholder="por cômodo"
                   value={projeto.numeroCircuitosAgrupadosManual}
                   onChange={(evento) => setNumeroCircuitosAgrupadosManual(evento.target.value)}
                 />

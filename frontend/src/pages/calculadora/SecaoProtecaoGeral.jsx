@@ -85,11 +85,14 @@ export default function SecaoProtecaoGeral() {
               <td data-label="Dispositivo">DPS</td>
               <td data-label="Corrente" className="numerico">—</td>
               <td data-label="Características" className="celula-quebra">
-                Classe {dps.classe} · Un ≈ {dps.tensaoMaximaOperacaoV} V (fase-neutro/fase-terra, na
-                origem da instalação) ·{' '}
-                <span className="etiqueta-status" title={dps.motivoExigencia}>
-                  {dps.exigidaPelaNorma ? 'exigido pela norma' : 'recomendação'}
-                </span>
+                {dps.exigidaPelaNorma ? (
+                  <>
+                    <span className="etiqueta-status">exigido pela norma</span> {dps.descricao} · Uc ≥{' '}
+                    {Math.ceil(calculo.complementares.dps.ucMinimoFaseV)} V (Tabela 49) — especificação em Verificações complementares.
+                  </>
+                ) : (
+                  <span className="etiqueta-status">{dps.motivoExigencia}</span>
+                )}
               </td>
             </tr>
             {locaisEspeciais.possuiBanheiro && (
@@ -131,10 +134,10 @@ export default function SecaoProtecaoGeral() {
                   <td data-label="Condutor">Fase</td>
                   <td data-label="Seção adotada" className="numerico">
                     <strong>{condutorFase.secaoMm2} mm²</strong>
-                    {condutorFase.elevadaPeloPisoPratico && (
-                      <span className="etiqueta-status" title="Elevada pelo piso prático da concessionária">
+                    {condutorFase.elevadaPeloPEN && (
+                      <span className="etiqueta-status" title="Elevada para o mínimo do PEN (§6.4.3.4.1)">
                         {' '}
-                        piso concessionária
+                        mínimo do PEN
                       </span>
                     )}
                   </td>
@@ -278,16 +281,18 @@ export default function SecaoProtecaoGeral() {
               {drs.modo === 'geral' ? (
                 <li>
                   IDR: corrente nominal padronizada ≥ In do disjuntor geral →{' '}
-                  <strong>{idr.correnteA} A</strong>, com {idr.polos} polos (número de fases + neutro) e
-                  sensibilidade alta ({idr.sensibilidadeMA} mA), exigida pela NBR 5410 §5.1.3.2.2 para
-                  circuitos de tomadas em geral e áreas molhadas.
+                  <strong>{idr.correnteA ?? '—'} A</strong>, com {idr.polos} polos (número de fases + neutro) e
+                  sensibilidade alta ({idr.sensibilidadeMA} mA), a exigida pela NBR 5410 §5.1.3.2.2 nos locais
+                  das alíneas a) a d) — aqui aplicada a todos os circuitos, por escolha do projetista.
                 </li>
               ) : (
                 <li>
-                  DRs por grupo (30 mA): corrente nominal padronizada ≥ soma dos In dos disjuntores do
-                  grupo, limitada ao In do disjuntor geral — critério desta ferramenta para que o DR nunca
-                  conduza mais que a proteção a montante deixa passar (§6.3.6.2.2 só exige que ele seja
-                  protegido contra sobrecorrente). Polos: fases do grupo + neutro.
+                  {drs.modo === 'exigidos'
+                    ? 'DR de 30 mA nos circuitos em que a norma o exige (§5.1.3.2.2): '
+                    : 'DRs por grupo (30 mA): '}
+                  corrente nominal padronizada ≥ soma dos In dos disjuntores protegidos, limitada ao In do
+                  disjuntor geral — critério de cálculo para que o DR nunca conduza mais que a proteção a montante
+                  deixa passar (§6.3.6.2.2 exige que ele seja protegido contra sobrecorrente). Polos: fases + neutro.
                 </li>
               )}
               {locaisEspeciais.possuiBanheiro && (
@@ -299,17 +304,19 @@ export default function SecaoProtecaoGeral() {
                 </li>
               )}
               <li>
-                DPS Classe {dps.classe}, tensão máxima de operação contínua compatível com a rede
-                (≈ {dps.tensaoMaximaOperacaoV} V) — {dps.motivoExigencia}. Corrente de descarga e
-                quantidade de módulos ficam fora do escopo desta ferramenta, a definir em projeto.
+                DPS: {dps.exigidaPelaNorma ? `exigido — ${dps.descricao}` : dps.motivoExigencia}.
               </li>
               <li>
-                Seção mínima normativa do alimentador (circuito de distribuição, cabo isolado):{' '}
-                <strong>{condutorFase.secaoMinimaNormativa} mm²</strong> (NBR 5410 §6.2.6.1.1). Por
-                padrão, a ferramenta ainda eleva para{' '}
-                <strong>{condutorFase.pisoPraticoMm2} mm²</strong> — não por exigência da NBR 5410
-                (a Tabela 47 só cita 10 mm² para condutor NU), mas porque é o piso que as normas de
-                fornecimento das concessionárias brasileiras exigem na prática.
+                Seção mínima do alimentador: <strong>{condutorFase.secaoMinimaNormativa} mm²</strong> (Tabela 47,
+                circuito de força, cabo isolado)
+                {condutorFase.secaoMinimaPenMm2 ? (
+                  <>
+                    ; no TN-C-S o neutro do alimentador é o PEN, com no mínimo{' '}
+                    <strong>{condutorFase.secaoMinimaPenMm2} mm²</strong> (§6.4.3.4.1), e a fase acompanha o neutro
+                    (§6.2.6.2.2 e §6.2.6.2.4)
+                  </>
+                ) : null}
+                .
               </li>
               <li>
                 Tabela e coluna usadas: isolação{' '}
@@ -513,9 +520,12 @@ export default function SecaoProtecaoGeral() {
 
       {drs.avisoIntempestivo && (
         <p className="texto-atencao">
-          Um só DR de 30 mA para {calculo.dimensionados.length} circuitos: a fuga normal de todos soma nele, e a norma
-          pede que nenhum DR veja mais de 50% de IΔn (15 mA) em funcionamento normal (§6.3.3.2.6). A fuga não é
-          calculável aqui — considere dividir em grupos na etapa de <Link to={ROUTES.circuitos}>Circuitos</Link>.
+          {drs.modo === 'geral'
+            ? `Um só DR de 30 mA para ${calculo.dimensionados.length} circuitos`
+            : 'Há DR protegendo mais de um circuito'}
+          : as fugas normais desses circuitos somam no mesmo DR, e a norma pede que elas não o façam atuar — na prática,
+          abaixo de 50% de IΔn (15 mA) (§6.3.3.2.6 e NOTA). A fuga das cargas não é calculável aqui: confira em obra
+          ou divida os circuitos entre mais DRs na etapa de <Link to={ROUTES.circuitos}>Circuitos</Link>.
         </p>
       )}
     </>

@@ -108,7 +108,7 @@ export default function ComodoCard({ comodo, indice }) {
               </Campo>
             )}
           </div>
-          {comodo.tipo === 'outro' && (
+          {(comodo.tipo === 'outro' || comodo.tipo === 'externa') && (
             <label className="campo-checkbox">
               <input
                 type="checkbox"
@@ -187,7 +187,7 @@ export default function ComodoCard({ comodo, indice }) {
           </div>
           <label className="campo-checkbox">
             <input type="checkbox" checked={Boolean(comodo.tomadasAlimentamExterior)} onChange={(evento) => updateComodo(comodo.id, { tomadasAlimentamExterior: evento.target.checked })} />
-            Tomadas deste cômodo alimentam equipamentos que podem ir para o exterior (exigem DR)
+            Tomadas deste cômodo podem alimentar equipamentos no exterior — exigem DR (§5.1.3.2.2 c){comodo.tipo === 'varanda' ? '. Em varanda, confira este caso.' : ''}
           </label>
           <label className="campo-checkbox">
             <input type="checkbox" checked={Boolean(comodo.excecaoLocalizacao)} onChange={(evento) => updateComodo(comodo.id, { excecaoLocalizacao: evento.target.checked })} />
@@ -294,6 +294,9 @@ export default function ComodoCard({ comodo, indice }) {
                                 cosPhi: TIPOS_CARGA[preset.tipoCarga].cosPhiPadrao,
                                 ligacao: faseFase ? 'fase-fase' : 'fase-neutro',
                                 potenciaTipica: true,
+                                // §9.5.2.3 — aquecedor elétrico de água: ligação direta, sem tomada.
+                                aquecedorAgua: Boolean(preset.aquecedorAgua),
+                                conexao: preset.aquecedorAgua ? 'direta' : (equipamento.conexao ?? 'tomada'),
                               })
                             }}
                           >
@@ -458,10 +461,6 @@ export default function ComodoCard({ comodo, indice }) {
                       <label className="campo-checkbox">
                         <input type="checkbox" checked={Boolean(equipamento.aquecedorAgua)} onChange={(evento) => updateTue(comodo.id, equipamento.id, { aquecedorAgua: evento.target.checked })} />
                         Aquecedor de água
-                      </label>
-                      <label className="campo-checkbox">
-                        <input type="checkbox" checked={Boolean(equipamento.resistenciaNua)} onChange={(evento) => updateTue(comodo.id, equipamento.id, { resistenciaNua: evento.target.checked })} />
-                        Resistência nua (chuveiro ou torneira sem blindagem)
                       </label>
                     </div>
                   )

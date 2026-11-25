@@ -20,40 +20,23 @@ test('sauna não pede perímetro e não tem tomada mínima', async ({ page }) =>
   await expect(page.getByText(/Sauna \(§9\.4\): nenhuma tomada/)).toBeVisible()
 })
 
-test('comparar cenários e simular consumo a partir do exemplo', async ({ page }) => {
+test('comparar cenários a partir do exemplo; consumo e distribuidora não existem mais (fora da norma)', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
   await page.getByRole('link', { name: 'Comparar cenários' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Comparar cenários' })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Alimentador' })).toBeVisible()
 
-  await page.goto('/#/calculadora/consumo')
-  await page.getByLabel('Dias de uso no mês').fill('30')
-  await page.getByLabel('Tarifa (R$/kWh)').fill('0.8')
-  await page.getByLabel('Horas por dia de Chuveiro (Banheiro)').fill('0.5')
-  await expect(page.getByText('82,5 kWh')).toBeVisible()
-  await expect(page.getByText('R$ 66,00')).toBeVisible()
-})
-
-test('distribuidora: demanda de iluminação/tomadas aparece só como informação, sem mudar o veredito', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Ver exemplo' }).click()
-  await expect(page.getByRole('heading', { name: 'Tudo o que a ferramenta verifica está conforme' })).toBeVisible()
-
-  await page.getByRole('link', { name: 'Instalação' }).click()
-  await page.getByLabel('Distribuidora').selectOption('cpfl')
-
-  await page.getByRole('link', { name: 'Proteção e resultado' }).click()
-  await expect(page.getByRole('heading', { name: 'Tudo o que a ferramenta verifica está conforme' })).toBeVisible()
-  await expect(page.getByText(/Demanda pela distribuidora/)).toBeVisible()
-  await expect(page.getByText(/2,58 kW/)).toBeVisible()
-  await expect(page.getByText(/CPFL/)).toBeVisible()
+  await page.goto('/#/calculadora/instalacao')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByLabel('Distribuidora')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /consumo/i })).toHaveCount(0)
 })
 
 test('volumes do banheiro: ponto marcado no volume errado aparece como não conforme no veredito', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
-  await expect(page.getByRole('heading', { name: 'Tudo o que a ferramenta verifica está conforme' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Faltam dados para verificar tudo' })).toBeVisible()
 
   await page.getByRole('link', { name: 'Cômodos' }).click()
   await page.getByRole('button', { name: /^Banheiro/ }).click()

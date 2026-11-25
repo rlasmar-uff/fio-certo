@@ -1,11 +1,12 @@
 // Equipamentos comuns para preencher o cadastro de TUE mais rápido. As potências são típicas de
 // mercado, NÃO dados da NBR 5410 nem de um fabricante: a interface marca "potência típica —
 // confira a placa" até o usuário mexer no valor. `faseFase` = aparelho de 220 V: entre fases em
-// rede 127/220 V, fase-neutro em rede 220/380 V.
+// rede 127/220 V, fase-neutro em rede 220/380 V. `aquecedorAgua`: aquecedor elétrico de água, ligado direto
+// ao ponto de utilização, sem tomada (§9.5.2.3).
 export const PRESETS_EQUIPAMENTOS = [
-  { chave: 'chuveiro', nome: 'Chuveiro elétrico', potenciaW: 5500, tipoCarga: 'resistiva', faseFase: true },
-  { chave: 'torneira', nome: 'Torneira elétrica', potenciaW: 5500, tipoCarga: 'resistiva', faseFase: true },
-  { chave: 'boiler', nome: 'Aquecedor de água (boiler)', potenciaW: 2000, tipoCarga: 'resistiva', faseFase: true },
+  { chave: 'chuveiro', nome: 'Chuveiro elétrico', potenciaW: 5500, tipoCarga: 'resistiva', faseFase: true, aquecedorAgua: true },
+  { chave: 'torneira', nome: 'Torneira elétrica', potenciaW: 5500, tipoCarga: 'resistiva', faseFase: true, aquecedorAgua: true },
+  { chave: 'boiler', nome: 'Aquecedor de água (boiler)', potenciaW: 2000, tipoCarga: 'resistiva', faseFase: true, aquecedorAgua: true },
   { chave: 'forno', nome: 'Forno elétrico de embutir', potenciaW: 2500, tipoCarga: 'resistiva', faseFase: true },
   { chave: 'cooktop', nome: 'Cooktop de indução', potenciaW: 7000, tipoCarga: 'resistiva', faseFase: true },
   { chave: 'lava-loucas', nome: 'Lava-louças', potenciaW: 1500, tipoCarga: 'resistiva', faseFase: false },

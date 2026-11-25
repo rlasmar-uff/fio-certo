@@ -1,10 +1,15 @@
 // NBR 5410 §9.1 — locais contendo banheira ou chuveiro: volumes 0-3 e grau de proteção mínimo.
 // Geometria de referência (§9.1.2.1), não uma tabela numérica da norma.
+// §9.1.4.1: IPX3 no volume 2 e IPX1 no volume 3; IPX5 em ambos só em banheiros públicos.
 export const VOLUMES_BANHEIRO = [
-  { volume: 0, descricao: 'interior da banheira/piso-boxe (local inundável)', ipMinimo: 'IPX7' },
-  { volume: 1, descricao: '0,6 m ao redor do chuveiro/banheira, até 2,25 m de altura', ipMinimo: 'IPX4' },
-  { volume: 2, descricao: '+0,60 m além do volume 1, até 3 m de altura', ipMinimo: 'IPX3–IPX5' },
-  { volume: 3, descricao: '+2,40 m além do volume 2, até 2,25 m de altura', ipMinimo: 'IPX1–IPX5' },
+  { volume: 0, descricao: 'interior da banheira, do piso-boxe ou do rebaixo do boxe (local inundável)', ipMinimo: 'IPX7' },
+  {
+    volume: 1,
+    descricao: 'acima do volume 0, até 2,25 m do fundo da banheira/piso do boxe, limitado pela superfície que circunscreve a banheira ou o boxe (sem boxe delimitado: 0,6 m ao redor do chuveiro)',
+    ipMinimo: 'IPX4',
+  },
+  { volume: 2, descricao: 'faixa de 0,60 m ao redor do volume 1, até 3 m do piso', ipMinimo: 'IPX3 (IPX5 em banheiro público)' },
+  { volume: 3, descricao: 'faixa de 2,40 m ao redor do volume 2, até 2,25 m do piso', ipMinimo: 'IPX1 (IPX5 em banheiro público)' },
 ]
 
 // NBR 5410 §9.1.2.1 — volumes 0 a 3 a partir da geometria marcada na planta (opcional, por
@@ -98,8 +103,8 @@ export function classificarVolume(ponto, box) {
 
 // §9.1.4.3.1 (proibição de dispositivo de proteção/seccionamento/comando, inclui tomada, nos
 // volumes 0-2) · §9.1.4.3.2 (tomada no volume 3, com transformador de separação, SELV, ou DR
-// ≤30mA — esta ferramenta já garante DR ≤30mA em todo circuito) · §9.1.4.4 (classe de equipamento
-// por volume: volume 1 só aquecedor classe I/II; volume 2 + luminária classe II).
+// ≤30mA — todo circuito que serve o banheiro fica sob DR por §5.1.3.2.2 a) · §9.1.4.4 (classe de
+// equipamento por volume: volume 1 só aquecedor classe I/II; volume 2 + luminária classe II).
 const REGRAS_PONTO = {
   tomada: {
     permitido: (volume) => volume === null || volume === 3,
@@ -108,7 +113,7 @@ const REGRAS_PONTO = {
       volume === null
         ? null
         : volume === 3
-          ? 'permitida no volume 3 com transformador de separação, SELV, ou DR ≤30mA — esta instalação já tem DR ≤30mA em todo circuito'
+          ? 'permitida no volume 3 com transformador de separação, SELV, ou DR ≤30mA — o circuito de tomadas do banheiro fica sob DR de 30 mA (5.1.3.2.2 a)'
           : `dispositivo de comando/seccionamento (inclui tomada) proibido no volume ${volume}`,
   },
   interruptor: {
@@ -232,8 +237,8 @@ export const REGRAS_SAUNA = [
 ]
 
 // Piscina: marcada no cômodo (`piscina: true`, área externa onde ela fica). Sauna: tipo de cômodo.
-// Todo circuito desta ferramenta fica sob um DR de 30 mA (geral ou de grupo), o que atende
-// §9.2.3.1.2 b) e §9.2.4.3.3 b) no volume 2 da piscina.
+// Os circuitos do cômodo com piscina ficam sob DR de 30 mA (`exigenciaDR`), a medida de §9.2.3.1.2 b) e
+// §9.2.4.3.3 b) para o volume 2.
 export function avaliarPiscinaESauna(comodos, porComodo) {
   const piscinas = comodos.filter((comodo) => comodo.piscina)
   const saunas = comodos.filter((comodo) => comodo.tipo === 'sauna')

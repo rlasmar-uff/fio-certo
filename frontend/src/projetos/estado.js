@@ -4,7 +4,6 @@ import {
   ESQUEMAS_ATERRAMENTO,
   FORNECIMENTOS,
   ISOLACOES,
-  LINHAS_DISJUNTOR,
   METODOS_INSTALACAO,
   TABELA_MULTIPLICADOR_DISPARO_INSTANTANEO,
   TAXAS_TERCEIRA_HARMONICA,
@@ -13,13 +12,18 @@ import {
   TIPOS_COMODO,
   TIPOS_INSTALACAO,
 } from '../calculations/constantes.js'
-import { DISTRIBUIDORAS } from '../calculations/distribuidoras.js'
-import { PERFIS_DEMANDA } from '../calculations/demanda.js'
 import { CONVENCOES_RESISTIVIDADE } from '../calculations/quedaDeTensao.js'
 import { TIPOS_PONTO_BANHEIRO } from '../calculations/locaisEspeciais.js'
 import { DRS_MONTANTE } from '../calculations/seccionamento.js'
 
 export const ESTADO_INICIAL = {
+  // Identificação do memorial (§6.1.8.1). Opcionais; vazios aparecem como "não informado".
+  cliente: '',
+  endereco: '',
+  responsavelTecnico: '',
+  registroProfissional: '',
+  numeroART: '',
+  revisao: 'R0',
   tipoInstalacao: 'monofasica',
   tensaoFaseNeutro: 127,
   comodos: [],
@@ -38,15 +42,9 @@ export const ESTADO_INICIAL = {
   circuitoMisto: false,
   // Fases escolhidas pelo projetista {circuitoId: [fases]}; vazio = distribuição automática.
   fasesManuais: {},
-  // Perfil de demanda (semana 3 §8): 'creder' (padrão, estimativa bibliográfica por parcelas) ou 'nenhum'.
-  // Para sair de "estimativa bibliográfica" é preciso identificar distribuidora, documento, revisão e grupo.
-  perfilDemanda: 'creder',
-  demandaDocumento: '',
-  demandaRevisao: '',
-  demandaGrupo: '',
   // Ajuste avançado opcional dos fatores de correção (Tabelas 40/42/45) — '' (não preenchido) usa
   // os defaults automáticos: 30°C ao ar (ou 20°C de solo, para circuitos/alimentador enterrados —
-  // método D) e nº de circuitos agrupados = total de circuitos gerados. `temperaturaSoloC` e
+  // método D) e agrupamento por cômodo (circuitos que atendem um mesmo cômodo). `temperaturaSoloC` e
   // `resistividadeTermicaSoloKmW` só têm efeito em circuitos/alimentador no método D — ver
   // METODOS_INSTALACAO.
   temperaturaAmbienteC: '',
@@ -61,8 +59,8 @@ export const ESTADO_INICIAL = {
   maneirasInstalacao: {},
   maneiraAlimentador: '7',
   // Grupos de agrupamento (K2) e eletrodutos compartilhados (S5 §3–5, S8 §6): [{id, nome, circuitoIds, forma,
-  // espacamento, camadas, circuitosPorCamada, multipolar, homogeneo, excluidos, eletroduto}]. Sem grupos, todos
-  // os circuitos contam como um só feixe (comportamento padrão).
+  // espacamento, camadas, circuitosPorCamada, multipolar, homogeneo, excluidos, eletroduto}]. Sem grupos, vale
+  // o agrupamento por cômodo (ver `circuitosAgrupadosPorComodo`, projeto.js).
   agrupamentos: [],
   // Catálogo de eletrodutos (CATALOGOS_ELETRODUTO) e áreas externas dos cabos do produto usado {seção: mm²}.
   catalogoEletroduto: 'pvc-roscavel',
@@ -95,13 +93,8 @@ export const ESTADO_INICIAL = {
   // Opcional: a Icc fase-neutro na origem, quando a concessionária informa as duas. Sem ela, os
   // laços fase-neutro e fase-PE partem da trifásica (a maior, lado seguro para o I²t).
   iccFaseNeutroA: '',
-  // N18 — distribuidora escolhida para a demanda de iluminação/tomadas (opcional, informativo,
-  // nunca substitui o dimensionamento por NBR 5410). '' = nenhuma.
-  distribuidoraId: '',
   curvaDisjuntorGeral: 'C',
-  // Semana 7 — linha de disjuntores (LINHAS_DISJUNTOR; 'serie' = série de cadastro, sem Icn) e, sem linha,
-  // a capacidade de ruptura Icn informada à mão (kA).
-  linhaDisjuntor: 'serie',
+  // §5.3.5.5.1 — capacidade de interrupção (Icn, kA) dos disjuntores escolhidos, informada pelo usuário.
   icnDisjuntorKA: '',
   // Semana 6 — situação de alimentação (limite total de queda, §6.2.7.1) e convenção de resistividade.
   fornecimento: 'secundario-distribuicao',
@@ -116,10 +109,9 @@ export const ESTADO_INICIAL = {
   // Tabela 59, NOTA — potência (VA) de cada circuito de reserva do quadro, para entrar no cálculo
   // do alimentador. '' = reserva NÃO considerada (vira pendência no veredito).
   potenciaReservaPorCircuitoVA: '',
-  // §5.4.2.1.1/§6.3.5.2.1 b) — declarações sobre a instalação real que afetam só a recomendação
-  // de DPS (exigência normativa vs. boa prática; Classe I além da Classe II). Default `false`:
-  // sem declaração, a ferramenta continua recomendando Classe II como boa prática, sem alegar
-  // exigência normativa — ver `recomendarDPS`.
+  // §5.4.2.1.1/§6.3.5.2.1 b) — declarações sobre a instalação real que decidem se o DPS é exigido e se
+  // precisa de corrente de impulso (descarga direta). Default `false`: sem declaração, o DPS não é exigido
+  // — ver `recomendarDPS`.
   alimentacaoAerea: false,
   regiaoAltoIndiceDescargas: false,
   // Classe AQ de descargas atmosféricas (Tabela 15): AQ1, AQ2 (> 25 dias de trovoada/ano) ou AQ3 (exposição direta).
@@ -155,9 +147,6 @@ export const ESTADO_INICIAL = {
   existentes: {},
   // F5 — folga da lista de materiais, em % sobre os comprimentos informados. '' = sem folga.
   folgaMateriaisPercentual: '',
-  // F12 — simulador de consumo: dias de uso no mês, tarifa (R$/kWh) e horas/dia por carga
-  // ({id da carga: horas}), tudo informado pelo usuário.
-  consumo: { dias: '', tarifa: '', horas: {} },
   // N17 — percurso do eletroduto por circuito: {circuitoId: [{id, comprimentoM, curvas, externo}]}.
   percursos: {},
 }
@@ -189,10 +178,8 @@ const OPCOES = {
   condicaoAterramento: ['', ...Object.keys(CONDICOES_ATERRAMENTO_ENTERRADO)],
   modoDR: ['exigidos', 'geral', 'grupos'],
   drMontante: ['', ...Object.keys(DRS_MONTANTE)],
-  linhaDisjuntor: Object.keys(LINHAS_DISJUNTOR),
   fornecimento: Object.keys(FORNECIMENTOS),
   convencaoResistividade: Object.keys(CONVENCOES_RESISTIVIDADE),
-  perfilDemanda: Object.keys(PERFIS_DEMANDA),
   classeAQ: ['AQ1', 'AQ2', 'AQ3'],
   tipoDR: ['AC', 'A', 'B'],
   tipoDispositivo: ['disjuntor-nm60898', 'outro'],
@@ -219,7 +206,6 @@ export function normalizarProjeto(dados) {
   projeto.tensaoFaseNeutro = TENSOES_FASE_NEUTRO.includes(Number(projeto.tensaoFaseNeutro))
     ? Number(projeto.tensaoFaseNeutro)
     : ESTADO_INICIAL.tensaoFaseNeutro
-  if (!Object.hasOwn(DISTRIBUIDORAS, projeto.distribuidoraId)) projeto.distribuidoraId = ''
 
   projeto.comprimentos = filtrarMapa(projeto.comprimentos, ehEscalar)
   projeto.metodosInstalacao = filtrarMapa(projeto.metodosInstalacao, (metodo) => Object.hasOwn(METODOS_INSTALACAO, metodo))
@@ -237,12 +223,6 @@ export function normalizarProjeto(dados) {
       .filter(([, trechos]) => Array.isArray(trechos))
       .map(([id, trechos]) => [id, trechos.filter(ehObjeto).map((trecho) => ({ ...trecho, id: idValido(trecho.id) }))]),
   )
-  const consumo = projeto.consumo
-  projeto.consumo = {
-    dias: ehEscalar(consumo.dias) ? consumo.dias : '',
-    tarifa: ehEscalar(consumo.tarifa) ? consumo.tarifa : '',
-    horas: ehObjeto(consumo.horas) ? filtrarMapa(consumo.horas, ehEscalar) : {},
-  }
 
   projeto.comodos = projeto.comodos.filter(ehObjeto).map((comodo) => ({
     ...comodo,

@@ -10,9 +10,10 @@ test('resultado mostra unifilar, quadro e lista de materiais com folga', async (
   await expect(page.getByRole('img', { name: /Diagrama unifilar: disjuntor geral 63 A, 6 circuitos/ })).toBeVisible()
   await expect(page.getByRole('list', { name: /Quadro com \d+ módulos/ })).toBeVisible()
   const materiais = page.locator('.secao-materiais')
-  await expect(materiais.getByRole('cell', { name: '39 m' })).toBeVisible()
+  // Fase de 2,5 mm²: 57 m somados dos circuitos; com 10 % de folga, ⌈62,7⌉ = 63 m.
+  await expect(materiais.getByRole('cell', { name: '57 m' })).toBeVisible()
   await materiais.getByLabel('Folga nos comprimentos').fill('10')
-  await expect(materiais.getByRole('cell', { name: '43 m' })).toBeVisible()
+  await expect(materiais.getByRole('cell', { name: '63 m' })).toBeVisible()
 })
 
 test('instalação existente fora do critério aparece no dimensionamento e no veredito', async ({ page }) => {

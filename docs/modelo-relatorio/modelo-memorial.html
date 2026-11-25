@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Modelo do memorial técnico — Fio Certo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Protótipo do novo memorial (docs/PLANO_DE_CORRECAO_2026-11.md, seção 4). Números da casa-modelo no cenário
+     "depois das correções": agrupamento informado (cada circuito sozinho no percurso), k = 115 abaixo de 10 mm²,
+     DR no modo "exigidos" com o quadro corrigido. Abra no navegador e use Imprimir → Salvar como PDF. */
+  :root {
+    --tinta: #1b1f24; --fraco: #5b6470; --linha: #d5d9de; --fundo-tabela: #f3f5f7;
+    --acento: #b4530f; --acento-claro: #fbeee3;
+    --ok: #1f7a3d; --ok-claro: #e4f3e8; --alerta: #b3261e; --alerta-claro: #fbe7e6; --atencao: #8a5a00; --atencao-claro: #fdf3dc;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: #e9ebee; }
+  body { margin: 0; color: var(--tinta); font: 10.5pt/1.5 var(--serif); }
+  .folha { width: 210mm; min-height: 297mm; margin: 12mm auto; padding: 20mm 18mm 24mm; background: #fff;
+    box-shadow: 0 2px 14px rgba(0,0,0,.14); position: relative; }
+  .folha.paisagem { width: 297mm; min-height: 210mm; }
+  .cabecalho-folha { position: absolute; top: 9mm; left: 18mm; right: 18mm; display: flex; justify-content: space-between;
+    font: 8pt var(--sans); color: var(--fraco); border-bottom: 0.5pt solid var(--linha); padding-bottom: 2mm; }
+  .rodape-folha { position: absolute; bottom: 9mm; left: 18mm; right: 18mm; display: flex; justify-content: space-between;
+    font: 8pt var(--sans); color: var(--fraco); border-top: 0.5pt solid var(--linha); padding-top: 2mm; }
+  h1, h2, h3, h4 { font-family: var(--sans); line-height: 1.25; }
+  h2 { font-size: 15pt; margin: 0 0 4mm; padding-bottom: 1.5mm; border-bottom: 1.5pt solid var(--acento); }
+  h2 .num { color: var(--acento); margin-right: 2mm; }
+  h3 { font-size: 11.5pt; margin: 6mm 0 2mm; }
+  h4 { font-size: 10pt; margin: 4mm 0 1.5mm; color: var(--fraco); text-transform: uppercase; letter-spacing: .04em; }
+  p { margin: 0 0 2.5mm; }
+  .fraco { color: var(--fraco); }
+  .pequeno { font-size: 8.5pt; }
+  table { width: 100%; border-collapse: collapse; font: 8.8pt/1.35 var(--sans); margin: 2mm 0 4mm; }
+  thead { display: table-header-group; }
+  th { text-align: left; background: var(--fundo-tabela); font-weight: 600; border-bottom: 1pt solid var(--tinta); }
+  th, td { padding: 1.4mm 2mm; vertical-align: top; }
+  td { border-bottom: 0.5pt solid var(--linha); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tfoot td { font-weight: 700; border-top: 1pt solid var(--tinta); border-bottom: none; }
+  code, .formula { font-family: var(--mono); font-size: 8.8pt; }
+  .formula { display: block; background: var(--fundo-tabela); border-left: 2pt solid var(--acento); padding: 1.2mm 2.5mm; margin: 1mm 0 1.2mm; white-space: pre-wrap; font-size: 8pt; line-height: 1.4; }
+  .selo { display: inline-flex; align-items: center; gap: 1mm; font: 600 8pt var(--sans); padding: .4mm 2mm; border-radius: 2mm; white-space: nowrap; }
+  .selo.ok { color: var(--ok); background: var(--ok-claro); }
+  .selo.alerta { color: var(--alerta); background: var(--alerta-claro); }
+  .selo.atencao { color: var(--atencao); background: var(--atencao-claro); }
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 8mm; }
+  .fatos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5mm; margin: 3mm 0 5mm; }
+  .fato { border: 0.6pt solid var(--linha); border-radius: 2mm; padding: 2.5mm 3mm; }
+  .fato dt { font: 7.5pt var(--sans); color: var(--fraco); text-transform: uppercase; letter-spacing: .05em; }
+  .fato dd { margin: .5mm 0 0; font: 600 13pt var(--sans); }
+  .caixa { border: 0.6pt solid var(--linha); border-radius: 2mm; padding: 3mm 4mm; margin: 3mm 0; }
+  .caixa.aviso { background: var(--acento-claro); border-color: #efc9a6; }
+  .ficha-cab { display: flex; justify-content: space-between; align-items: baseline; background: var(--tinta); color: #fff;
+    padding: 2.5mm 4mm; border-radius: 2mm 2mm 0 0; font-family: var(--sans); break-after: avoid; }
+  .ficha-cab strong { font-size: 12pt; }
+  .ficha { border: 0.6pt solid var(--tinta); border-top: none; border-radius: 0 0 2mm 2mm; padding: 2.5mm 4mm; font-size: 9.5pt; }
+  .ficha table { margin: 1mm 0 1.5mm; font-size: 8.3pt; }
+  .ficha th, .ficha td { padding: 0.9mm 2mm; }
+  .passo { display: grid; grid-template-columns: 7mm 1fr; gap: 2mm; margin-bottom: 1.2mm; break-inside: avoid; }
+  .passo .i { font: 700 9pt var(--sans); color: #fff; background: var(--acento); border-radius: 50%; width: 6mm; height: 6mm;
+    display: grid; place-items: center; margin-top: .6mm; }
+  .passo .ref { font: 8pt var(--sans); color: var(--fraco); }
+  .linha-adotada td { background: var(--ok-claro); font-weight: 600; }
+  /* Capa */
+  .capa { display: flex; flex-direction: column; }
+  .capa .marca { font: 700 11pt var(--sans); color: var(--acento); letter-spacing: .08em; text-transform: uppercase; }
+  .capa h1 { font-size: 26pt; margin: 30mm 0 3mm; line-height: 1.1; }
+  .capa .sub { font: 12pt var(--sans); color: var(--fraco); margin-bottom: 14mm; }
+  .capa .id { border-top: 1.5pt solid var(--tinta); padding-top: 4mm; }
+  .capa .id table { font-size: 10pt; }
+  .capa .id td:first-child { color: var(--fraco); width: 45mm; }
+  .veredito { display: flex; gap: 4mm; align-items: center; border-radius: 2mm; padding: 4mm 5mm; margin-top: 8mm; font-family: var(--sans); }
+  .veredito.atencao { background: var(--atencao-claro); border: 0.8pt solid #e7c77a; }
+  .veredito .icone { font-size: 20pt; }
+  .assinatura { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; margin-top: 30mm; font: 9pt var(--sans); }
+  .assinatura div { border-top: 0.8pt solid var(--tinta); padding-top: 2mm; }
+  .sumario li { display: flex; gap: 2mm; font-family: var(--sans); margin-bottom: 1.6mm; }
+  .sumario li::after { content: ""; flex: 1; border-bottom: 0.6pt dotted var(--fraco); order: 1; margin-bottom: 1.2mm; }
+  .sumario li span:last-child { order: 2; }
+  .sumario ol { list-style: none; padding: 0; }
+  .legenda { display: flex; gap: 4mm; flex-wrap: wrap; font: 8pt var(--sans); color: var(--fraco); }
+  svg text { font-family: var(--sans); }
+  .nota-modelo { max-width: 210mm; margin: 6mm auto 0; font: 9.5pt var(--sans); color: var(--fraco); padding: 0 4mm; }
+  @page { size: A4; margin: 0; }
+  @page paisagem { size: A4 landscape; margin: 0; }
+  @media print {
+    html { background: #fff; }
+    .folha { margin: 0; box-shadow: none; break-after: page; }
+    .folha.paisagem { page: paisagem; }
+    .nota-modelo { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<p class="nota-modelo"><strong>Protótipo de layout.</strong> Mostra como fica o memorial depois das correções do plano
+(<code>docs/PLANO_DE_CORRECAO_2026-11.md</code>, seção 4). Números reais do motor para a casa-modelo, no cenário com
+agrupamento informado (cada circuito sozinho no percurso). O documento final terá todas as seções; aqui estão as páginas
+que definem o padrão visual. Para ver em A4: Imprimir → Salvar como PDF.</p>
+
+<!-- ===================================================================== CAPA -->
+<section class="folha capa">
+  <div class="marca">Fio Certo · memorial técnico</div>
+  <h1>Memorial técnico da instalação elétrica de baixa tensão</h1>
+  <div class="sub">Residência unifamiliar · bifásica 127/220 V · ABNT NBR 5410:2004 (versão corrigida 17.03.2008)</div>
+
+  <div class="id">
+    <table>
+      <tr><td>Projeto</td><td><strong>Casa-modelo (exemplo)</strong></td></tr>
+      <tr><td>Endereço</td><td>não informado</td></tr>
+      <tr><td>Cliente</td><td>não informado</td></tr>
+      <tr><td>Responsável técnico</td><td>não informado · registro: — · ART nº: —</td></tr>
+      <tr><td>Revisão / data</td><td>R0 · 24/11/2026</td></tr>
+      <tr><td>Gerado por</td><td>Fio Certo, versão do site de 24/11/2026 · rlasmar-uff.github.io/fio-certo</td></tr>
+    </table>
+  </div>
+
+  <dl class="fatos">
+    <div class="fato"><dt>Carga instalada</dt><dd>13.136 VA</dd></div>
+    <div class="fato"><dt>Disjuntor geral</dt><dd>63 A · 2P</dd></div>
+    <div class="fato"><dt>Alimentador</dt><dd>2F 16 + PEN 16 mm²</dd></div>
+    <div class="fato"><dt>Circuitos</dt><dd>6 + 2 reserva</dd></div>
+    <div class="fato"><dt>Proteção diferencial</dt><dd>1 DR 63 A · 30 mA</dd></div>
+    <div class="fato"><dt>Queda máxima total</dt><dd>4,90 %</dd></div>
+  </dl>
+
+  <div class="veredito atencao">
+    <span class="icone" aria-hidden="true">◐</span>
+    <div><strong>Conforme em tudo o que foi verificado. 2 itens ficaram sem verificar por falta de dado</strong>
+    (pontos do banheiro não marcados; classe AQ e tipo de alimentação não declarados). Ver seção 13.</div>
+  </div>
+
+  <p class="fraco pequeno" style="margin-top:auto">Documento de apoio gerado a partir dos dados informados pelo usuário. Não substitui o projeto
+  elétrico nem a Anotação de Responsabilidade Técnica (ART) de um profissional habilitado. Os cálculos seguem a NBR 5410;
+  valores de produto (diâmetros, Icn, reatância) vêm de catálogo e estão identificados como tal.</p>
+</section>
+
+<!-- ===================================================================== SUMÁRIO + 1 -->
+<section class="folha">
+  <div class="cabecalho-folha"><span>Casa-modelo (exemplo) · Memorial técnico</span><span>R0 · 24/11/2026</span></div>
+  <h2>Sumário</h2>
+  <ol class="sumario">
+    <li><span>1 · Objeto e escopo</span><span>2</span></li>
+    <li><span>2 · Dados de entrada</span><span>3</span></li>
+    <li><span>3 · Premissas e convenções</span><span>3</span></li>
+    <li><span>4 · Previsão de carga</span><span>4</span></li>
+    <li><span>5 · Divisão em circuitos e fases</span><span>5</span></li>
+    <li><span>6 · Memória de cálculo por circuito</span><span>6</span></li>
+    <li><span>7 · Alimentador e proteção geral</span><span>12</span></li>
+    <li><span>8 · Proteções complementares (DR, DPS, aterramento)</span><span>13</span></li>
+    <li><span>9 · Locais especiais</span><span>14</span></li>
+    <li><span>10 · Diagrama unifilar e quadro de distribuição</span><span>15</span></li>
+    <li><span>11 · Lista de materiais</span><span>16</span></li>
+    <li><span>12 · Matriz de conformidade</span><span>17</span></li>
+    <li><span>13 · Pendências e limitações</span><span>18</span></li>
+    <li><span>14 · Verificação final em obra</span><span>19</span></li>
+    <li><span>15 · Referências</span><span>20</span></li>
+  </ol>
+
+  <h2 style="margin-top:10mm"><span class="num">1</span>Objeto e escopo</h2>
+  <p>Este memorial descreve o dimensionamento da instalação elétrica de baixa tensão da residência identificada na capa,
+  da origem (ponto de entrega) até os pontos de utilização, conforme a ABNT NBR 5410:2004. Cobre previsão de carga,
+  divisão em circuitos, seleção de condutores e dispositivos de proteção, queda de tensão, curto-circuito,
+  seccionamento automático, proteção diferencial, proteção contra surtos, aterramento e equipotencialização.</p>
+  <p>Não cobre: padrão de entrada da distribuidora, SPDA (NBR 5419), instalações de telecomunicação e a verificação em
+  obra (seção 14 lista o que deve ser ensaiado).</p>
+  <div class="caixa aviso pequeno"><strong>Como ler este documento.</strong> Cada resultado traz a fórmula, os valores
+  substituídos e a cláusula ou tabela da norma de origem. O que não pôde ser verificado aparece marcado
+  <span class="selo atencao">◐ não verificado</span> no próprio lugar, com o motivo.</div>
+  <div class="rodape-folha"><span>Fio Certo · versão de 24/11/2026</span><span>página 2 de 20</span></div>
+</section>
+
+<!-- ===================================================================== 2 + 3 -->
+<section class="folha">
+  <div class="cabecalho-folha"><span>Casa-modelo (exemplo) · Memorial técnico</span><span>R0 · 24/11/2026</span></div>
+  <h2><span class="num">2</span>Dados de entrada</h2>
+  <div class="grade">
+    <table>
+      <thead><tr><th colspan="2">Alimentação</th></tr></thead>
+      <tr><td>Fornecimento</td><td>tensão secundária de distribuição (§6.2.7.1 c — 5 %)</td></tr>
+      <tr><td>Tensões</td><td>127 V fase-neutro · 220 V fase-fase</td></tr>
+      <tr><td>Tipo</td><td>bifásica (2F + N)</td></tr>
+      <tr><td>Esquema de aterramento</td><td>TN-C-S</td></tr>
+      <tr><td>Icc trifásica / fase-neutro</td><td>5,0 kA / 5,0 kA (informada)</td></tr>
+      <tr><td>Ramal de entrada</td><td>20 m · maneira 7 (B1)</td></tr>
+    </table>
+    <table>
+      <thead><tr><th colspan="2">Condições de instalação</th></tr></thead>
+      <tr><td>Isolação</td><td>PVC 70 °C (Tabela 36)</td></tr>
+      <tr><td>Temperatura ambiente</td><td>30 °C (FCT = 1,00, Tabela 40)</td></tr>
+      <tr><td>Agrupamento</td><td>informado por circuito (seção 5)</td></tr>
+      <tr><td>Disjuntores</td><td>linha DX 6000, curva C, Icn 6 kA</td></tr>
+      <tr><td>Modo de DR</td><td>onde a norma exige (§5.1.3.2.2)</td></tr>
+      <tr><td>Reserva do quadro</td><td>1.000 VA por circuito (Tabela 59)</td></tr>
+    </table>
+  </div>
+  <h4>Circuitos — dados de percurso</h4>
+  <table>
+    <thead><tr><th>Circuito</th><th class="n">Comprimento</th><th>Maneira (Tab. 33)</th><th>Método</th><th class="n">Circuitos no mesmo trecho</th></tr></thead>
+    <tr><td>C1 Iluminação</td><td class="n">15 m</td><td>7 — eletroduto embutido em alvenaria</td><td>B1</td><td class="n">1</td></tr>
+    <tr><td>C2 TUG cozinha/serviço 1</td><td class="n">18 m</td><td>7</td><td>B1</td><td class="n">1</td></tr>
+    <tr><td>C3 TUG cozinha/serviço 2</td><td class="n">18 m</td><td>7</td><td>B1</td><td class="n">1</td></tr>
+    <tr><td>C4 TUG salas/dormitórios/banheiro</td><td class="n">18 m</td><td>7</td><td>B1</td><td class="n">1</td></tr>
+    <tr><td>C5 Chuveiro</td><td class="n">12 m</td><td>7</td><td>B1</td><td class="n">1</td></tr>
+    <tr><td>C6 Ar-condicionado</td><td class="n">12 m</td><td>7</td><td>B1</td><td class="n">1</td></tr>
+  </table>
+
+  <h2 style="margin-top:8mm"><span class="num">3</span>Premissas e convenções</h2>
+  <table>
+    <thead><tr><th style="width:38%">Premissa</th><th>Valor adotado e justificativa</th></tr></thead>
+    <tr><td>Resistência do condutor</td><td>Na temperatura de operação: ρ<sub>70</sub> = (1/56)·(1 + 0,00393·50) Ω·mm²/m → σ = 46,8 S·m/mm²</td></tr>
+    <tr><td>Reatância dos condutores</td><td>Catálogo de fabricante (0,10 a 0,16 Ω/km conforme a seção) — a NBR 5410 não a tabela</td></tr>
+    <tr><td>Impedância da fonte</td><td>Puramente reativa, X = U<sub>0</sub>/Icc — convenção usual de estudo de curto-circuito em BT</td></tr>
+    <tr><td>Fator k (I²t ≤ k²S²)</td><td>115 (PVC ≤ 300 mm², Tabela 30), também abaixo de 10 mm²; a Nota 1 da tabela fica registrada como ressalva</td></tr>
+    <tr><td>Tempo de atuação no curto</td><td>10 ms (disparo instantâneo garantido: curva C, 10·In)</td></tr>
+    <tr><td>Demanda</td><td>O dimensionamento usa a carga cheia (sem fator de demanda); a demanda pelo Creder (Tab. 3.20) é só informativa</td></tr>
+  </table>
+  <div class="rodape-folha"><span>Fio Certo · versão de 24/11/2026</span><span>página 3 de 20</span></div>
+</section>
+
+<!-- ===================================================================== 4 -->
+<section class="folha">
+  <div class="cabecalho-folha"><span>Casa-modelo (exemplo) · Memorial técnico</span><span>R0 · 24/11/2026</span></div>
+  <h2><span class="num">4</span>Previsão de carga</h2>
+  <p>Iluminação pelo §9.5.2.1.2 (100 VA até 6 m² e mais 60 VA a cada 4 m² <em>inteiros</em>); tomadas pelo §9.5.2.2.1
+  (quantidade por perímetro, "ou fração") e §9.5.2.2.2 (600 VA nas 3 primeiras em áreas molhadas, 100 VA nas demais);
+  equipamentos pela potência nominal (§4.2.1.2.1).</p>
+  <table>
+    <thead><tr><th>Cômodo</th><th>Iluminação — regra</th><th class="n">VA</th><th>Tomadas — regra</th><th class="n">VA</th><th class="n">Equip.</th><th class="n">Total</th></tr></thead>
+    <tr><td>Sala · 18 m² · 17 m</td><td><code>100 + 3×60</code> (12 m² ⇒ 3 blocos)</td><td class="n">280</td><td><code>⌈17/5⌉ = 4</code> × 100</td><td class="n">400</td><td class="n">—</td><td class="n">680</td></tr>
+    <tr><td>Quarto 1 · 12 m² · 14 m</td><td><code>100 + 1×60</code></td><td class="n">160</td><td><code>⌈14/5⌉ = 3</code> × 100</td><td class="n">300</td><td class="n">1.176</td><td class="n">1.636</td></tr>
+    <tr><td>Quarto 2 · 10 m² · 13 m</td><td><code>100 + 1×60</code></td><td class="n">160</td><td><code>⌈13/5⌉ = 3</code> × 100</td><td class="n">300</td><td class="n">—</td><td class="n">460</td></tr>
+    <tr><td>Cozinha · 10 m² · 13 m</td><td><code>100 + 1×60</code></td><td class="n">160</td><td><code>⌈13/3,5⌉ = 4</code>: 3×600 + 1×100</td><td class="n">1.900</td><td class="n">—</td><td class="n">2.060</td></tr>
+    <tr><td>Área de serviço · 5 m² · 9 m</td><td><code>≤ 6 m² ⇒ 100</code></td><td class="n">100</td><td><code>⌈9/3,5⌉ = 3</code>: 3×600</td><td class="n">1.800</td><td class="n">—</td><td class="n">1.900</td></tr>
+    <tr><td>Banheiro · 4 m²</td><td><code>≤ 6 m² ⇒ 100</code></td><td class="n">100</td><td>1 ponto (alínea a) × 600</td><td class="n">600</td><td class="n">5.500</td><td class="n">6.200</td></tr>
+    <tr><td>Varanda · 6 m²</td><td><code>≤ 6 m² ⇒ 100</code></td><td class="n">100</td><td>1 ponto (alínea c) × 100</td><td class="n">100</td><td class="n">—</td><td class="n">200</td></tr>
+    <tfoot><tr><td>Total</td><td></td><td class="n">1.060</td><td></td><td class="n">5.400</td><td class="n">6.676</td><td class="n">13.136</td></tr></tfoot>
+  </table>
+  <h4>Equipamentos de uso específico</h4>
+  <table>
+    <thead><tr><th>Equipamento</th><th>Ligação</th><th class="n">Potência</th><th class="n">cosφ</th><th class="n">S (VA)</th><th>Circuito próprio?</th></tr></thead>
+    <tr><td>Chuveiro (Banheiro)</td><td>fase-fase 220 V, ligação direta (§9.5.2.3)</td><td class="n">5.500 W</td><td class="n">1,00</td><td class="n">5.500</td><td>sim — 25 A &gt; 10 A (§9.5.3.1)</td></tr>
+    <tr><td>Ar-condicionado (Quarto 1)</td><td>fase-fase 220 V</td><td class="n">1.000 W</td><td class="n">0,85</td><td class="n">1.176</td><td>não obrigatório — 5,3 A ≤ 10 A</td></tr>
+  </table>
+  <p class="fraco pequeno">Demanda informativa (Creder, Tab. 3.20, por parcelas): iluminação e tomadas 6.460 VA → 3.934 VA; com os equipamentos a 100 %, 10.610 VA. Não usada no dimensionamento.</p>
+  <div class="rodape-folha"><span>Fio Certo · versão de 24/11/2026</span><span>página 4 de 20</span></div>
+</section>
+
+<!-- ===================================================================== 6 — ficha -->
+<section class="folha">
+  <div class="cabecalho-folha"><span>Casa-modelo (exemplo) · Memorial técnico</span><span>R0 · 24/11/2026</span></div>
+  <h2><span class="num">6</span>Memória de cálculo por circuito</h2>
+
+  <div class="ficha-cab"><strong>C5 · Chuveiro (Banheiro)</strong><span>5.500 VA · 220 V F1+F2 · 12 m · B1 · PVC</span></div>
+  <div class="ficha">
+    <div class="passo"><span class="i">1</span><div><strong>Corrente de projeto</strong> <span class="ref">§6.2.7.4</span>
+      <span class="formula">I<sub>B</sub> = S / U = 5 500 VA / 220 V = 25,00 A</span></div></div>
+
+    <div class="passo"><span class="i">2</span><div><strong>Dispositivo de proteção</strong> <span class="ref">§5.3.4.1 a) · §9.5.4</span>
+      <span class="formula">I<sub>n</sub> = menor nominal ≥ I<sub>B</sub> → 25 A, bipolar, curva C (secciona as duas fases)</span></div></div>
+
+    <div class="passo"><span class="i">3</span><div><strong>Capacidade de condução e seção</strong> <span class="ref">Tab. 33 (maneira 7 → B1) · Tab. 46 (duas fases sem neutro: 2 carregados) · Tab. 36 · Tab. 40/42</span>
+      <span class="formula">I<sub>z</sub> = I<sub>tab</sub> × FCT × FCA = I<sub>tab</sub> × 1,00 × 1,00   ·   critério: I<sub>n</sub> ≤ I<sub>z</sub> e ΔU ≤ 3,35 %</span>
+      <table>
+        <thead><tr><th class="n">Seção</th><th class="n">I<sub>tab</sub> (B1, 2c)</th><th class="n">I<sub>z</sub></th><th>I<sub>n</sub> ≤ I<sub>z</sub>?</th><th class="n">ΔU</th><th>Resultado</th></tr></thead>
+        <tr><td class="n">2,5 mm²</td><td class="n">24 A</td><td class="n">24,0 A</td><td>não (25 &gt; 24)</td><td class="n">2,33 %</td><td>rejeitada</td></tr>
+        <tr class="linha-adotada"><td class="n">4 mm²</td><td class="n">32 A</td><td class="n">32,0 A</td><td>sim</td><td class="n">1,46 %</td><td>adotada</td></tr>
+      </table></div></div>
+
+    <div class="passo"><span class="i">4</span><div><strong>Queda de tensão</strong> <span class="ref">§6.2.7.1 c) · §6.2.7.2</span>
+      <span class="formula">R = 1/(σ·S) = 1/(46,8 × 4) = 5,342 mΩ/m   (cosφ = 1: a reatância não entra)
+ΔU = 2 · L · I<sub>B</sub> · R = 2 × 12 × 25,00 × 0,005342 = 3,21 V  →  3,21 / 220 = 1,46 %
+Disponível: min(4 %, 5 % − 1,65 % do alimentador) = 3,35 %   ·   total na ponta: 1,65 + 1,46 = 3,11 % ≤ 5 %</span>
+      <span class="selo ok">✔ conforme</span></div></div>
+
+    <div class="passo"><span class="i">5</span><div><strong>Sobrecarga</strong> <span class="ref">§5.3.4.1 b)</span>
+      <span class="formula">I<sub>2</sub> = 1,45 · I<sub>n</sub> = 36,25 A ≤ 1,45 · I<sub>z</sub> = 46,40 A</span> <span class="selo ok">✔ conforme</span></div></div>
+
+    <div class="passo"><span class="i">6</span><div><strong>Curto-circuito</strong> <span class="ref">§5.3.5.5.2 · §6.3.4.3.2 · Tab. 30</span>
+      <span class="formula">Icc no quadro (falta entre fases) = 2,85 kA   ·   Icc na ponta = 1,15 kA ≥ 10·I<sub>n</sub> = 250 A (disparo instantâneo garantido)
+I²t = 2 853² × 0,01 s = 8,14·10⁴ A²s  ≤  k²S² = (115 × 4)² = 2,12·10⁵ A²s</span> <span class="selo ok">✔ conforme</span></div></div>
+
+    <div class="passo"><span class="i">7</span><div><strong>Seccionamento automático (TN-C-S)</strong> <span class="ref">§5.1.2.2.4.2 d)</span>
+      <span class="formula">Z<sub>s</sub> = 0,185 Ω  →  I<sub>falta</sub> = U<sub>0</sub>/Z<sub>s</sub> = 127 / 0,185 = 688 A ≥ I<sub>a</sub> = 10 · 25 = 250 A</span> <span class="selo ok">✔ pelo disjuntor (e pelo DR)</span></div></div>
+
+    <div class="passo"><span class="i">8</span><div><strong>Condutor de proteção, eletroduto e DR</strong> <span class="ref">Tab. 58 · §6.2.11.1.6 a) · §5.1.3.2.2 a)</span>
+      <span class="formula">PE: S ≤ 16 mm² ⇒ PE = S = 4 mm²
+Eletroduto: 3 × 13,2 mm² = 39,6 mm² ≤ 40 % de 211,2 mm² (DN 20, Di 16,4 mm) → ocupação 18,7 %
+DR 30 mA obrigatório: local com chuveiro (§5.1.3.2.2 a) — DR 1</span></div></div>
+
+    <p style="margin:2mm 0 0;font:600 9pt var(--sans)"><span class="selo ok">✔ circuito conforme</span>&nbsp;
+      2 × 4 mm² + PE 4 mm² (cobre, PVC 450/750 V) · disjuntor 2P 25 A curva C, Icn ≥ 3 kA · DR 1 · eletroduto DN 20 (½")</p>
+  </div>
+  <div class="rodape-folha"><span>Fio Certo · versão de 24/11/2026</span><span>página 10 de 20</span></div>
+</section>
+
+<!-- ===================================================================== 10 — unifilar (paisagem) -->
+<section class="folha paisagem">
+  <div class="cabecalho-folha"><span>Casa-modelo (exemplo) · Memorial técnico</span><span>R0 · 24/11/2026</span></div>
+  <h2><span class="num">10</span>Diagrama unifilar <span class="fraco pequeno" style="font-weight:400">§6.1.8.1 · numeração igual à do quadro</span></h2>
+  <svg viewBox="0 0 980 360" width="100%" role="img" aria-label="Diagrama unifilar">
+    <g stroke="#1b1f24" stroke-width="1.6" fill="none">
+      <line x1="60" y1="20" x2="60" y2="70"/><rect x="52" y="70" width="16" height="16"/><line x1="52" y1="86" x2="68" y2="70"/>
+      <line x1="60" y1="86" x2="60" y2="130"/><line x1="60" y1="130" x2="930" y2="130" stroke-width="3.2"/>
+      <!-- DPS -->
+      <line x1="60" y1="130" x2="60" y2="170"/><rect x="38" y="170" width="44" height="24" rx="3"/><line x1="60" y1="194" x2="60" y2="210"/>
+      <line x1="48" y1="210" x2="72" y2="210"/><line x1="52" y1="215" x2="68" y2="215"/><line x1="56" y1="220" x2="64" y2="220"/>
+      <!-- DR 1 -->
+      <line x1="430" y1="130" x2="430" y2="160"/><rect x="408" y="160" width="44" height="24" rx="3"/><line x1="430" y1="184" x2="430" y2="210"/>
+      <line x1="170" y1="210" x2="690" y2="210" stroke-width="2.4"/>
+      <!-- circuitos sob DR -->
+      <g><line x1="170" y1="210" x2="170" y2="232"/><rect x="162" y="232" width="16" height="16"/><line x1="162" y1="248" x2="178" y2="232"/><line x1="170" y1="248" x2="170" y2="290"/></g>
+      <g><line x1="300" y1="210" x2="300" y2="232"/><rect x="292" y="232" width="16" height="16"/><line x1="292" y1="248" x2="308" y2="232"/><line x1="300" y1="248" x2="300" y2="290"/></g>
+      <g><line x1="430" y1="210" x2="430" y2="232"/><rect x="422" y="232" width="16" height="16"/><line x1="422" y1="248" x2="438" y2="232"/><line x1="430" y1="248" x2="430" y2="290"/></g>
+      <g><line x1="560" y1="210" x2="560" y2="232"/><rect x="552" y="232" width="16" height="16"/><line x1="552" y1="248" x2="568" y2="232"/><line x1="560" y1="248" x2="560" y2="290"/></g>
+      <g><line x1="690" y1="210" x2="690" y2="232"/><rect x="682" y="232" width="16" height="16"/><line x1="682" y1="248" x2="698" y2="232"/><line x1="690" y1="248" x2="690" y2="290"/></g>
+      <!-- C6 direto no barramento (sem DR) -->
+      <g><line x1="840" y1="130" x2="840" y2="232"/><rect x="832" y="232" width="16" height="16"/><line x1="832" y1="248" x2="848" y2="232"/><line x1="840" y1="248" x2="840" y2="290"/></g>
+    </g>
+    <g font-size="12" fill="#1b1f24">
+      <text x="72" y="32" font-weight="700">Entrada · 20 m · 2F 16 + PEN 16 mm² · B1</text>
+      <text x="76" y="83">Geral 63 A · 2P · curva C · Icn ≥ 6 kA</text>
+      <text x="60" y="186" text-anchor="middle" font-weight="700" font-size="11">DPS</text>
+      <text x="60" y="238" text-anchor="middle" font-size="10.5">Classe II · Uc ≥ 140 V</text>
+      <text x="60" y="252" text-anchor="middle" font-size="10.5">esquema de conexão 1</text>
+      <text x="430" y="176" text-anchor="middle" font-weight="700" font-size="11">DR 1</text>
+      <text x="460" y="152">63 A · 30 mA · tipo A · 3P</text>
+      <g text-anchor="middle" font-size="11">
+        <text x="170" y="306" font-weight="700">C1</text><text x="170" y="320">10 A · 1,5 mm²</text><text x="170" y="334">F1 · Iluminação</text>
+        <text x="300" y="306" font-weight="700">C2</text><text x="300" y="320">16 A · 4 mm²</text><text x="300" y="334">F1 · TUG coz./serv. 1</text>
+        <text x="430" y="306" font-weight="700">C3</text><text x="430" y="320">16 A · 4 mm²</text><text x="430" y="334">F2 · TUG coz./serv. 2</text>
+        <text x="560" y="306" font-weight="700">C4</text><text x="560" y="320">16 A · 2,5 mm²</text><text x="560" y="334">F2 · TUG salas/banh.</text>
+        <text x="690" y="306" font-weight="700">C5</text><text x="690" y="320">25 A 2P · 4 mm²</text><text x="690" y="334">F1+F2 · Chuveiro</text>
+        <text x="840" y="306" font-weight="700">C6</text><text x="840" y="320">6 A 2P · 2,5 mm²</text><text x="840" y="334">F1+F2 · Ar-cond. (sem DR)</text>
+      </g>
+    </g>
+  </svg>
+  <div class="legenda"><span>▭/ disjuntor</span><span>▭ DR / DPS</span><span>━ barramento</span><span>⏚ terra (BEP)</span><span>Reserva: 2 espaços (Tabela 59)</span></div>
+  <div class="rodape-folha"><span>Fio Certo · versão de 24/11/2026</span><span>página 15 de 20</span></div>
+</section>
+
+<!-- ===================================================================== 12 + 13 -->
+<section class="folha">
+  <div class="cabecalho-folha"><span>Casa-modelo (exemplo) · Memorial técnico</span><span>R0 · 24/11/2026</span></div>
+  <h2><span class="num">12</span>Matriz de conformidade</h2>
+  <div class="legenda" style="margin-bottom:2mm"><span><span class="selo ok">✔ conforme</span></span><span><span class="selo alerta">✖ não conforme</span></span><span><span class="selo atencao">◐ não verificado</span></span></div>
+  <table>
+    <thead><tr><th style="width:17%">Cláusula</th><th>Requisito</th><th>Onde</th><th>Situação</th></tr></thead>
+    <tr><td>§9.5.2.1/2</td><td>Carga mínima de iluminação e tomadas</td><td>7 cômodos</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§9.5.2.2.1 b)</td><td>≥ 2 tomadas acima da bancada</td><td>Cozinha, Área de serviço</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§9.5.3</td><td>Divisão em circuitos; &gt; 10 A em circuito próprio</td><td>6 circuitos</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§5.3.4.1</td><td>I<sub>B</sub> ≤ I<sub>n</sub> ≤ I<sub>z</sub> e I<sub>2</sub> ≤ 1,45·I<sub>z</sub></td><td>C1–C6, alimentador</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§6.2.7</td><td>Queda ≤ 4 % no terminal e ≤ 5 % no total</td><td>pior: C4, 4,90 %</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§5.3.5.5</td><td>I²t ≤ k²S² e Icn ≥ Icc</td><td>C1–C6, alimentador</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§5.1.2.2.4.2</td><td>Seccionamento automático (TN): Z<sub>s</sub>·I<sub>a</sub> ≤ U<sub>0</sub></td><td>C1–C6, alimentador</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§5.1.3.2.2</td><td>DR 30 mA onde exigido</td><td>C1–C5 sob DR 1</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§6.2.6.2</td><td>Neutro: corrente real ≤ capacidade</td><td>33,5 A ≤ 68 A</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§6.4.3.4.1</td><td>PEN ≥ 10 mm²</td><td>16 mm²</td><td><span class="selo ok">✔</span></td></tr>
+    <tr><td>§9.1.2 / §9.1.4</td><td>Pontos do banheiro fora dos volumes proibidos</td><td>Banheiro</td><td><span class="selo atencao">◐ pontos não marcados na planta</span></td></tr>
+    <tr><td>§5.4.2.1.1</td><td>DPS exigido?</td><td>não declarado AQ2/linha aérea</td><td><span class="selo atencao">◐ recomendado</span></td></tr>
+  </table>
+
+  <h2 style="margin-top:8mm"><span class="num">13</span>Pendências e limitações</h2>
+  <h4>Pendências deste projeto (dado faltando)</h4>
+  <ul class="pequeno">
+    <li>Pontos elétricos do banheiro não marcados: a conformidade dos volumes 0 a 3 fica para conferência em obra (§9.1.4).</li>
+    <li>Classe AQ e tipo de alimentação não declarados: o DPS fica como recomendação (§5.4.2.1.1).</li>
+  </ul>
+  <h4>Limitações da ferramenta (sempre)</h4>
+  <ul class="pequeno">
+    <li>Curva tempo-corrente real do disjuntor: usa só o limite superior da faixa magnética (curva C: 10·I<sub>n</sub>).</li>
+    <li>Seletividade entre proteções e coordenação de DPS em cascata não são verificadas.</li>
+    <li>Diâmetros de cabo e eletroduto, Icn e reatância vêm de catálogo, não da NBR 5410.</li>
+  </ul>
+
+  <div class="assinatura">
+    <div>Local e data</div>
+    <div>Responsável técnico · registro · ART nº</div>
+  </div>
+  <div class="rodape-folha"><span>Fio Certo · versão de 24/11/2026</span><span>página 18 de 20</span></div>
+</section>
+
+</body>
+</html>

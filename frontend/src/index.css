@@ -1726,6 +1726,345 @@ label.botao-secundario:focus-within {
   font-weight: 600;
 }
 
+/* ---------- Relatório (memorial técnico) ---------- */
+
+.relatorio {
+  --rel-tinta: light-dark(#1b2330, #e6e9ee);
+  --rel-suave: light-dark(#5b6472, #a9b1bd);
+  --rel-linha: light-dark(#d6dbe2, #3a4250);
+  --rel-fundo: light-dark(#f4f6f9, #1f2631);
+  --rel-acento: light-dark(#1f5fa8, #7fb0ec);
+  --rel-ok: light-dark(#1d7a46, #6fd39b);
+  --rel-alerta: light-dark(#b3261e, #ff8a80);
+  --rel-atencao: light-dark(#8a5a00, #f0c060);
+  max-width: 52rem;
+  margin: 0 auto;
+  color: var(--rel-tinta);
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+
+.relatorio h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 2.2rem 0 0.8rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--rel-acento);
+  font-size: 1.25rem;
+}
+
+.relatorio h3 {
+  margin: 1.4rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.relatorio-num {
+  min-width: 1.8rem;
+  color: var(--rel-acento);
+  font-variant-numeric: tabular-nums;
+}
+
+.relatorio-capa {
+  padding: 2rem 0 1rem;
+}
+
+.relatorio-capa h1 {
+  margin: 0.4rem 0;
+  font-size: 1.9rem;
+  line-height: 1.2;
+}
+
+.relatorio-marca {
+  color: var(--rel-acento);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.relatorio-sub {
+  color: var(--rel-suave);
+}
+
+.relatorio-id {
+  width: 100%;
+  margin: 1.4rem 0;
+  border-collapse: collapse;
+}
+
+.relatorio-id td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--rel-linha);
+  vertical-align: top;
+}
+
+.relatorio-id td:first-child {
+  width: 30%;
+  color: var(--rel-suave);
+}
+
+.relatorio-fatos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.relatorio-fatos div {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rel-linha);
+  border-radius: 6px;
+  background: var(--rel-fundo);
+}
+
+.relatorio-fatos dt {
+  color: var(--rel-suave);
+  font-size: 0.75rem;
+}
+
+.relatorio-fatos dd {
+  margin: 0.15rem 0 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.relatorio-veredito {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+}
+
+.relatorio-veredito > span {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.relatorio-veredito div {
+  color: var(--rel-tinta);
+}
+
+.relatorio-veredito-ok {
+  color: var(--rel-ok);
+}
+
+.relatorio-veredito-atencao {
+  color: var(--rel-atencao);
+}
+
+.relatorio-veredito-alerta {
+  color: var(--rel-alerta);
+}
+
+.relatorio-aviso,
+.relatorio-nota {
+  color: var(--rel-suave);
+  font-size: 0.85rem;
+}
+
+.relatorio-alerta {
+  color: var(--rel-alerta);
+  font-weight: 600;
+}
+
+.relatorio-sumario {
+  columns: 2;
+  padding: 0;
+  list-style: none;
+}
+
+.relatorio-sumario li {
+  padding: 0.2rem 0;
+  break-inside: avoid;
+}
+
+.relatorio-sumario span {
+  display: inline-block;
+  width: 1.8rem;
+  color: var(--rel-acento);
+  font-weight: 700;
+}
+
+.relatorio-grade {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.relatorio-tabela {
+  width: 100%;
+  margin: 0.5rem 0 1rem;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.relatorio-tabela th,
+.relatorio-tabela td {
+  padding: 0.32rem 0.5rem;
+  border-bottom: 1px solid var(--rel-linha);
+  text-align: left;
+  vertical-align: top;
+}
+
+.relatorio-tabela thead th {
+  background: var(--rel-fundo);
+  font-weight: 700;
+}
+
+.relatorio-tabela tfoot td {
+  border-top: 2px solid var(--rel-tinta);
+  font-weight: 700;
+}
+
+.relatorio-tabela .n {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.relatorio-tabela code {
+  font-size: 0.8rem;
+  white-space: normal;
+}
+
+.relatorio-tabela-compacta {
+  font-size: 0.78rem;
+}
+
+.relatorio-adotada td {
+  background: light-dark(#e6f2ea, #1f3a2a);
+  font-weight: 700;
+}
+
+.relatorio-ficha {
+  margin: 1rem 0;
+  border: 1px solid var(--rel-linha);
+  border-radius: 6px;
+}
+
+.relatorio-ficha-cab {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.3rem 1rem;
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--rel-linha);
+  background: var(--rel-fundo);
+}
+
+.relatorio-ficha-cab span {
+  color: var(--rel-suave);
+  font-size: 0.82rem;
+}
+
+.relatorio-ficha-corpo {
+  padding: 0.4rem 0.8rem 0.6rem;
+}
+
+.relatorio-passo {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  gap: 0.4rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px dashed var(--rel-linha);
+}
+
+.relatorio-passo-i {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--rel-acento);
+  color: light-dark(#fff, #10151c);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.relatorio-passo p {
+  margin: 0.2rem 0 0;
+}
+
+.relatorio-ref {
+  color: var(--rel-acento);
+  font-size: 0.78rem;
+}
+
+.relatorio-formula {
+  margin: 0.25rem 0 0;
+  padding: 0.35rem 0.55rem;
+  border-left: 3px solid var(--rel-acento);
+  background: var(--rel-fundo);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.relatorio-ficha-resumo {
+  margin: 0.6rem 0 0;
+  font-weight: 600;
+}
+
+.selo-relatorio {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.selo-ok {
+  color: var(--rel-ok);
+}
+
+.selo-alerta {
+  color: var(--rel-alerta);
+}
+
+.selo-atencao {
+  color: var(--rel-atencao);
+}
+
+.relatorio-legenda .selo-relatorio {
+  margin-right: 0.5rem;
+}
+
+.relatorio-referencias li {
+  margin-bottom: 0.4rem;
+}
+
+.relatorio-assinatura {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 2rem;
+  margin-top: 3.5rem;
+}
+
+.relatorio-assinatura div {
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--rel-tinta);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .relatorio-fatos,
+  .relatorio-grade {
+    grid-template-columns: 1fr;
+  }
+
+  .relatorio-sumario {
+    columns: 1;
+  }
+}
+
 @media print {
   .navbar,
   .footer,
@@ -1790,6 +2129,74 @@ label.botao-secundario:focus-within {
   a {
     color: inherit;
     text-decoration: none;
+  }
+
+  /* Relatório: A4, numeração, cabeçalho de tabela repetido, uma seção grande por página. */
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+
+    @bottom-right {
+      content: 'Página ' counter(page) ' de ' counter(pages);
+      font-size: 8pt;
+      color: #5b6472;
+    }
+
+    @bottom-left {
+      content: 'Fio Certo · memorial técnico · ABNT NBR 5410:2004';
+      font-size: 8pt;
+      color: #5b6472;
+    }
+  }
+
+  @page :first {
+    @bottom-left {
+      content: none;
+    }
+
+    @bottom-right {
+      content: none;
+    }
+  }
+
+  .relatorio {
+    max-width: none;
+    font-size: 9.5pt;
+  }
+
+  .relatorio-nova-pagina,
+  .relatorio-paisagem {
+    break-before: page;
+  }
+
+  .relatorio thead {
+    display: table-header-group;
+  }
+
+  .relatorio-passo,
+  .relatorio-ficha-cab,
+  .relatorio-fatos div,
+  .relatorio-veredito,
+  .relatorio-assinatura {
+    break-inside: avoid;
+  }
+
+  .relatorio-ficha-cab {
+    break-after: avoid;
+  }
+
+  .relatorio-formula,
+  .relatorio-fatos div,
+  .relatorio-tabela thead th,
+  .relatorio-ficha-cab,
+  .relatorio-adotada td,
+  .relatorio-passo-i {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .relatorio-capa {
+    min-height: 245mm;
   }
 }
 

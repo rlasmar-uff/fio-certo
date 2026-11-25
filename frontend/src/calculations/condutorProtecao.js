@@ -30,7 +30,7 @@ export function dimensionarPE({ secaoFaseMm2, isolacao = 'pvc', iFaltaA = null, 
     minimoMm2,
     kUsado: k,
     metodo: calculoMm2 !== null && calculoMm2 > tabela58Mm2 ? 'cálculo (integral de Joule)' : 'Tabela 58',
-    pendencia: temDadosDeFalta && !k ? 'k da Tabela 53 para EPR/XLPE não consta do documento: cálculo do PE pendente' : null,
+    pendencia: null,
   }
 }
 

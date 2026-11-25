@@ -10,7 +10,6 @@ export const ROUTES = {
   dimensionamento: '/calculadora/dimensionamento',
   resultado: '/calculadora/resultado',
   memorial: '/calculadora/memorial',
-  consumo: '/calculadora/consumo',
   planta: '/calculadora/planta',
   banheiro: '/calculadora/banheiro',
   comparar: '/calculadora/comparar',

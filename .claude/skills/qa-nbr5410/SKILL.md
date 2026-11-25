@@ -51,7 +51,7 @@ a norma diz 110 A.
 
 ```bash
 node QA/scripts/verificar.mjs              # tudo
-node QA/scripts/verificar.mjs --grupo G4   # só um grupo (G1..G44 — a lista cresce; veja o topo de verificar.mjs)
+node QA/scripts/verificar.mjs --grupo G4   # só um grupo (G1..G47 — a lista cresce; veja o topo de verificar.mjs)
 node QA/scripts/verificar.mjs --verboso    # inclui os critérios que passaram
 ```
 
@@ -61,9 +61,8 @@ Grupos principais (não é a lista completa — cada expansão de cobertura acre
 cabeçalho de cada `grupo(...)` em `verificar.mjs` é a fonte de verdade, não esta lista):
 **G1** previsão de carga · **G2** integridade das Tabelas 36/37 · **G3** divisão de circuitos ·
 **G4** condutores e coordenação da proteção · **G5** queda de tensão · **G6** alimentador,
-proteção geral e aterramento · **G22** locais especiais (banheiro/chuveiro) · **G32** fator de
-demanda por distribuidora · **G33** volumes do banheiro pela planta · **G34** achados de auditorias
-adversariais (cresce a cada rodada — ver `QA/relatorios/`) · **G35–G44** auditoria independente de nov/2026 (referência manual, PDF por coordenadas e implementação própria; ver `docs/AUDITORIA_NORMATIVA.md`).
+proteção geral e aterramento · **G22** locais especiais (banheiro/chuveiro) · **G33** volumes do banheiro pela planta · **G34** achados de auditorias
+adversariais (cresce a cada rodada — ver `QA/relatorios/`) · **G35–G44** auditoria independente de nov/2026 (referência manual, PDF por coordenadas e implementação própria; ver `docs/AUDITORIA_NORMATIVA.md`) · **G47** auditoria do zero de 24/11/2026 (DR, quadro, agrupamento por cômodo, curto-circuito, PEN, DPS; ver `docs/PLANO_DE_CORRECAO_2026-11.md`). Há também testes independentes do harness em `QA/auditoria-independente/testes.mjs`.
 
 **FAIL não é bug do harness.** Cada falha é uma divergência conhecida entre o código e a norma,
 com cláusula e evidência numérica. **Não confie num número fixo de "linha de base" escrito aqui ou

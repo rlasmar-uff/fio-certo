@@ -116,6 +116,6 @@ test('PWA: depois da primeira visita, abre sem internet', async ({ page, context
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: /Dimensionamento elétrico residencial/ })).toBeVisible()
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
-  await expect(page.getByRole('heading', { name: 'Tudo o que a ferramenta verifica está conforme' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Faltam dados para verificar tudo' })).toBeVisible()
   await context.setOffline(false)
 })

@@ -109,19 +109,12 @@ export function listarMateriais(projeto, calculo, { folgaPercentual } = {}) {
   const curva = projeto.curvaDisjuntorGeral
   const icn = calculo.complementares.capacidadeInterrupcao
   const acimaDecimo = (ka) => (ka ? Math.ceil(ka * 10) / 10 : null)
-  // N18 — piso de Icn que a distribuidora escolhida exige do disjuntor geral do padrão de entrada,
-  // independente da Icc real do ponto (ver distribuidoras.js). Só eleva o mínimo calculado; nunca
-  // reduz, e é ignorado sem distribuidora com esse dado publicado.
-  const icnPisoDistribuidora = calculo.demandaConcessionaria?.distribuidora.icnMinimoGeralKA?.(pg.disjuntorGeralA)
   const disjuntores = agrupar(
     posicoes
       .filter((p) => (p.tipo === 'disjuntor' || p.tipo === 'geral') && p.rotulo !== '—')
       .map((p) => {
-        const icnMinimoBaseKA = acimaDecimo(p.tipo === 'geral' ? icn?.geralKA : icn?.terminaisKA)
-        const icnMinimoKA =
-          p.tipo === 'geral' && icnPisoDistribuidora
-            ? Math.max(icnMinimoBaseKA ?? 0, icnPisoDistribuidora)
-            : icnMinimoBaseKA
+        // §5.3.5.5.1 — Icn ≥ Icc presumida no ponto de instalação.
+        const icnMinimoKA = acimaDecimo(p.tipo === 'geral' ? icn?.geralKA : icn?.terminaisKA)
         return {
           descricao: `Disjuntor ${p.polos === 1 ? 'unipolar' : `${p.polos} polos`} curva ${curva} ${p.rotulo}`,
           icnMinimoKA,
@@ -131,15 +124,27 @@ export function listarMateriais(projeto, calculo, { folgaPercentual } = {}) {
       }),
     (d) => `${d.descricao}|${d.icnMinimoKA}`,
   )
+  const tipoDR = ['AC', 'A', 'B'].includes(projeto.tipoDR) ? projeto.tipoDR : 'A'
   const drs = agrupar(
-    posicoes.filter((p) => p.tipo === 'dr' && p.rotulo !== '—').map((p) => ({ descricao: `DR ${p.polos} polos ${p.rotulo}`, quantidade: 1 })),
+    posicoes.filter((p) => p.tipo === 'dr' && p.rotulo !== '—').map((p) => ({ descricao: `DR ${p.polos} polos ${p.rotulo} · tipo ${tipoDR}`, quantidade: 1 })),
     (d) => d.descricao,
   )
+  // DPS: só quando a NBR 5410 o exige (§5.4.2.1.1); quantidade e modos pelo esquema de conexão (§6.3.5.2.2):
+  // 1 = cada fase ao PE/PEN; 2 = cada fase ao PE + neutro–PE; 3 = cada fase ao neutro + neutro–PE.
   const dps = calculo.complementares.dps
-  const dispositivosDPS = [
-    { descricao: `DPS fase–PE: Uc ≥ ${Math.ceil(dps.ucMinimoFaseV)} V, In ≥ ${dps.inMinimoKA} kA, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: numeroFases },
-    { descricao: `DPS neutro–PE: Uc ≥ ${dps.ucMinimoNeutroPeV} V, In ≥ ${dps.inMinimoNeutroPeKA} kA, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: 1 },
-  ]
+  const esquemaDPS = dps.esquemaConexao?.esquema ?? null
+  const iimp = (ka) => (ka ? `, Iimp ≥ ${decimal(ka)} kA` : '')
+  const dispositivosDPS = !pg.dps?.exigidaPelaNorma
+    ? []
+    : esquemaDPS === 1
+      ? [{ descricao: `DPS fase–PE${projeto.esquemaAterramento === 'TN-C-S' ? 'N' : ''}: Uc ≥ ${Math.ceil(dps.ucMinimoFaseV)} V, In ≥ ${dps.inMinimoKA} kA${iimp(dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: numeroFases }]
+      : [
+          { descricao: `DPS fase–${esquemaDPS === 3 ? 'neutro' : 'PE'}: Uc ≥ ${Math.ceil(dps.ucMinimoFaseV)} V, In ≥ ${dps.inMinimoKA} kA${iimp(dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: numeroFases },
+          {
+            descricao: `DPS neutro–PE: Uc ≥ ${dps.ucMinimoNeutroPeV} V, In ≥ ${esquemaDPS === 3 ? dps.inMinimoNeutroPeKA : dps.inMinimoKA} kA${iimp(esquemaDPS === 3 ? dps.iimpMinimoNeutroPeKA : dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`,
+            quantidade: 1,
+          },
+        ]
 
   // Pontos: tomadas pela previsão de carga; ≥ 1 ponto de luz por cômodo (§9.5.2.1.1).
   const { porComodo } = calcularPrevisaoDeCarga(projeto.comodos, projeto.aplicarAlternativa600VA)

@@ -160,7 +160,7 @@ export default function Comparar() {
       </div>
       <p className="texto-fraco">Em destaque, o que muda no cenário.</p>
       <Nota titulo="Por que um circuito pode engrossar com um cabo melhor?">
-        Alimentador e circuitos dividem os mesmos 5% de queda de tensão a partir da entrega (§6.2.7.1). Se o cenário deixa o
+        Alimentador e circuitos dividem o mesmo limite total de queda de tensão (§6.2.7.1). Se o cenário deixa o
         alimentador mais fino, ele consome mais desse orçamento, e os circuitos passam a ter menos margem — alguns precisam
         de seção maior. EPR/XLPE também tem resistência maior, porque opera a 90 °C.
       </Nota>

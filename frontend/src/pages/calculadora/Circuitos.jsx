@@ -20,7 +20,7 @@ export default function Circuitos() {
     <EtapaCalculadora
       titulo="Divisão em circuitos"
       clausulas="§9.5.3"
-      referenciaNorma="§9.5.3 — divisão da instalação em circuitos: iluminação e tomadas separadas, circuito exclusivo para equipamento acima de 10 A (aqui, por simplificação conservadora, para todo equipamento de uso específico)."
+      referenciaNorma="§4.2.5.5 e §9.5.3 — iluminação e tomadas em circuitos separados (circuito misto só nas condições do §9.5.3.3), tomadas de cozinha e áreas de serviço em circuitos exclusivos (§9.5.3.2) e circuito independente para equipamento com corrente nominal acima de 10 A (§9.5.3.1)."
     >
       {circuitosComFase.length === 0 ? (
         <p className="placeholder">
@@ -34,18 +34,18 @@ export default function Circuitos() {
           </p>
 
           <div className="grade-campos grade-campos-larga">
-            <Campo label="Proteção diferencial (DR)" ajuda="§6.3.3.2.6 — dividir evita que a fuga normal de todos os circuitos derrube a casa inteira.">
+            <Campo label="Proteção diferencial (DR)" ajuda="§6.3.3.2.6 — a fuga normal dos aparelhos soma no DR; dividir em grupos evita desligamentos indevidos.">
               <select className="campo" value={projeto.modoDR} onChange={(evento) => setModoDR(evento.target.value)}>
+                <option value="exigidos">DR de 30 mA nos circuitos em que a norma exige (§5.1.3.2.2), num só dispositivo — padrão</option>
                 <option value="geral">Todos os circuitos sob um DR de 30 mA para toda a instalação</option>
                 <option value="grupos">Todos os circuitos, com um DR de 30 mA por grupo</option>
-                <option value="exigidos">Um DR de 30 mA para cada circuito que a norma exige (§5.1.3.2.2) — padrão</option>
               </select>
             </Campo>
             <CampoNumero
               chave="correnteMaximaCircuitoA"
               label="Corrente máxima por circuito"
               unidade="A"
-              ajuda={`Critério do compilado: o circuito é limitado pela corrente, não por VA fixo. Padrão ${CORRENTE_MAXIMA_CIRCUITO_PADRAO_A} A; circuito misto (iluminação + tomadas, §9.5.3.1) até ${CORRENTE_MAXIMA_CIRCUITO_MISTO_A} A.`}
+              ajuda={`Escolha de projeto: a NBR 5410 não limita VA nem número de tomadas por circuito. Padrão ${CORRENTE_MAXIMA_CIRCUITO_PADRAO_A} A; circuito misto (iluminação + tomadas) até ${CORRENTE_MAXIMA_CIRCUITO_MISTO_A} A (§9.5.3.3 a).`}
             />
             {porGrupos && (
               <Campo label="DR a montante dos grupos" ajuda="Opcional. Para ser seletivo: tipo S e ≥ 3× 30 mA (§6.3.6.3.2).">
@@ -60,7 +60,7 @@ export default function Circuitos() {
               </Campo>
             )}
           </div>
-          <CampoMarcar chave="circuitoMisto">Permitir circuito misto: iluminação e tomadas de uso geral no mesmo circuito (§9.5.3.1, com as condições do compilado).</CampoMarcar>
+          <CampoMarcar chave="circuitoMisto">Permitir circuito misto: iluminação e tomadas de uso geral no mesmo circuito (§9.5.3.3: Ib ≤ 16 A, e nenhum circuito misto concentra toda a iluminação nem todas as tomadas).</CampoMarcar>
 
           <div className="tabela-scroll">
             <table className="tabela-resultado tabela-cartoes">
@@ -198,45 +198,39 @@ export default function Circuitos() {
               </div>
               {balanceamento && (
                 <>
-                  <h2>Distribuição por fase: correntes e dispersão δ</h2>
+                  <h2>Correntes de fase (soma fasorial)</h2>
                   <div className="tabela-scroll">
                     <table className="tabela-resultado">
                       <thead>
                         <tr>
-                          <th>Cenário</th>
+                          <th>Distribuição</th>
                           {cargaPorFase.map((_, k) => (
                             <th key={k} className="numerico">I fase {k + 1}</th>
                           ))}
-                          <th className="numerico">δ</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {[['Distribuição automática', balanceamento.automatico], [balanceamento.ajusteManual ? 'Adotada (com ajuste manual)' : 'Adotada', balanceamento.adotado], ['Sem os equipamentos de uso específico', balanceamento.semEquipamentos]].map(([nome, c]) => (
+                        {[['Automática', balanceamento.automatico], [balanceamento.ajusteManual ? 'Adotada (com ajuste manual)' : 'Adotada', balanceamento.adotado]].map(([nome, c]) => (
                           <tr key={nome}>
                             <td>{nome}</td>
                             {c.correntesA.map((i, k) => (
                               <td key={k} className="numerico">{i.toFixed(1)} A</td>
                             ))}
-                            <td className="numerico">{c.deltaPercentual === null ? '—' : `${c.deltaPercentual.toFixed(1)}%`}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <Nota titulo="O que é o δ">
-                    <p>
-                      δ = 100·máx(|Iₖ − Imédia|)/Imédia, com as correntes de fase por soma fasorial. É um indicador de dispersão para comparar
-                      alternativas, não o fator de desequilíbrio por componentes simétricas nem um limite da NBR 5410 (4.2.5.6 não fixa percentual).
-                    </p>
-                  </Nota>
                 </>
               )}
 
-              <Nota titulo="Como as fases foram balanceadas?">
+              <Nota titulo="Como as fases foram balanceadas? (§4.2.5.6)">
                 <p>
-                  Cada circuito vai para a(s) fase(s) menos carregada(s) até o momento. Circuitos
-                  fase-fase usam duas fases com a MESMA corrente nas duas (não a metade), por isso a
-                  potência que entra em cada fase neste resumo é a do circuito dividida por √3.
+                  {calculo.balanceamentoExato
+                    ? 'A ferramenta testa as combinações de fases e escolhe a de menor diferença entre a fase mais carregada e a menos carregada (maior equilíbrio possível, §4.2.5.6). A lista abaixo mostra a ordem de processamento e a carga acumulada antes de cada circuito.'
+                    : 'Projeto grande demais para testar todas as combinações: cada circuito vai para a(s) fase(s) menos carregada(s) até o momento.'}{' '}
+                  Circuitos fase-fase usam duas fases com a MESMA corrente nas duas (não a metade), por isso a potência que entra em
+                  cada fase neste resumo é a do circuito dividida por √3.
                 </p>
                 <ol className="explicacao-fases">
                   {explicacoes.map((circuito) => {
@@ -249,10 +243,8 @@ export default function Circuitos() {
                         <strong>{circuito.nome}</strong> ({circuito.potenciaVA.toFixed(0)} VA
                         {circuito.ehFaseFase ? ', fase-fase' : ''}) — processado nesta ordem porque é a
                         {circuito.decisaoFase.ordem === 1 ? ' maior' : `${circuito.decisaoFase.ordem}ª maior`}{' '}
-                        carga da lista. Cargas acumuladas antes desta atribuição: {cargasAntesTexto}. Como{' '}
-                        {fases.length > 1
-                          ? `F${fases[0]} e F${fases[1]} eram (juntas) a menor soma disponível`
-                          : `F${fases[0]} era a menor carga disponível`}
+                        carga da lista. Cargas acumuladas antes desta atribuição: {cargasAntesTexto}.
+                        {circuito.decisaoFase.manual ? ' Fase escolhida pelo projetista' : calculo.balanceamentoExato ? ' Na combinação de maior equilíbrio' : ` Como ${fases.length > 1 ? `F${fases[0]} e F${fases[1]} eram (juntas) a menor soma disponível` : `F${fases[0]} era a menor carga disponível`}`}
                         , recebeu {Math.round(contribuicaoPorFase)} VA {fases.length > 1 ? 'em cada uma' : ''} →{' '}
                         {fases.map((f) => `F${f}`).join('+')}.
                       </li>

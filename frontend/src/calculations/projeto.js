@@ -1,5 +1,4 @@
-import { balancearFases, calcularCorrentesVetoriais, gerarCircuitos, indicadorDesequilibrio } from './circuitos.js'
-import { calcularDemandaProjeto } from './demanda.js'
+import { balancearFases, calcularCorrentesVetoriais, gerarCircuitos } from './circuitos.js'
 import { resolverAgrupamentos, secoesDentroDeTresValores } from './agrupamento.js'
 import { dimensionarPE } from './condutorProtecao.js'
 import { exigenciaDR } from './exigenciaDR.js'
@@ -8,7 +7,6 @@ import { dimensionarProtecaoGeral } from './protecaoGeral.js'
 import { dimensionarEletroduto } from './eletroduto.js'
 import { avaliarPiscinaESauna, avaliarRequisitosBanheiro } from './locaisEspeciais.js'
 import { calcularPrevisaoDeCarga } from './previsaoDeCarga.js'
-import { calcularDemandaConcessionaria } from './distribuidoras.js'
 import { impedanciaFalta, verificarCurtoCircuito, propagarIccFaseFase, propagarIccTerminal } from './curtoCircuito.js'
 import {
   dimensionarDRs,
@@ -16,7 +14,7 @@ import {
   verificarSeccionamentoTN,
   verificarSeccionamentoTT,
 } from './seccionamento.js'
-import { correntesDaLinha } from './constantes.js'
+import { TEMPO_DISPARO_INSTANTANEO_S, obterFatorAgrupamento, obterK } from './constantes.js'
 import { calcularReservaQuadro, verificacoesComplementares, verificarSobrecarga } from './complementares.js'
 import { verificarExistente } from './existente.js'
 import { ID_PERCURSO_ALIMENTADOR, verificarPercurso } from './percurso.js'
@@ -32,6 +30,20 @@ function valorInformado(valor) {
   return valor !== undefined && valor !== null && valor !== ''
 }
 
+// Agrupamento por cômodo (padrão quando o usuário não informa nem um número global nem grupos): os
+// circuitos que atendem um mesmo cômodo passam juntos pelo eletroduto que chega a ele. Para cada
+// circuito vale o cômodo mais desfavorável do seu percurso (§6.2.5.8: "condições mais desfavoráveis"),
+// isto é, o maior número de circuitos que dividem um cômodo com ele (Tabelas 42 a 45, conforme o método).
+export function circuitosAgrupadosPorComodo(circuitos) {
+  const porComodo = new Map()
+  for (const circuito of circuitos) {
+    for (const id of new Set(circuito.comodoIds ?? [])) porComodo.set(id, (porComodo.get(id) ?? 0) + 1)
+  }
+  return Object.fromEntries(
+    circuitos.map((circuito) => [circuito.id, Math.max(1, ...[...new Set(circuito.comodoIds ?? [])].map((id) => porComodo.get(id) ?? 1))]),
+  )
+}
+
 // Ponto único de cálculo do projeto inteiro, na ordem que a norma exige: primeiro o alimentador
 // (§6.2.7.1 c — ele consome parte do orçamento de queda de 5% a partir do ponto de entrega),
 // depois os circuitos terminais, com o que sobrou desse orçamento (nunca mais que os 4% do
@@ -40,31 +52,21 @@ function valorInformado(valor) {
 // evita o alimentador e os circuitos terminais divergirem sobre o orçamento de queda disponível.
 export function calcularProjetoCompleto(projeto, configInstalacao) {
   const { numeroFases, tensaoFaseNeutro } = configInstalacao
-  // Corrente nominal disponível na linha de disjuntores escolhida (S7 §3), por número de polos.
-  const correntesDisjuntor = (polos) => correntesDaLinha(projeto.linhaDisjuntor, polos)
 
   const circuitos = gerarCircuitos(projeto.comodos, configInstalacao, projeto.aplicarAlternativa600VA, {
     correnteMaximaA: projeto.correnteMaximaCircuitoA,
     circuitoMisto: projeto.circuitoMisto,
   })
-  const { cargaPorFase, circuitosComFase, explicacoes } = balancearFases(circuitos, numeroFases, projeto.fasesManuais)
-  // S3 §10 — "antes e depois": a distribuição automática × a adotada (com os ajustes do projetista), cada
-  // uma com as correntes de fase por soma fasorial e o indicador de dispersão δ; e um cenário sem os
-  // equipamentos de uso específico (simultaneidade parcial), só para comparar.
+  const { cargaPorFase, circuitosComFase, explicacoes, balanceamentoExato } = balancearFases(circuitos, numeroFases, projeto.fasesManuais)
+  // §4.2.5.6 — cargas distribuídas entre as fases para o maior equilíbrio possível: a distribuição
+  // automática e a adotada (com os ajustes do projetista), com as correntes de fase por soma fasorial.
   const correntesDe = (lista) => calcularCorrentesVetoriais(lista, numeroFases, tensaoFaseNeutro).correntePorFaseA
   const automatico = balancearFases(circuitos, numeroFases, {}).circuitosComFase
-  const semTue = (lista) => lista.filter((circuito) => circuito.tipo !== 'tue')
   const balanceamento = {
     ajusteManual: Object.keys(projeto.fasesManuais ?? {}).some((id) => circuitosComFase.find((c) => c.id === id)?.decisaoFase?.manual),
-    automatico: { correntesA: correntesDe(automatico), ...indicadorDesequilibrio(correntesDe(automatico)) },
-    adotado: { correntesA: correntesDe(circuitosComFase), ...indicadorDesequilibrio(correntesDe(circuitosComFase)) },
-    semEquipamentos: { correntesA: correntesDe(semTue(circuitosComFase)), ...indicadorDesequilibrio(correntesDe(semTue(circuitosComFase))) },
+    automatico: { correntesA: correntesDe(automatico) },
+    adotado: { correntesA: correntesDe(circuitosComFase) },
   }
-  const demanda = calcularDemandaProjeto({
-    totais: calcularPrevisaoDeCarga(projeto.comodos, projeto.aplicarAlternativa600VA).totais,
-    perfil: projeto.perfilDemanda,
-    identificacao: { distribuidoraId: projeto.distribuidoraId, documento: projeto.demandaDocumento, revisao: projeto.demandaRevisao, grupo: projeto.demandaGrupo },
-  })
   // Cálculo vetorial completo (soma de P/Q por fase, ângulo de 120° entre fases) — substitui a
   // soma escalar de VA (`cargaPorFase`, mantida acima só pra explicar a decisão de balanceamento
   // na UI) como base da corrente que dimensiona o disjuntor geral/alimentador, e é a única forma
@@ -109,7 +111,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     convencao: projeto.convencaoResistividade,
     impedanciaAlimentador,
     limiteQuedaTotalPercentual,
-    correntesDisjuntor,
+    esquemaAterramento: projeto.esquemaAterramento,
     correntePorFaseA,
     correnteNeutroA,
     fasoresFaseA,
@@ -158,7 +160,12 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     eletroduto:
       secaoFaseAlimentador !== null && projeto.metodoInstalacaoAlimentador !== 'C'
         ? dimensionarEletroduto(
-            [...Array(numeroFases).fill(secaoFaseAlimentador), protecaoGeralBase.secaoNeutroMm2, peAlimentador.secaoMm2 ?? protecaoGeralBase.secaoTerraMm2],
+            // TN-C-S: no ramal até o quadro o PEN faz neutro e proteção (§6.4.3.4) — não há PE separado.
+            [
+              ...Array(numeroFases).fill(secaoFaseAlimentador),
+              protecaoGeralBase.secaoNeutroMm2,
+              ...(projeto.esquemaAterramento === 'TN-C-S' ? [] : [peAlimentador.secaoMm2 ?? protecaoGeralBase.secaoTerraMm2]),
+            ],
             { isolacao: protecaoGeralBase.condutorFase.isolacao, ...opcoesEletroduto },
           )
         : null,
@@ -176,34 +183,63 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     Math.min(LIMITE_QUEDA_TERMINAL_PERCENTUAL, limiteQuedaTotalPercentual - quedaAlimentadorPercentual),
   )
 
+  // §6.2.6.1.2 c) / §5.3.5.5.2 — com a Icc informada, a seção de cada circuito também precisa suportar a
+  // energia de curto-circuito no ponto do disjuntor (o quadro): S ≥ Icc·√t / k (Tabela 30), t = disparo
+  // instantâneo. É a mesma conta de `verificarCurtoCircuito`, usada aqui para ESCOLHER a seção.
+  const iccQuadroFaseFase = propagarIccFaseFase({
+    tensaoFaseNeutroV: tensaoFaseNeutro,
+    iccFonteA: iccAlimentadorA,
+    trechos: [{ comprimentoM: comprimentoRamalM, secaoMm2: protecaoGeral.condutorFase.secaoMm2, isolacao: protecaoGeral.condutorFase.isolacao }],
+  })
+  const kCircuitos = obterK({ isolacao: projeto.isolacaoCondutor || 'pvc', secaoMm2: 1 })
+  const secaoMinimaCurtoPorId = Object.fromEntries(
+    circuitos.map((c) => {
+      const icc = c.ehFaseFase && protecaoGeral.iccQuadroA && iccQuadroFaseFase ? Math.max(protecaoGeral.iccQuadroA, iccQuadroFaseFase) : protecaoGeral.iccQuadroA
+      return [c.id, icc ? (icc * Math.sqrt(TEMPO_DISPARO_INSTANTANEO_S)) / kCircuitos : null]
+    }),
+  )
+
   const metodoPorId = Object.fromEntries(circuitos.map((c) => [c.id, projeto.metodosInstalacao?.[c.id] || 'B1']))
+  const numeroGlobalInformado = valorInformado(projeto.numeroCircuitosAgrupadosManual)
   const opcoesDimensionamento = {
     temperaturaC: projeto.temperaturaAmbienteC,
     temperaturaSoloC: projeto.temperaturaSoloC,
     resistividadeTermicaSoloKmW: projeto.resistividadeTermicaSoloKmW,
     isolacao: projeto.isolacaoCondutor,
-    numeroCircuitosAgrupados: valorInformado(projeto.numeroCircuitosAgrupadosManual)
-      ? projeto.numeroCircuitosAgrupadosManual
-      : undefined,
+    numeroCircuitosAgrupados: numeroGlobalInformado ? projeto.numeroCircuitosAgrupadosManual : undefined,
     limiteQuedaPercentual: limiteQuedaTerminalDisponivel,
     metodosPorId: projeto.metodosInstalacao,
     convencao: projeto.convencaoResistividade,
     impedanciasPorId: projeto.impedancias,
     pontosCargaPorId: projeto.pontosCarga,
     secoesRetornoPorId: projeto.secoesRetorno,
-    correntesDisjuntor,
+    secaoMinimaCurtoPorId,
   }
+  // Origem do fator de agrupamento de cada circuito, em ordem de prioridade: (1) grupo definido pelo
+  // usuário (forma e tabela escolhidas); (2) número global informado; (3) padrão: agrupamento por cômodo.
+  const agrupadosPorComodo = circuitosAgrupadosPorComodo(circuitos)
+  const agrupamentoPorId = Object.fromEntries(
+    circuitos.map((c) => [c.id, numeroGlobalInformado ? { origem: 'global', n: Number(projeto.numeroCircuitosAgrupadosManual) } : { origem: 'comodo', n: agrupadosPorComodo[c.id] }]),
+  )
+  const fatoresPadrao = numeroGlobalInformado
+    ? {}
+    : Object.fromEntries(circuitos.map((c) => [c.id, obterFatorAgrupamento(agrupadosPorComodo[c.id], metodoPorId[c.id])]))
   // K2 por grupo de agrupamento (S5 §3–5): 1ª passada com os grupos tomados como semelhantes; com as seções
   // obtidas confere-se a regra de "três valores normalizados sucessivos" (6.2.5.5.5 / 6.2.10.2) e, se o grupo
   // não for semelhante, refaz-se com F = 1/√n.
   const grupos1 = resolverAgrupamentos(projeto.agrupamentos, circuitos, metodoPorId)
-  let dimensionadosBase = dimensionarCircuitos(circuitos, projeto.comprimentos, { ...opcoesDimensionamento, fatorAgrupamentoPorId: grupos1.fatores })
+  const comPadrao = (fatoresGrupo) => ({ ...fatoresPadrao, ...fatoresGrupo })
+  let dimensionadosBase = dimensionarCircuitos(circuitos, projeto.comprimentos, { ...opcoesDimensionamento, fatorAgrupamentoPorId: comPadrao(grupos1.fatores) })
   const secoesPorId = Object.fromEntries(dimensionadosBase.map((c) => [c.id, c.secaoMm2]))
   let gruposResolvidos = resolverAgrupamentos(projeto.agrupamentos, circuitos, metodoPorId, secoesPorId)
   if (JSON.stringify(gruposResolvidos.fatores) !== JSON.stringify(grupos1.fatores)) {
-    dimensionadosBase = dimensionarCircuitos(circuitos, projeto.comprimentos, { ...opcoesDimensionamento, fatorAgrupamentoPorId: gruposResolvidos.fatores })
+    dimensionadosBase = dimensionarCircuitos(circuitos, projeto.comprimentos, { ...opcoesDimensionamento, fatorAgrupamentoPorId: comPadrao(gruposResolvidos.fatores) })
     gruposResolvidos = resolverAgrupamentos(projeto.agrupamentos, circuitos, metodoPorId, Object.fromEntries(dimensionadosBase.map((c) => [c.id, c.secaoMm2])))
   }
+  for (const grupo of gruposResolvidos.resultados) {
+    for (const id of grupo.circuitoIds) agrupamentoPorId[id] = { origem: 'grupo', n: grupo.n, grupo: grupo.nome || grupo.id, forma: grupo.forma }
+  }
+  dimensionadosBase = dimensionadosBase.map((c) => ({ ...c, agrupamento: agrupamentoPorId[c.id] }))
   // Circuito excluído do agrupamento (6.2.5.5.2): corrente de projeto ≤ 30% da capacidade já corrigida pelo
   // agrupamento incorrido — nunca da capacidade sem correção.
   for (const grupo of gruposResolvidos.resultados) {
@@ -308,7 +344,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
   // com DR tipo S opcional a montante. No modo por grupos, o "IDR geral" passa a ser esse DR de
   // montante (ou nenhum); todo circuito continua sob um DR de 30 mA.
   const fasesPorCircuito = Object.fromEntries(circuitosComFase.map((circuito) => [circuito.id, circuito.fases]))
-  const exigencias = Object.fromEntries(dimensionados.map((c) => [c.id, exigenciaDR(c, projeto.comodos)]))
+  const exigencias = Object.fromEntries(dimensionados.map((c) => [c.id, exigenciaDR(c, projeto.comodos, { esquemaAterramento: projeto.esquemaAterramento })]))
   const exigidosIds = new Set(Object.entries(exigencias).filter(([, e]) => e.exige).map(([id]) => id))
   const drs = dimensionarDRs({
     modoDR: projeto.modoDR,
@@ -409,7 +445,8 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
               tensaoFaseNeutroV: tensaoFaseNeutro,
               correnteDisjuntorA: disjuntorA,
               curvaDisjuntor: projeto.curvaDisjuntorGeral,
-              sensibilidadeDrMA: IDR_SENSIBILIDADE_ALTA_MA,
+              // O DR só conta se o circuito está de fato sob um DR neste projeto.
+              sensibilidadeDrMA: circuito.sobDR ? IDR_SENSIBILIDADE_ALTA_MA : null,
             })
         : seccionamentoTT
           ? () => seccionamentoTT
@@ -429,12 +466,6 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     ),
     ...avaliarPiscinaESauna(projeto.comodos, previsaoDeCarga.porComodo),
   }
-  // N18 — demanda de iluminação/tomadas pela norma da distribuidora escolhida (opcional,
-  // informativa): ver distribuidoras.js. Nunca substitui o dimensionamento por NBR 5410 acima.
-  const demandaConcessionaria = calcularDemandaConcessionaria(
-    projeto.distribuidoraId,
-    previsaoDeCarga.totais.iluminacaoVA + previsaoDeCarga.totais.tugVA,
-  )
   // N17 — o ramal de entrada (medidor → quadro) também tem trechos entre caixas.
   protecaoGeral.percurso = verificarPercurso(projeto.percursos?.[ID_PERCURSO_ALIMENTADOR], protecaoGeral.eletroduto)
   protecaoGeral.sobrecarga = verificarSobrecarga(protecaoGeral.condutorFase.disjuntorA, protecaoGeral.condutorFase.ampacidadeA, opcoesSobrecarga)
@@ -467,17 +498,17 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     circuitosComFase,
     explicacoesFase: explicacoes,
     cargaPorFase,
+    balanceamentoExato,
     protecaoGeral,
     balanceamento,
     agrupamentos,
-    demandaPerfil: demanda,
+    previsaoDeCarga,
     reservaAlimentador: { circuitos: reservaCircuitos, potenciaPorCircuitoVA: reservaPorCircuitoVA, considerada: Boolean(reservaPorCircuitoVA) },
     dimensionados,
     limiteQuedaTerminalDisponivel,
     quedaAlimentadorPercentual,
     limiteQuedaTotalPercentual,
     locaisEspeciais,
-    demandaConcessionaria,
     complementares,
     seccionamento: { esquema: esquema || null, ulV, tt: seccionamentoTT, alimentador: seccionamentoAlimentador },
   }

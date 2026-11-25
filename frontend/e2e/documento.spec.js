@@ -10,8 +10,9 @@ test('Instalação: fornecimento de 7%, convenção ρ e dispositivos do compila
   await page.getByLabel('Situação de alimentação').selectOption('transformador-unidade')
   await page.getByLabel('Resistência do condutor').selectOption('cu-1/58')
   await page.getByLabel('Classe AQ de descargas atmosféricas').selectOption('AQ2')
-  await expect(page.getByLabel('Linha de disjuntores')).toBeVisible()
-  await expect(page.getByLabel('Perfil de demanda')).toHaveValue('creder')
+  await expect(page.getByLabel(/Icn dos disjuntores/)).toBeVisible()
+  await expect(page.getByLabel('Linha de disjuntores')).toHaveCount(0)
+  await expect(page.getByLabel('Perfil de demanda')).toHaveCount(0)
   await page.reload()
   await expect(page.getByLabel('Situação de alimentação')).toHaveValue('transformador-unidade')
   await expect(page.getByLabel('Resistência do condutor')).toHaveValue('cu-1/58')
@@ -38,16 +39,21 @@ test('Dimensionamento: agrupamento por forma, catálogo de eletroduto e consulta
   await expect(page.getByText(/Iz tabelado \d+(,\d+)? A × K1/)).toBeVisible()
 })
 
-test('Resultado e memorial trazem demanda Creder, DR por circuito e esquema do DPS', async ({ page }) => {
+test('Resultado traz DR por circuito e não traz demanda de fora da norma; memorial tem todas as seções', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
   await etapa(page, 'Proteção e resultado').click()
-  await expect(page.getByRole('heading', { name: 'Demanda estimada (Creder, tabela 3.20)' })).toBeVisible()
-  await expect(page.getByText(/Estimativa bibliográfica/)).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Proteção diferencial (DR) por circuito' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'DPS: esquema de conexão e especificação' })).toBeVisible()
+  await expect(page.getByText(/Creder, tabela 3\.20/)).toHaveCount(0)
   await page.goto('/#/calculadora/memorial')
-  await expect(page.getByRole('heading', { name: 'Demanda estimada (Creder, tabela 3.20)' })).toBeVisible()
+  for (const secao of ['Previsão de carga', 'Memória de cálculo por circuito', 'Alimentador e proteção geral', 'Matriz de conformidade', 'Referências']) {
+    await expect(page.getByRole('heading', { level: 2, name: new RegExp(secao) })).toBeVisible()
+  }
+  // Uma ficha por circuito, cada uma com a fórmula da queda de tensão e a verificação de curto-circuito.
+  await expect(page.locator('.relatorio-ficha')).toHaveCount(6)
+  await expect(page.locator('.relatorio-ficha').first().getByText(/ΔU = 2 · L · Ib/)).toBeVisible()
+  await expect(page.locator('.relatorio-ficha').first().getByText(/I²t = /)).toBeVisible()
+  await expect(page.locator('.relatorio details:not([open])')).toHaveCount(0)
 })
 
 test('Conformidade: mapa de rastreabilidade com as semanas 3 a 8', async ({ page }) => {

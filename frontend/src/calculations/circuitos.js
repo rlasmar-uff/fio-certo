@@ -283,15 +283,6 @@ function fasesManuaisValidas(circuito, manuais, numeroFases) {
   return lista.every((f) => Number.isInteger(f) && f >= 1 && f <= numeroFases) ? lista.map((f) => f - 1) : null
 }
 
-// Indicador de dispersão das correntes de fase (S3 §10.2) — criado para COMPARAR alternativas; não é o fator
-// de desequilíbrio por componentes simétricas nem um limite da NBR 5410 (4.2.5.6 não fixa percentual).
-// I_média = (|I_A| + |I_B| + |I_C|)/3; δ = 100 · max_k(| |I_k| − I_média |) / I_média. Média zero = sem carga.
-export function indicadorDesequilibrio(correntesPorFase) {
-  const media = correntesPorFase.reduce((soma, i) => soma + i, 0) / correntesPorFase.length
-  if (!(media > 0)) return { correnteMediaA: 0, deltaPercentual: null, semCarga: true }
-  return { correnteMediaA: media, deltaPercentual: (100 * Math.max(...correntesPorFase.map((i) => Math.abs(i - media)))) / media, semCarga: false }
-}
-
 export function balancearFases(circuitos, numeroFases, fasesManuais = {}) {
   const cargaPorFase = Array.from({ length: numeroFases }, () => 0)
   const decisoesPorId = new Map()

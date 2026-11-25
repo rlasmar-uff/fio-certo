@@ -8,7 +8,12 @@ const mm2 = (valor) => `${valor.toLocaleString('pt-BR')} mm²`
 export default function VistaQuadro({ calculo }) {
   const { posicoes, grupos, numero, modulos } = montarQuadro(calculo)
   const drDoCircuito = new Map(
-    grupos.flatMap((grupo) => grupo.circuitos.map((circuito) => [circuito.id, calculo.protecaoGeral.drs?.modo === 'grupos' ? `DR ${grupo.numero}` : 'DR geral'])),
+    grupos.flatMap((grupo) =>
+      grupo.circuitos.map((circuito) => [
+        circuito.id,
+        grupo.dr === null && grupo.numero === null ? 'sem DR' : calculo.protecaoGeral.drs?.modo === 'geral' ? 'DR geral' : `DR ${grupo.numero}`,
+      ]),
+    ),
   )
   const circuitos = [...calculo.dimensionados].sort((a, b) => numero.get(a.id) - numero.get(b.id))
 
@@ -28,7 +33,8 @@ export default function VistaQuadro({ calculo }) {
         ))}
       </ol>
       <p className="texto-fraco">
-        {modulos} módulos DIN (1 por polo). Ordem sugerida: geral, DPS, DR e seus circuitos, reserva.
+        {modulos} módulos DIN (1 por polo). Ordem: geral, DPS (quando exigido), cada DR com seus circuitos, circuitos sem DR,
+        reserva.
       </p>
 
       <h3>

@@ -24,10 +24,15 @@ export default function Sobre() {
           elétrico assinado por profissional habilitado (ART) nem a conferência em obra.
         </li>
         <li>
-          Sem fator de demanda: a NBR 5410 não traz tabela residencial para isso (cada distribuidora tem a sua), então
-          a ferramenta soma as cargas.
+          Só o que a NBR 5410 prescreve. O que a norma não traz fica de fora: fator de demanda (a norma manda considerar a
+          não-simultaneidade, §4.2.1.1.2, mas não dá tabela — a ferramenta adota a carga cheia), regras de distribuidora,
+          preços e marcas.
         </li>
-        <li>Sem preços, marcas ou regras de distribuidora.</li>
+        <li>
+          Dados de produto que a norma não tabela mas que o cálculo exige — correntes nominais de disjuntor, diâmetros de
+          cabo e eletroduto, resistência e reatância dos condutores — vêm de normas de produto ou de catálogo, identificados
+          como tal.
+        </li>
         <li>
           O que é e o que não é verificado, cláusula por cláusula, está na página{' '}
           <Link to={ROUTES.conformidade}>Conformidade</Link>.

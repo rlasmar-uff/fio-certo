@@ -98,7 +98,7 @@ export function dimensionarDRs({ modoDR, grupoDR = {}, dimensionados, fasesPorCi
   if (modoDR === 'exigidos') {
     const alvo = dimensionados.filter((circuito) => exigidosIds?.has(circuito.id))
     const resto = dimensionarDRs({ modoDR: 'grupos', grupoDR: {}, dimensionados: alvo, fasesPorCircuito, disjuntorGeralA, drMontante })
-    return { ...resto, modo: 'exigidos', semDR: alvo.length === 0, circuitosSemDR: dimensionados.filter((c) => !exigidosIds?.has(c.id)).map((c) => c.id), avisoIntempestivo: alvo.length > 1 }
+    return { ...resto, modo: 'exigidos', semDR: alvo.length === 0, circuitosSemDR: dimensionados.filter((c) => !exigidosIds?.has(c.id)).map((c) => c.id) }
   }
   if (modoDR !== 'grupos') {
     return {
@@ -143,5 +143,6 @@ export function dimensionarDRs({ modoDR, grupoDR = {}, dimensionados, fasesPorCi
       }
     : null
 
-  return { modo: 'grupos', grupos, montante, avisoIntempestivo: false }
+  // §6.3.3.2.6 — vale para todo DR: com mais de um circuito, as fugas normais somam nele.
+  return { modo: 'grupos', grupos, montante, avisoIntempestivo: grupos.some((grupo) => grupo.circuitos.length > 1) }
 }

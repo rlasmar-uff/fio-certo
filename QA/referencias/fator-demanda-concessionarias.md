@@ -1,5 +1,7 @@
 # Fator de demanda por distribuidora — extração literal dos PDFs oficiais
 
+> **Referência apenas (24/11/2026):** a ferramenta não usa mais estas tabelas. A NBR 5410 não traz fator de demanda (§4.2.1.1.2) e o cálculo adota carga cheia (1,00). Ver `docs/PLANO_DE_CORRECAO_2026-11.md` — removido em 24/11/2026.
+
 Rascunho de trabalho, ainda não integrado ao motor de cálculo. Cada tabela abaixo foi copiada do
 texto extraído (`pdftotext -layout`) do PDF oficial baixado do site da própria distribuidora em
 29/09/2026, com o número de linha do `.txt` de origem entre colchetes, para conferência. Nenhum

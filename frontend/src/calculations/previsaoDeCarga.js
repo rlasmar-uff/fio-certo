@@ -34,7 +34,9 @@ export function calcularIluminacaoMinimaVA(area) {
 export function calcularQuantidadeTugMinima(comodo) {
   const config = configTipoComodo(comodo.tipo)
 
-  if (comodo.tipo === 'outro') {
+  // §9.5.2.2.1 e) vale para "outro" e para garagem/área externa/dependência molhada (demais cômodos e
+  // dependências de habitação): até 6 m², 1 ponto; acima, 1 por 5 m de perímetro ou fração.
+  if (comodo.tipo === 'outro' || comodo.tipo === 'externa') {
     const area = Number(comodo.area) || 0
     if (area <= 6) return 1
     const perimetro = Number(comodo.perimetro) || 0
@@ -137,7 +139,7 @@ const numeroValido = (v) => v !== '' && v !== null && v !== undefined && Number.
 export function motivoRejeicaoComodo(comodo) {
   const config = configTipoComodo(comodo.tipo)
   if (!numeroValido(comodo.area) || Number(comodo.area) <= 0) return 'área nula, negativa ou não numérica'
-  const usaPerimetro = config.tugFixa === undefined && !(comodo.tipo === 'outro' && Number(comodo.area) <= 6)
+  const usaPerimetro = config.tugFixa === undefined && !((comodo.tipo === 'outro' || comodo.tipo === 'externa') && Number(comodo.area) <= 6)
   if (usaPerimetro && (!numeroValido(comodo.perimetro) || Number(comodo.perimetro) <= 0)) return 'perímetro nulo, negativo ou não numérico'
   if (numeroValido(comodo.tugPontos) && !Number.isInteger(Number(comodo.tugPontos))) return 'número de pontos de tomada fracionário'
   if (numeroValido(comodo.tugPontos) && Number(comodo.tugPontos) < 0) return 'número de pontos de tomada negativo'

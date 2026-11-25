@@ -309,10 +309,6 @@ export function ProjetoProvider({ children }) {
         setProjeto((atual) => ({ ...atual, potenciaReservaPorCircuitoVA: valor }))
       },
 
-      setDistribuidoraId(id) {
-        setProjeto((atual) => ({ ...atual, distribuidoraId: id }))
-      },
-
       setCurvaDisjuntorGeral(curva) {
         setProjeto((atual) => ({ ...atual, curvaDisjuntorGeral: curva }))
       },
@@ -357,17 +353,6 @@ export function ProjetoProvider({ children }) {
         setProjeto((atual) => ({
           ...atual,
           existentes: { ...atual.existentes, [circuitoId]: { ...atual.existentes[circuitoId], ...patch } },
-        }))
-      },
-
-      setConsumo(patch) {
-        setProjeto((atual) => ({ ...atual, consumo: { ...atual.consumo, ...patch } }))
-      },
-
-      setHorasConsumo(cargaId, horas) {
-        setProjeto((atual) => ({
-          ...atual,
-          consumo: { ...atual.consumo, horas: { ...atual.consumo.horas, [cargaId]: horas } },
         }))
       },
 

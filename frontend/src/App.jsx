@@ -12,7 +12,6 @@ import Circuitos from './pages/calculadora/Circuitos.jsx'
 import Dimensionamento from './pages/calculadora/Dimensionamento.jsx'
 import Resultado from './pages/calculadora/Resultado.jsx'
 import Memorial from './pages/calculadora/Memorial.jsx'
-import Consumo from './pages/calculadora/Consumo.jsx'
 import Planta from './pages/calculadora/Planta.jsx'
 import VolumesBanheiro from './pages/calculadora/VolumesBanheiro.jsx'
 import Comparar from './pages/calculadora/Comparar.jsx'
@@ -33,7 +32,6 @@ export default function App() {
         <Route path={ROUTES.dimensionamento} element={<Dimensionamento />} />
         <Route path={ROUTES.resultado} element={<Resultado />} />
         <Route path={ROUTES.memorial} element={<Memorial />} />
-        <Route path={ROUTES.consumo} element={<Consumo />} />
         <Route path={ROUTES.planta} element={<Planta />} />
         <Route path={ROUTES.banheiro} element={<VolumesBanheiro />} />
         <Route path={ROUTES.comparar} element={<Comparar />} />

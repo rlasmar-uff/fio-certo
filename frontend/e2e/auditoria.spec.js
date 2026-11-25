@@ -1,16 +1,19 @@
 import { expect, test } from '@playwright/test'
 
-const VEREDITO_OK = 'Tudo o que a ferramenta verifica está conforme'
+// A casa-modelo sai sem não conformidade; a única pendência é a conferência em obra da fuga somada
+// no DR que protege vários circuitos (§6.3.3.2.6), que não é calculável.
+const VEREDITO_EXEMPLO = 'Faltam dados para verificar tudo'
 
 test('veredito sempre lista o que a ferramenta não verifica, também no memorial', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
   await page.goto('/#/calculadora/resultado')
-  await expect(page.getByRole('heading', { name: VEREDITO_OK })).toBeVisible()
+  await expect(page.getByRole('heading', { name: VEREDITO_EXEMPLO })).toBeVisible()
+  await expect(page.getByText(/fuga normal fica abaixo de 50 % de IΔn/).first()).toBeVisible()
   const resumo = page.getByText(/O que esta ferramenta não verifica/)
   await expect(resumo).toBeVisible()
   await resumo.click()
-  await expect(page.getByText(/abaixo de 10 mm²: a Tabela 30/)).toBeVisible()
+  await expect(page.getByText(/Fator de demanda: a NBR 5410 manda considerar/).first()).toBeVisible()
 
   await page.goto('/#/calculadora/memorial')
   await expect(page.getByText(/Seletividade entre dispositivos de proteção/)).toBeVisible()

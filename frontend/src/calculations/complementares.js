@@ -1,4 +1,4 @@
-import { CONDICOES_ATERRAMENTO_ENTERRADO, ESQUEMAS_ATERRAMENTO, LINHAS_DISJUNTOR, SECOES_NOMINAIS_MM2 } from './constantes.js'
+import { CONDICOES_ATERRAMENTO_ENTERRADO, ESQUEMAS_ATERRAMENTO, SECOES_NOMINAIS_MM2 } from './constantes.js'
 
 // Verificações da NBR 5410 que dependem do projeto já dimensionado mas não mudam nenhuma seção
 // nem disjuntor: saem como requisito mínimo ("especifique ≥ X") ou como conferência.
@@ -167,14 +167,14 @@ export function verificacoesComplementares({ projeto, protecaoGeral, dimensionad
     // §5.3.5.5.1 — capacidade de interrupção ≥ Icc presumida no ponto de instalação: na origem
     // para o disjuntor geral, no quadro para os dos circuitos terminais (a maior entre eles: o
     // bipolar de um circuito fase-fase vê o curto entre fases).
-    // §5.3.5.5.1 — Icn do dispositivo ≥ Icc presumida: a Icn vem da linha de disjuntores escolhida ou do valor
-    // informado; sem Icc ou sem Icn, a comparação fica pendente (S7 §2).
+    // §5.3.5.5.1 — Icn do dispositivo ≥ Icc presumida: a Icn é característica do disjuntor escolhido,
+    // informada pelo usuário; sem Icc ou sem Icn, a comparação fica pendente.
     capacidadeInterrupcao: iccOrigemA
       ? (() => {
           const geralKA = iccOrigemA / 1000
           const terminaisKA = iccTerminais.length ? Math.max(...iccTerminais) / 1000 : protecaoGeral.iccQuadroA ? protecaoGeral.iccQuadroA / 1000 : null
           const icnInformado = Number(projeto.icnDisjuntorKA)
-          const icnKA = LINHAS_DISJUNTOR[projeto.linhaDisjuntor]?.icnKA ?? (icnInformado > 0 ? icnInformado : null)
+          const icnKA = icnInformado > 0 ? icnInformado : null
           return { geralKA, terminaisKA, icnKA, conforme: icnKA === null ? null : Math.max(geralKA, terminaisKA ?? 0) <= icnKA }
         })()
       : null,

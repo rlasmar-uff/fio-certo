@@ -152,7 +152,7 @@ doze — ver o critério de agregação na skill de QA), e o G16 acrescentou 7. 
 | §5.1.3.2.2 a–e | Aplicação **por circuito** nos locais listados | `OK` | **corrigido em 2026-09-17:** estava marcado `PARCIAL` por engano. A **Nota 5** da própria cláusula diz que "a proteção dos circuitos pode ser realizada individualmente, por ponto de utilização ou por circuito ou por grupo de circuitos" — um DR geral único cobrindo todos os circuitos atende à exigência. O que falta é *identificar quais circuitos a exigem* e permitir separá-los por continuidade de serviço: melhoria de engenharia, não lacuna normativa | G6.5 |
 | §5.3.4.1 | I_n do DR ≥ I_n do disjuntor | `OK` | `dimensionarIDR` | G6.6 |
 | §6.3.6.3.2 | Seletividade entre DRs | `OK` | DR a montante só como tipo S de 100 ou 300 mA (≥ 3×30 mA) | G25.6 |
-| §6.3.3.2.6 | Divisão dos circuitos para evitar disparo intempestivo | `PARCIAL` | modo "DR por grupo" (um de 30 mA por grupo, In ≥ min(ΣIn, In geral) — critério da ferramenta); com DR único, aviso explícito — a fuga normal não é calculável | G25.6, G25.7 |
+| §6.3.3.2.6 | Divisão dos circuitos para evitar disparo intempestivo | `PARCIAL` | todo DR que protege mais de um circuito (geral, exigidos ou por grupo) gera pendência e item de checklist: a fuga normal das cargas não é calculável, fica como conferência em obra | G25.7, G27.3 |
 
 ## §6.4 — Condutor de proteção e aterramento
 
@@ -233,26 +233,12 @@ Derivado do dimensionamento, sem critério novo: `materiais.js`, `quadro.js`, `e
 | §9.4.4.1.1 / .3.1 / .3.3 | IP24, dispositivos fora, corte a 140 °C | `OK` | lista "Sauna" | G29.2 |
 | §9.3 | Compartimentos condutivos | `N/A` | não se aplica a residência | — |
 
-## Fator de demanda por distribuidora (N18, fase de lacunas, 29/09/2026)
+## Fator de demanda por distribuidora (removido em 24/11/2026)
 
-**Não é conteúdo da NBR 5410** — fonte externa (norma de fornecimento de cada distribuidora),
-informativa, nunca substitui o dimensionamento por NBR 5410 (que continua somando as cargas cheias
-para o alimentador e o disjuntor geral). Ver `QA/referencias/fator-demanda-concessionarias.md` para
-a extração literal de cada PDF oficial, com o número de linha de origem de cada valor.
-
-| Item | Status | Implementação | Verificação |
-|---|---|---|---|
-| Demanda de iluminação/tomadas por distribuidora | `OK` (10 distribuidoras) | `calcularDemandaConcessionaria` (`distribuidoras.js`), com a carga já somada por `previsaoDeCarga.js`; 3 das 9 (CPFL, EDP SP, Neoenergia) têm a tabela idêntica entre si, conferida contra os 3 PDFs oficiais | G32.1-G32.3 |
-| Distribuidoras sem redução residencial (Celesc, EDP ES) | `OK` | `semReducaoResidencial: true` — FD = 1 sempre, declarado, não um zero silencioso | G32.5 |
-| Distribuidora sem tabela própria (Enel) | `OK` | `semTabelaPropria: true` — `aplicavel: false` com o motivo, nunca um valor chutado | G32.6 |
-| Carga acima da faixa conferida de uma tabela (Light, acima de 9 kW) | `OK` | recusa calcular, não extrapola | G32.7 |
-| Piso de Icn do disjuntor geral (Cemig) | `OK` | `icnMinimoGeralKA`, usado em `materiais.js` só para o disjuntor do tipo "geral"; nunca reduz o que já seria maior por outra via | G32.8 |
-| Chuveiro, ar-condicionado, motor (demais termos da fórmula `D=a+b+c+...`) | `PARCIAL` | fora desta versão — exigiria categorizar o TUE cadastrado por tipo de uso (ver `FUTURO.md`) | — |
-| Categoria de atendimento / padrão de entrada por faixa de carga | `PARCIAL` | fora desta versão — tabelas desalinhadas na extração e variam por estado dentro do mesmo grupo | — |
-| Energisa (vários estados): tabela somada por faixa e piso de Icn de 5 kA | `OK` | `tabelaCumulativa: true` (NDU-001 v7.0, Tabela 5, Nota III) e `icnMinimoGeralKA: () => 5` (§8.7.1) | G32.9-G32.11 |
-| Copel (PR) | ausente | link oficial achado, mas o servidor de normas da Copel estava fora do ar em 24/11/2026 (HTTP 503); falta baixar o PDF | — |
-
----
+Não é conteúdo da NBR 5410. Removido na auditoria do zero (`docs/PLANO_DE_CORRECAO_2026-11.md`): a ferramenta
+segue só a norma, que manda considerar a não-simultaneidade (§4.2.1.1.2) mas não traz tabela, e adota carga
+cheia (1,00), declarada nas premissas do memorial. O grupo G32 saiu do harness; a extração literal dos PDFs
+continua em `QA/referencias/fator-demanda-concessionarias.md`, só como referência.
 
 ## Histórico de desvios entre escopo declarado e implementação (resolvido em 2026-09-17)
 

@@ -51,10 +51,8 @@ import { casaModelo } from '../../frontend/src/projetos/casaModelo.js'
 import { gerarArquivo, lerArquivo, codificarLink, decodificarLink } from '../../frontend/src/projetos/arquivo.js'
 import { normalizarProjeto } from '../../frontend/src/projetos/estado.js'
 import { listarMateriais } from '../../frontend/src/calculations/materiais.js'
-import { calcularDemandaConcessionaria } from '../../frontend/src/calculations/distribuidoras.js'
 import { montarQuadro } from '../../frontend/src/calculations/quadro.js'
 import { verificarExistente } from '../../frontend/src/calculations/existente.js'
-import { simularConsumo } from '../../frontend/src/calculations/consumo.js'
 import { verificarTrecho } from '../../frontend/src/calculations/percurso.js'
 import { detectarComodos, medirRetangulo } from '../../frontend/src/planta/detectar.js'
 import {
@@ -71,7 +69,7 @@ import {
   obterK,
   TABELA_REATANCIA_OHM_KM_POR_MM2,
   SECAO_MINIMA_MM2,
-  PISO_PRATICO_ALIMENTADOR_MM2,
+  SECAO_MINIMA_PEN_MM2,
   CONDUTIVIDADE_COBRE_70C,
   calcularSecaoTerra,
   resolverConfigInstalacao,
@@ -576,17 +574,15 @@ checar(
   `TUG ${SECAO_MINIMA_MM2.tug} mm², TUE ${SECAO_MINIMA_MM2.tue} mm²`,
   'alto',
 )
-// Os 10 mm² da Tabela 47 são da linha de CONDUTORES NUS. Para cabo isolado em
-// instalação fixa o mínimo normativo é 2,5 mm² — o piso de 10 mm² no ramal de
-// entrada é exigência de concessionária, não da NBR 5410. Os dois precisam existir
-// separados: o mínimo NORMATIVO (SECAO_MINIMA_MM2.geral) e o piso PRÁTICO da
-// concessionária (PISO_PRATICO_ALIMENTADOR_MM2), cada um citado como o que realmente é.
+// Os 10 mm² da Tabela 47 são da linha de CONDUTORES NUS. Para cabo isolado em instalação fixa o mínimo
+// normativo é 2,5 mm². O único 10 mm² da norma que vale para o alimentador é o do PEN (§6.4.3.4.1), no TN-C-S;
+// o "piso prático de concessionária" saiu em 24/11/2026 (não está na NBR 5410).
 checar(
   'G4.3',
-  '§6.2.6.1.1 / Tabela 47',
-  'Seção mínima do alimentador atribuída à fonte correta',
-  SECAO_MINIMA_MM2.geral === 2.5,
-  `mínimo normativo (NBR 5410) = ${SECAO_MINIMA_MM2.geral} mm², piso prático (concessionária) = ${PISO_PRATICO_ALIMENTADOR_MM2} mm², citados separadamente`,
+  '§6.2.6.1.1 / Tabela 47 · §6.4.3.4.1',
+  'Seção mínima do alimentador: 2,5 mm² (Tabela 47) e 10 mm² só para o PEN',
+  SECAO_MINIMA_MM2.geral === 2.5 && SECAO_MINIMA_PEN_MM2 === 10,
+  `Tabela 47 = ${SECAO_MINIMA_MM2.geral} mm²; PEN = ${SECAO_MINIMA_PEN_MM2} mm²`,
   'medio',
 )
 
@@ -1535,15 +1531,15 @@ checar(
 // ---------------------------------------------------------------------------
 // G15 — DPS: exigência condicional (§5.4.2.1.1) e Classe I por exposição a descarga direta
 // ---------------------------------------------------------------------------
-grupo('G15', 'DPS — exigência condicional (§5.4.2.1.1) e Classe I (§6.3.5.2.1 b)')
+grupo('G15', 'DPS — exigência condicional (§5.4.2.1.1) e Iimp por descarga direta (§6.3.5.2.1 b)')
 
 const dpsSemDeclaracao = recomendarDPS(127)
 checar(
   'G15.1',
   '§5.4.2.1.1',
-  'Sem nenhuma declaração, DPS continua recomendação de boa prática (não alega exigência normativa)',
-  dpsSemDeclaracao.classe === 'II' && dpsSemDeclaracao.exigidaPelaNorma === false,
-  `classe=${dpsSemDeclaracao.classe}, exigidaPelaNorma=${dpsSemDeclaracao.exigidaPelaNorma}`,
+  'Sem nenhuma declaração, o DPS não é exigido (§5.4.2.1.1) e não aparece como exigência',
+  dpsSemDeclaracao.rotulo === 'DPS (In)' && dpsSemDeclaracao.exigidaPelaNorma === false && /não exigido/.test(dpsSemDeclaracao.motivoExigencia),
+  `rotulo=${dpsSemDeclaracao.rotulo}, exigidaPelaNorma=${dpsSemDeclaracao.exigidaPelaNorma}`,
   'medio',
 )
 
@@ -1571,9 +1567,9 @@ const dpsExposicaoDireta = recomendarDPS(127, { exposicaoDescargaDireta: true })
 checar(
   'G15.4',
   '§6.3.5.2.1 b)',
-  'Exposição a descarga direta recomenda Classe I além da Classe II, independente da exigência geral do §5.4.2.1.1',
-  dpsExposicaoDireta.classe === 'I+II' && dpsExposicaoDireta.exigidaPelaNorma === false,
-  `exposicaoDescargaDireta=true (sem as outras 2 flags) → classe=${dpsExposicaoDireta.classe}, exigidaPelaNorma=${dpsExposicaoDireta.exigidaPelaNorma}`,
+  'Exposição a descarga direta pede DPS com Iimp (§6.3.5.2.4 d), independente da exigência geral do §5.4.2.1.1',
+  dpsExposicaoDireta.rotulo === 'DPS (In e Iimp)' && dpsExposicaoDireta.exigidaPelaNorma === false,
+  `exposicaoDescargaDireta=true (sem as outras 2 flags) → rotulo=${dpsExposicaoDireta.rotulo}, exigidaPelaNorma=${dpsExposicaoDireta.exigidaPelaNorma}`,
   'alto',
 )
 
@@ -1581,9 +1577,9 @@ const dpsTudo = recomendarDPS(127, { alimentacaoAerea: true, regiaoAltoIndiceDes
 checar(
   'G15.5',
   '§5.4.2.1.1/§6.3.5.2.1 b)',
-  'As 3 declarações juntas dão exigência normativa E Classe I+II',
-  dpsTudo.exigidaPelaNorma === true && dpsTudo.classe === 'I+II',
-  `exigidaPelaNorma=${dpsTudo.exigidaPelaNorma}, classe=${dpsTudo.classe}`,
+  'As 3 declarações juntas dão exigência normativa E DPS com Iimp',
+  dpsTudo.exigidaPelaNorma === true && dpsTudo.rotulo === 'DPS (In e Iimp)',
+  `exigidaPelaNorma=${dpsTudo.exigidaPelaNorma}, rotulo=${dpsTudo.rotulo}`,
   'medio',
 )
 
@@ -2073,8 +2069,8 @@ checar(
   VOLUMES_BANHEIRO.length === 4 &&
     VOLUMES_BANHEIRO.find((v) => v.volume === 0).ipMinimo === 'IPX7' &&
     VOLUMES_BANHEIRO.find((v) => v.volume === 1).ipMinimo === 'IPX4' &&
-    VOLUMES_BANHEIRO.find((v) => v.volume === 2).ipMinimo === 'IPX3–IPX5' &&
-    VOLUMES_BANHEIRO.find((v) => v.volume === 3).ipMinimo === 'IPX1–IPX5',
+    VOLUMES_BANHEIRO.find((v) => v.volume === 2).ipMinimo.startsWith('IPX3 ') &&
+    VOLUMES_BANHEIRO.find((v) => v.volume === 3).ipMinimo.startsWith('IPX1 '),
   VOLUMES_BANHEIRO.map((v) => `vol.${v.volume}=${v.ipMinimo}`).join(' · '),
   'medio',
 )
@@ -2471,6 +2467,14 @@ const gruposTN = calcularProjetoCompleto(
   cfgMono,
 )
 const drsTN = gruposTN.protecaoGeral.drs
+const drsVariosNoMesmo = calcularProjetoCompleto(
+  { ...projetoTN, modoDR: 'grupos', grupoDR: Object.fromEntries(idsTN.map((id) => [id, 1])) },
+  cfgMono,
+).protecaoGeral.drs
+const drsUmPorDR = calcularProjetoCompleto(
+  { ...projetoTN, modoDR: 'grupos', grupoDR: Object.fromEntries(idsTN.map((id, i) => [id, i + 1])) },
+  cfgMono,
+).protecaoGeral.drs
 checar(
   'G25.6',
   '§6.3.6.3.2 / §6.3.6.2.2',
@@ -2484,9 +2488,9 @@ checar(
 checar(
   'G25.7',
   '§6.3.3.2.6',
-  'DR único para vários circuitos gera aviso de disparo intempestivo (fuga não calculável)',
-  resultadoTN.protecaoGeral.drs.avisoIntempestivo === true && drsTN.avisoIntempestivo === false,
-  `geral: aviso=${resultadoTN.protecaoGeral.drs.avisoIntempestivo}; por grupos: aviso=${drsTN.avisoIntempestivo}`,
+  'Todo DR com mais de um circuito gera aviso de disparo intempestivo (fuga não calculável); um circuito por DR, sem aviso',
+  resultadoTN.protecaoGeral.drs.avisoIntempestivo === true && drsVariosNoMesmo.avisoIntempestivo === true && drsUmPorDR.avisoIntempestivo === false,
+  `geral: aviso=${resultadoTN.protecaoGeral.drs.avisoIntempestivo}; ${idsTN.length} circuitos num grupo: ${drsVariosNoMesmo.avisoIntempestivo}; um por DR: ${drsUmPorDR.avisoIntempestivo}`,
   'medio',
 )
 
@@ -2624,8 +2628,11 @@ const vereditoExemplo = calcularVeredito(exemplo, { configInstalacao: cfgExemplo
 checar(
   'G27.3',
   '—',
-  'A casa-modelo tem todos os comprimentos preenchidos e sai sem problema nem pendência (é a demonstração)',
-  vereditoExemplo.estado === 'ok' && calculoExemplo.dimensionados.every((c) => Number(exemplo.comprimentos[c.id]) > 0),
+  'A casa-modelo tem todos os comprimentos preenchidos e sai sem problema; a única pendência é a fuga somada no DR de vários circuitos (§6.3.3.2.6, não calculável)',
+  vereditoExemplo.problemas.length === 0 &&
+    vereditoExemplo.pendencias.length === 1 &&
+    /6\.3\.3\.2\.6/.test(vereditoExemplo.pendencias[0].texto) &&
+    calculoExemplo.dimensionados.every((c) => Number(exemplo.comprimentos[c.id]) > 0),
   `estado=${vereditoExemplo.estado}; ${vereditoExemplo.problemas.length} problemas, ${vereditoExemplo.pendencias.length} pendências; ${calculoExemplo.dimensionados.length} circuitos`,
   'medio',
 )
@@ -2640,7 +2647,10 @@ grupo('G28', 'Materiais, quadro e instalação existente (§2 F5-F8 do PLANO)')
 const calculoExemploCompleto = { configInstalacao: cfgExemplo, ...calculoExemplo }
 const materiais = listarMateriais(exemplo, calculoExemploCompleto, { folgaPercentual: '' })
 const metros = Object.fromEntries(materiais.cabos.map((c) => [`${c.funcao} ${c.secaoMm2}`, c.metros]))
-const esperadoCabos = { 'fase 2.5': 39, 'fase 4': 54, 'fase 10': 24, 'fase 16': 40, 'neutro 2.5': 15, 'neutro 4': 54, 'pen 16': 20, 'pe 2.5': 27, 'pe 4': 54, 'pe 10': 12 }
+// Agrupamento por cômodo e seção mínima por curto-circuito (24/11/2026): iluminação 2,5 (15 m; 1,5 mm² não suporta
+// o I²t no quadro), cozinha/serviço 4 + 4 (18 m cada), salas/banheiro 2,5 (18 m), chuveiro 6 fase-fase (12 m),
+// ar-condicionado 2,5 fase-fase (12 m), alimentador 2F 16 + PEN 16 (20 m).
+const esperadoCabos = { 'fase 2.5': 57, 'fase 4': 36, 'fase 6': 24, 'fase 16': 40, 'neutro 2.5': 33, 'neutro 4': 36, 'pen 16': 20, 'pe 2.5': 45, 'pe 4': 36, 'pe 6': 12 }
 checar(
   'G28.1',
   '§6.1.5.3, §6.4.3.4',
@@ -2654,8 +2664,8 @@ const comFolga = listarMateriais(exemplo, calculoExemploCompleto, { folgaPercent
 checar(
   'G28.2',
   '—',
-  'Folga é só a informada, arredondada para cima (39 m + 10% = 43 m); sem folga, nenhuma',
-  comFolga.cabos[0].metros === 43 && materiais.folgaPercentual === 0,
+  'Folga é só a informada, arredondada para cima (57 m + 10% = 62,7 → 63 m); sem folga, nenhuma',
+  comFolga.cabos[0].metros === 63 && materiais.folgaPercentual === 0,
   `fase 2,5 com 10%: ${comFolga.cabos[0].metros} m; folga padrão ${materiais.folgaPercentual}%`,
   'medio',
 )
@@ -2665,8 +2675,9 @@ const numerosQuadro = quadro.posicoes.filter((p) => p.tipo === 'disjuntor').map(
 checar(
   'G28.3',
   '§6.3.5.2.3 a), §6.5.4.7 / Tabela 59, §6.1.5.4',
-  'Quadro: DPS em conexão 2 (fases + neutro–PE), reserva da Tabela 59 e circuitos numerados na ordem do trilho',
-  materiais.dps.reduce((s, d) => s + d.quantidade, 0) === cfgExemplo.numeroFases + 1 &&
+  'Quadro: DPS só quando exigido (casa-modelo: não exigido, fora do quadro e da lista), reserva da Tabela 59 e circuitos numerados na ordem do trilho',
+  materiais.dps.length === 0 &&
+    !quadro.posicoes.some((p) => p.tipo === 'dps') &&
     quadro.reserva === calculoExemplo.complementares.reservaQuadro.reservaMinima &&
     JSON.stringify(numerosQuadro) === JSON.stringify(numerosQuadro.map((_, i) => i + 1)) &&
     numerosQuadro.length === calculoExemplo.dimensionados.length,
@@ -2685,12 +2696,12 @@ const curtoDeExistenteIgual = existenteIgual.itens.find((i) => i.criterio === 'C
 checar(
   'G28.4',
   '§5.3.4.1',
-  'Existente: 2,5 mm² com 20 A num circuito de Iz 13,7 A não atende (In > Iz); a própria seção e disjuntor dimensionados não falham em nenhum item verificável — o único item em aberto é o curto-circuito, "não verificado" abaixo de 10 mm² (Tabela 30 NOTA 1, ver G34.3), não uma falha nova',
+  'Existente: 2,5 mm² com 20 A num circuito de Iz 19,2 A não atende (In > Iz); a própria seção e disjuntor dimensionados atendem a todos os itens, inclusive o curto-circuito (k = 115, Tabela 30)',
   existenteRuim.conforme === false &&
     existenteRuim.falhas.includes('In ≤ Iz') &&
-    existenteIgual.conforme === null &&
+    existenteIgual.conforme === true &&
     existenteIgual.falhas.length === 0 &&
-    curtoDeExistenteIgual.ok === null,
+    curtoDeExistenteIgual.ok === true,
   `2,5/20 A: ${existenteRuim.falhas.join(', ')}; ${tugExemplo.secaoMm2}/${tugExemplo.disjuntorA} A: conforme=${existenteIgual.conforme}, falhas=${existenteIgual.falhas.join(', ') || 'nenhuma'}, curto-circuito=${curtoDeExistenteIgual.ok}`,
   'alto',
 )
@@ -2719,10 +2730,10 @@ const itemDe = (c, criterio) => c.existente.itens.find((i) => i.criterio === cri
 checar(
   'G28.6',
   'Tabela 58 / §5.1.2.2.4',
-  'Existente: PE conferido pela Tabela 58 e seccionamento refeito com o PE instalado (PE 2,5 mm² em fase de 4 mm² reprova; sem PE, fica em aberto). PE 4 mm² não falha em nada verificável — só fica "não verificado" no curto-circuito, abaixo de 10 mm² (Tabela 30 NOTA 1, ver G34.3)',
-  comPe4.existente.conforme === null &&
+  'Existente: PE conferido pela Tabela 58 e seccionamento refeito com o PE instalado (PE 2,5 mm² em fase de 4 mm² reprova; sem PE, fica em aberto). PE 4 mm² atende a tudo, inclusive o curto-circuito',
+  comPe4.existente.conforme === true &&
     comPe4.existente.falhas.length === 0 &&
-    itemDe(comPe4, 'Curto-circuito').ok === null &&
+    itemDe(comPe4, 'Curto-circuito').ok === true &&
     Math.abs(comPe4.seccionamento.zsOhm - 0.2482) < 0.0001 &&
     /Zs 0\.25/.test(itemDe(comPe4, 'Seccionamento automático').detalhe) &&
     comPe25.existente.falhas.includes('Condutor de proteção (PE)') &&
@@ -2783,16 +2794,7 @@ checar(
   'medio',
 )
 
-const consumo = simularConsumo(exemplo.comodos, { dias: '30', tarifa: '0.8', horas: { 'tue:ex-banheiro:ex-chuveiro': '0.5' } })
-const semDias = simularConsumo(exemplo.comodos, { dias: '', horas: { 'tue:ex-banheiro:ex-chuveiro': '0.5' } })
-checar(
-  'G29.4',
-  '—',
-  'Consumo: 5500 W × 0,5 h × 30 dias = 82,5 kWh; × R$ 0,80 = R$ 66,00; carga sem horas fica fora; sem dias, nenhum total',
-  Math.abs(consumo.totalKWh - 82.5) < 1e-9 && Math.abs(consumo.custo - 66) < 1e-9 && consumo.semHoras === 1 && semDias.totalKWh === null,
-  `${consumo.totalKWh} kWh, R$ ${consumo.custo}, ${consumo.semHoras} sem horas; sem dias: ${semDias.totalKWh}`,
-  'medio',
-)
+// G29.4 (simulador de consumo) removido em 24/11/2026: fora da NBR 5410.
 
 const icns = materiais.disjuntores.map((d) => `${d.icnMinimoKA}→${d.icnPadronizadaKA}`)
 checar(
@@ -2919,174 +2921,8 @@ checar(
   'medio',
 )
 
-// ---------------------------------------------------------------------------
-// G32 — Fator de demanda por distribuidora, iluminação/tomadas (N18, fase de lacunas 29/09/2026).
-// Informativo: nunca substitui o dimensionamento por NBR 5410 (soma total), só compara.
-// ---------------------------------------------------------------------------
-grupo('G32', 'Fator de demanda por distribuidora (N18, informativo — fonte externa à NBR 5410)')
-
-// `aplicarAlternativa600VA: true` de propósito, fixado aqui: a casa-modelo tem mais de 6 pontos
-// nos ambientes de 600 VA, e este grupo testa as TABELAS DE FATOR DE DEMANDA por distribuidora
-// (não a alternativa do §9.5.2.2.2 a), já coberta em G34.10/G1.7) — declarar explicitamente
-// preserva os 5,46 kW conferidos à mão que ancoram as oito sub-verificações abaixo, em vez de
-// herdar o default (`false`, leitura base) e precisar reconferir cada tabela de FD para 6,46 kW.
-const casaDist = { ...casaModelo(), aplicarAlternativa600VA: true }
-const cfgDist = resolverConfigInstalacao(casaDist.tipoInstalacao, casaDist.tensaoFaseNeutro)
-const comDistribuidora = (id) => calcularProjetoCompleto({ ...casaDist, distribuidoraId: id }, cfgDist)
-const semDistribuidora = calcularProjetoCompleto(casaDist, cfgDist)
-
-// Carga de iluminação+TUG da casa-modelo: 5.460 VA = 5,46 kW (conferido em previsaoDeCarga.js,
-// G1, e reconferido aqui à mão contra o motor antes de fixar as tabelas abaixo).
-checar(
-  'G32.1',
-  '—',
-  'Sem distribuidora escolhida, demandaConcessionaria é null (nada muda no projeto por padrão)',
-  semDistribuidora.demandaConcessionaria === null,
-  `${semDistribuidora.demandaConcessionaria}`,
-  'medio',
-)
-
-const cpfl = comDistribuidora('cpfl')
-checar(
-  'G32.2',
-  '—',
-  'CPFL: 5,46 kW de iluminação/tomadas cai na faixa "acima de 10 kW"? Não — cai em nenhuma faixa ≤10 (é >5, ≤6) → FD 0,45 → demanda 2,457 kW',
-  cpfl.demandaConcessionaria.aplicavel &&
-    Math.abs(cpfl.demandaConcessionaria.cargaInstaladaKw - 5.46) < 1e-9 &&
-    cpfl.demandaConcessionaria.fatorDemanda === 0.45 &&
-    Math.abs(cpfl.demandaConcessionaria.demandaKw - 2.457) < 1e-9,
-  `carga ${cpfl.demandaConcessionaria.cargaInstaladaKw} kW × FD ${cpfl.demandaConcessionaria.fatorDemanda} = ${cpfl.demandaConcessionaria.demandaKw.toFixed(3)} kW`,
-  'medio',
-)
-
-const edpSpD = comDistribuidora('edpSp')
-const neoenergiaD = comDistribuidora('neoenergia')
-checar(
-  'G32.3',
-  '—',
-  'EDP SP e Neoenergia dão o mesmo resultado que a CPFL para a mesma carga (tabela idêntica, conferida contra 3 PDFs oficiais)',
-  Math.abs(edpSpD.demandaConcessionaria.demandaKw - cpfl.demandaConcessionaria.demandaKw) < 1e-9 &&
-    Math.abs(neoenergiaD.demandaConcessionaria.demandaKw - cpfl.demandaConcessionaria.demandaKw) < 1e-9,
-  `EDP SP ${edpSpD.demandaConcessionaria.demandaKw.toFixed(3)}; Neoenergia ${neoenergiaD.demandaConcessionaria.demandaKw.toFixed(3)}; CPFL ${cpfl.demandaConcessionaria.demandaKw.toFixed(3)}`,
-  'medio',
-)
-
-const cemigD = comDistribuidora('cemig')
-checar(
-  'G32.4',
-  '—',
-  'Cemig: mesma carga, tabela própria e diferente → FD 0,64 → demanda 3,4944 kW (não é a mesma da CPFL)',
-  cemigD.demandaConcessionaria.fatorDemanda === 0.64 &&
-    Math.abs(cemigD.demandaConcessionaria.demandaKw - 3.4944) < 1e-9,
-  `FD ${cemigD.demandaConcessionaria.fatorDemanda}, demanda ${cemigD.demandaConcessionaria.demandaKw.toFixed(3)} kW`,
-  'medio',
-)
-
-const celescD = comDistribuidora('celesc')
-const edpEsD = comDistribuidora('edpEs')
-checar(
-  'G32.5',
-  '—',
-  'Celesc e EDP ES não reduzem carga residencial: FD=1, demanda = carga instalada cheia (5,46 kW)',
-  celescD.demandaConcessionaria.semReducao &&
-    celescD.demandaConcessionaria.fatorDemanda === 1 &&
-    Math.abs(celescD.demandaConcessionaria.demandaKw - 5.46) < 1e-9 &&
-    edpEsD.demandaConcessionaria.semReducao,
-  `Celesc: ${JSON.stringify(celescD.demandaConcessionaria)}; EDP ES semReducao=${edpEsD.demandaConcessionaria.semReducao}`,
-  'medio',
-)
-
-const enelD = comDistribuidora('enel')
-checar(
-  'G32.6',
-  '—',
-  'Enel não publica tabela própria: aplicavel=false, com o motivo explicado, não um valor chutado',
-  enelD.demandaConcessionaria.aplicavel === false && /não publica tabela própria/.test(enelD.demandaConcessionaria.motivo),
-  `${JSON.stringify(enelD.demandaConcessionaria)}`,
-  'medio',
-)
-
-// Fora da faixa conferida (Light para de cobrir acima de 9 kW) — não pode inventar um valor.
-const casaGrande = {
-  ...casaDist,
-  comodos: [...casaDist.comodos, { id: 'salao-extra', nome: 'Salão', tipo: 'social', area: 400, perimetro: 80 }],
-  distribuidoraId: 'light',
-}
-const lightFora = calcularProjetoCompleto(casaGrande, cfgDist)
-checar(
-  'G32.7',
-  '—',
-  'Light: carga acima da faixa conferida da tabela (>9 kW) fica não aplicável, em vez de extrapolar um fator',
-  lightFora.demandaConcessionaria.aplicavel === false && /faixa conferida/.test(lightFora.demandaConcessionaria.motivo),
-  `${JSON.stringify(lightFora.demandaConcessionaria)}`,
-  'baixo',
-)
-
-// Piso de Icn da Cemig no disjuntor geral: vale mesmo sem Icc nenhuma declarada (é exigência da
-// distribuidora, não depende da Icc real do ponto) — nunca reduz o que já seria maior por outra via.
-const semIcc = { ...casaDist, iccPresumidaA: '', distribuidoraId: 'cemig' }
-const calcSemIcc = calcularProjetoCompleto(semIcc, cfgDist)
-const matSemIcc = listarMateriais(semIcc, { configInstalacao: cfgDist, ...calcSemIcc }, {})
-const matSemIccSemDist = listarMateriais(
-  { ...casaDist, iccPresumidaA: '' },
-  { configInstalacao: cfgDist, ...calcularProjetoCompleto({ ...casaDist, iccPresumidaA: '' }, cfgDist) },
-  {},
-)
-checar(
-  'G32.8',
-  '§5.3.5.5.1 / N18',
-  'Piso de Icn da Cemig no disjuntor geral (63 A → mínimo 5 kA) vale mesmo sem Icc declarada; sem distribuidora, continua null',
-  matSemIcc.disjuntores[0].icnMinimoKA === 5 &&
-    matSemIcc.disjuntores[0].icnPadronizadaKA === 6 &&
-    matSemIccSemDist.disjuntores[0].icnMinimoKA === null,
-  `com Cemig: ${JSON.stringify(matSemIcc.disjuntores[0])}; sem distribuidora: ${JSON.stringify(matSemIccSemDist.disjuntores[0])}`,
-  'medio',
-)
-
-// Energisa (NDU-001 v7.0, Tabela 5, Nota III): mesmos percentuais da CPFL, mas somados faixa a faixa.
-// Conta à mão para 5,46 kW: 0,86+0,75+0,66+0,59+0,52 (5 primeiros kW) + 0,46×0,45 = 3,587 kW.
-const energisaD = comDistribuidora('energisa')
-checar(
-  'G32.9',
-  'N18',
-  'Energisa: 5,46 kW somados por faixa (Nota III da Tabela 5) → 3,587 kW, não 5,46×0,45 = 2,457 kW como na CPFL',
-  energisaD.demandaConcessionaria.aplicavel &&
-    energisaD.demandaConcessionaria.cumulativa &&
-    Math.abs(energisaD.demandaConcessionaria.demandaKw - 3.587) < 1e-9 &&
-    Math.abs(energisaD.demandaConcessionaria.fatorDemanda - 3.587 / 5.46) < 1e-9,
-  `demanda ${energisaD.demandaConcessionaria.demandaKw.toFixed(4)} kW, FD equivalente ${energisaD.demandaConcessionaria.fatorDemanda.toFixed(4)}`,
-  'medio',
-)
-
-// 12 kW: 10 primeiros kW somam 5,16 kW; os 2 kW restantes a 24% = 0,48 → 5,64 kW. Acima de 75 kW a
-// Tabela 5 não cobre: não aplicável, sem extrapolar.
-const energisa12 = calcularDemandaConcessionaria('energisa', 12000)
-const energisa80 = calcularDemandaConcessionaria('energisa', 80000)
-checar(
-  'G32.10',
-  'N18',
-  'Energisa: 12 kW → 5,64 kW (última faixa a 24%); 80 kW (acima dos 75 kW da tabela) → não aplicável',
-  Math.abs(energisa12.demandaKw - 5.64) < 1e-9 &&
-    energisa80.aplicavel === false &&
-    /faixa conferida/.test(energisa80.motivo),
-  `12 kW → ${energisa12.demandaKw.toFixed(4)} kW; 80 kW → ${JSON.stringify({ aplicavel: energisa80.aplicavel, motivo: energisa80.motivo })}`,
-  'medio',
-)
-
-// §8.7.1 da NDU-001: disjuntor da entrada com Icn mínima de 5 kA, para qualquer corrente nominal.
-const matEnergisa = listarMateriais(
-  { ...semIcc, distribuidoraId: 'energisa' },
-  { configInstalacao: cfgDist, ...calcularProjetoCompleto({ ...semIcc, distribuidoraId: 'energisa' }, cfgDist) },
-  {},
-)
-checar(
-  'G32.11',
-  '§5.3.5.5.1 / N18',
-  'Piso de Icn da Energisa no disjuntor geral (NDU-001 §8.7.1): mínimo 5 kA, mesmo sem Icc declarada',
-  matEnergisa.disjuntores[0].icnMinimoKA === 5,
-  JSON.stringify(matEnergisa.disjuntores[0]),
-  'medio',
-)
+// G32 (fator de demanda por distribuidora) removido em 24/11/2026: a NBR 5410 não traz tabela de demanda
+// (§4.2.1.1.2), e a ferramenta passou a ter só o que a norma prescreve. Ver docs/PLANO_DE_CORRECAO_2026-11.md.
 
 grupo('G33', '§9.1.2.1 — Volumes do banheiro pela planta (N19)')
 
@@ -3316,22 +3152,19 @@ checar(
   'medio',
 )
 
-// Tabela 30, NOTA 1: "Outros valores de k ... ainda não estão normalizados: condutores de pequena
-// seção (principalmente para seções inferiores a 10 mm²)". Todo circuito terminal residencial
-// cai nessa faixa. Corrigido em 30/09/2026: `obterK` devolve `null` abaixo de 10 mm², e
-// `verificarCurtoCircuito` propaga isso como "não verificado" — nunca conforme/não-conforme por
-// acidente de `null * secaoMm2 === 0`.
-const secoesForaDaFaixaK = [1.5, 2.5, 4, 6].filter((s) => obterK({ isolacao: 'pvc', secaoMm2: s }) !== null)
+// Tabela 30: k = 115 para PVC ≤ 300 mm², sem limite inferior de seção. A NOTA 1 diz que OUTROS valores de k
+// (mais precisos) para pequenas seções ainda não estão normalizados — o normalizado é o da tabela, o mesmo da
+// Tabela 55 usado no PE. Revisto em 24/11/2026 (antes `obterK` devolvia null abaixo de 10 mm² e o curto nunca
+// era verificado em circuito residencial). 2,5 mm², Icc 15 kA: I²t = 15000²·0,01 = 2,25e6 > (115·2,5)² = 8,27e4.
+const kPequenas = [1.5, 2.5, 4, 6].map((s) => obterK({ isolacao: 'pvc', secaoMm2: s }))
 const ccSecaoPequena = verificarCurtoCircuito({ correnteDisjuntorA: 25, curvaDisjuntor: 'C', iccPresumidaA: 15000, secaoMm2: 2.5 })
 checar(
   'G34.3',
-  'Tabela 30, NOTA 1',
-  'k abaixo de 10 mm² sinalizado como não normalizado, e o curto-circuito fica não verificado nessa faixa',
-  secoesForaDaFaixaK.length === 0 && ccSecaoPequena.verificado === false && ccSecaoPequena.conforme === null,
-  secoesForaDaFaixaK.length === 0
-    ? `obterK devolve null para 1,5/2,5/4/6 mm²; verificarCurtoCircuito(2,5 mm², Icc=15000 A) → verificado=${ccSecaoPequena.verificado}`
-    : `k ainda numérico para ${secoesForaDaFaixaK.join(', ')} mm² — a NOTA 1 da Tabela 30 diz que k não está normalizado abaixo de 10 mm²`,
-  'medio',
+  'Tabela 30',
+  'k = 115 (PVC) também abaixo de 10 mm², e o curto-circuito é verificado nessa faixa (2,5 mm² com 15 kA reprova)',
+  kPequenas.every((k) => k === 115) && obterK({ isolacao: 'epr', secaoMm2: 2.5 }) === 143 && ccSecaoPequena.verificado === true && ccSecaoPequena.conforme === false,
+  `k(1,5/2,5/4/6) = ${kPequenas.join('/')}; verificarCurtoCircuito(2,5 mm², 15 kA) → ${ccSecaoPequena.verificado}/${ccSecaoPequena.conforme}`,
+  'alto',
 )
 
 // A Tabela 45 tem DUAS sub-tabelas: cabos multipolares (um cabo por eletroduto) e condutores
@@ -4025,11 +3858,12 @@ grupo('G41', 'Curto-circuito: I²t ≤ k²S² e Ikmin nos limites exatos (§5.3.
   const errosIk = [['B', 160], ['C', 320], ['D', 640]].flatMap(([curva, limiar]) => (ik(curva, limiar).verificado === true && ik(curva, limiar - 0.01).verificado === false ? [] : [`${curva}: ${limiar} A`]))
   checar('G41.2', '§6.3.4.3.2 a) · IEC 60898', 'Ikmin só garante o disparo no limite superior da faixa magnética: In 32 A → B 160 A, C 320 A, D 640 A (no limite verifica; 0,01 A abaixo fica não verificado)', errosIk.length === 0, errosIk.length ? `falhou em ${errosIk.join(', ')}` : 'B/C/D conferidas nos dois lados do limite', 'critico')
 
-  // Seção < 10 mm²: k não normalizado (Tabela 30, NOTA 1) → não verificado, mesmo com Icc baixa.
+  // Seção < 10 mm²: k = 115 (Tabela 30). 6 mm², Icc 2000 A: I²t = 2000²·0,01 = 4,0e4 ≤ (115·6)² = 4,76e5 → conforme.
+  // Icc ausente (0) e Icc mínima ausente continuam "não verificado", nunca conforme.
   const pequena = vcc({ iccPresumidaA: 2000, secaoMm2: 6 })
   const semIcc = vcc({ iccPresumidaA: 0 })
   const semMinima = verificarCurtoCircuito({ curvaDisjuntor: 'C', correnteDisjuntorA: 63, iccPresumidaA: 3000, iccMinimaA: null, secaoMm2: 10 })
-  checar('G41.3', 'Tabela 30 NOTA 1 · §5.3.5.1', 'Seção de 6 mm², Icc ausente (0) e Icc mínima ausente: sempre "não verificado" (verificado=false, conforme=null), nunca conforme', pequena.verificado === false && pequena.conforme === null && semIcc.verificado === false && semIcc.conforme === null && semMinima.verificado === false && semMinima.conforme === null, `6 mm²: ${pequena.verificado}/${pequena.conforme} · Icc 0: ${semIcc.verificado}/${semIcc.conforme} · sem Ikmin: ${semMinima.verificado}/${semMinima.conforme}`, 'critico')
+  checar('G41.3', 'Tabela 30 · §5.3.5.1', 'Seção de 6 mm² com Icc 2 kA é verificada e conforme; Icc ausente (0) e Icc mínima ausente: "não verificado" (verificado=false, conforme=null), nunca conforme', pequena.verificado === true && pequena.conforme === true && semIcc.verificado === false && semIcc.conforme === null && semMinima.verificado === false && semMinima.conforme === null, `6 mm²: ${pequena.verificado}/${pequena.conforme} · Icc 0: ${semIcc.verificado}/${semIcc.conforme} · sem Ikmin: ${semMinima.verificado}/${semMinima.conforme}`, 'critico')
 
   // Seccionamento TN (§5.1.2.2.4.2 d): Zs·Ia ≤ Uo. Ia = 10·In (curva C). In = 20 A → Ia = 200 A → Zs máx = 127/200 = 0,635 Ω.
   const tn = (zs) => verificarSeccionamentoTN({ zsOhm: zs, tensaoFaseNeutroV: 127, correnteDisjuntorA: 20, curvaDisjuntor: 'C', sensibilidadeDrMA: null })
@@ -4191,7 +4025,7 @@ grupo('G44', 'Entradas inválidas, ausentes e incompatíveis')
 
   // Esquema TN-C-S e PEN: PEN abaixo de 10 mm² reprova.
   const entrada = rodar([sala], { esquemaAterramento: 'TN-C-S' })
-  checar('G44.6', '§6.4.3.4.1', 'PEN do TN-C-S: seção mínima 10 mm² (Cu); o neutro do alimentador adotado (≥10 mm² pelo piso prático) atende', entrada.calculo.complementares.pen?.secaoMinimaMm2 === 10 && entrada.calculo.complementares.pen.conforme === true, `PEN ${entrada.calculo.complementares.pen?.secaoMm2} mm² (mín. 10) → ${entrada.calculo.complementares.pen?.conforme}`, 'medio')
+  checar('G44.6', '§6.4.3.4.1', 'PEN do TN-C-S: seção mínima 10 mm² (Cu); o alimentador TN-C-S parte de 10 mm² e o neutro adotado atende', entrada.calculo.complementares.pen?.secaoMinimaMm2 === 10 && entrada.calculo.complementares.pen.conforme === true, `PEN ${entrada.calculo.complementares.pen?.secaoMm2} mm² (mín. 10) → ${entrada.calculo.complementares.pen?.conforme}`, 'medio')
 }
 
 
@@ -4258,8 +4092,7 @@ import {
   metodoDaManeira as metodoManeiraG46,
   MANEIRAS_INSTALAR as MANEIRAS_G46,
 } from '../../frontend/src/calculations/agrupamento.js'
-import { demandaCreder as demandaCrederG46, calcularDemandaProjeto as demandaProjetoG46 } from '../../frontend/src/calculations/demanda.js'
-import { indicadorDesequilibrio as deltaG46, validarCircuitoMisto as mistoG46 } from '../../frontend/src/calculations/circuitos.js'
+import { validarCircuitoMisto as mistoG46 } from '../../frontend/src/calculations/circuitos.js'
 import { dimensionarPE as peG46, correnteNeutroHarmonica as neutroHarmonicaG46 } from '../../frontend/src/calculations/condutorProtecao.js'
 import { exigenciaDR as exigenciaDRG46 } from '../../frontend/src/calculations/exigenciaDR.js'
 import { quantidadeMaximaCondutores as quantidadeMaximaG46 } from '../../frontend/src/calculations/eletroduto.js'
@@ -4267,7 +4100,7 @@ import { comprimentoEquivalente as compEquivG46 } from '../../frontend/src/calcu
 import { consultarCapacidadeEFG as efgG46, TABELA_38_COBRE_PVC, TABELA_39_COBRE_EPR } from '../../frontend/src/calculations/capacidadesEFG.js'
 import { esquemaConexaoDPS as esquemaDpsG46 } from '../../frontend/src/calculations/complementares.js'
 import { verificarSobrecarga as sobrecargaG46 } from '../../frontend/src/calculations/complementares.js'
-import { CATALOGOS_ELETRODUTO as CATALOGOS_G46, LINHAS_DISJUNTOR as LINHAS_G46, correntesDaLinha as correntesLinhaG46, limiteQuedaTotal as limiteTotalG46, DISJUNTORES_PADRONIZADOS as SERIE_G46 } from '../../frontend/src/calculations/constantes.js'
+import { CATALOGOS_ELETRODUTO as CATALOGOS_G46, limiteQuedaTotal as limiteTotalG46, DISJUNTORES_PADRONIZADOS as SERIE_G46 } from '../../frontend/src/calculations/constantes.js'
 import { verificarPercurso as percursoG46 } from '../../frontend/src/calculations/percurso.js'
 
 grupo('G46', 'Compilado do Grupo de Pesquisa (semanas 3 a 8): testes e casos de referência do documento')
@@ -4308,18 +4141,14 @@ const cfg127G46 = resolverConfigInstalacao('trifasica', 127)
   const gMistoValidos = gMisto.filter((c) => c.misto).every((c) => c.potenciaVA / c.tensao <= 16 + 1e-9)
   checar('G46.6', 'S3 §7.2 · 9.5.3.3', 'Modo misto configurável: gera circuitos de iluminação + tomadas com IB ≤ 16 A e nunca concentra tudo num só (≥ 2 circuitos mistos, ou volta ao padrão separado)', gMisto.some((c) => c.misto) ? gMistoValidos && gMisto.filter((c) => c.misto).length >= 2 : gMisto.every((c) => !c.misto), `${gMisto.length} circuitos, ${gMisto.filter((c) => c.misto).length} mistos`, 'alto')
 
-  // §9 e §12: demanda de Creder por parcelas.
-  const demandas = [[0, 0], [1000, 800], [4240, 2920], [10000, 5070], [10100, 5094]]
-  const errosD = demandas.filter(([x, d]) => !quase(demandaCrederG46(x).demandaVA, d, 1e-6)).map(([x, d]) => `X=${x}: ${demandaCrederG46(x).demandaVA} × ${d}`)
-  checar('G46.7', 'S3 §9 · §12 · Creder tab. 3.20', 'Demanda por parcelas: X = 0 / 1000 / 4240 / 10000 / 10100 VA → 0 / 800 / 2920 / 5070 / 5094 VA (só o excedente recebe 24%)', errosD.length === 0, errosD.length ? errosD.join('; ') : '5 pontos conferidos; 4240 VA → fator equivalente 68,87%', 'critico')
+  // G46.7 (demanda de Creder por parcelas) removido em 24/11/2026: a NBR 5410 não traz tabela de demanda (§4.2.1.1.2).
 
   // §11: memorial demonstrativo — Sala 18/18; Dormitório 12/14; Cozinha 8/12; Banheiro 3/7; Lavanderia 4/8.
   const memorial = [['Sala', 18, 18, 'social'], ['Dormitório', 12, 14, 'social'], ['Cozinha', 8, 12, 'servico'], ['Banheiro', 3, 7, 'banheiro'], ['Lavanderia', 4, 8, 'servico']]
     .map(([nome, area, perimetro, tipo], i) => comodoG46({ id: `m${i}`, nome, area, perimetro, tipo }))
   const prevMem = previsaoG36(memorial)
-  const demMem = demandaProjetoG46({ totais: { ...prevMem.totais, tueVA: 5500, totalVA: prevMem.totais.totalVA + 5500 }, perfil: 'creder' })
   const porNome = Object.fromEntries(prevMem.porComodo.map((c) => [c.nome, c]))
-  checar('G46.8', 'S3 §11', 'Memorial demonstrativo: iluminação 740 VA, TUG 5000 VA (cozinha 4 pontos = 1900 VA; lavanderia 3 pontos = 1800 VA); com chuveiro de 5500 W: 11 240 VA e demanda 3633 + 5500 = 9133 VA', prevMem.totais.iluminacaoVA === 740 && prevMem.totais.tugVA === 5000 && porNome.Cozinha.tugVA === 1900 && porNome.Lavanderia.tugVA === 1800 && quase(demMem.demandaGeralVA, 3633, 1e-6) && quase(demMem.demandaTotalVA, 9133, 1e-6), `luz ${prevMem.totais.iluminacaoVA} · TUG ${prevMem.totais.tugVA} · D geral ${demMem.demandaGeralVA} · D total ${demMem.demandaTotalVA}`, 'critico')
+  checar('G46.8', 'S3 §11', 'Memorial demonstrativo: iluminação 740 VA, TUG 5000 VA (cozinha 4 pontos = 1900 VA; lavanderia 3 pontos = 1800 VA)', prevMem.totais.iluminacaoVA === 740 && prevMem.totais.tugVA === 5000 && porNome.Cozinha.tugVA === 1900 && porNome.Lavanderia.tugVA === 1800, `luz ${prevMem.totais.iluminacaoVA} · TUG ${prevMem.totais.tugVA}`, 'critico')
   const comAlt = previsaoG36(memorial, true).totais.tugVA
   checar('G46.9', 'S3 §11', 'Alternativa de 600 VA no memorial (8 pontos > 6, elegível): cozinha 1400, banheiro 600, lavanderia 1300; TUG total 4000 VA', comAlt === 4000, `TUG com a alternativa: ${comAlt} VA`, 'alto')
 
@@ -4328,8 +4157,7 @@ const cfg127G46 = resolverConfigInstalacao('trifasica', 127)
   const manual = Object.fromEntries(cargasD.map((c) => [c.id, [c._f]]))
   const bal = balancearFases(cargasD, 3, manual)
   const corr = calcularCorrentesVetoriais(bal.circuitosComFase, 3, 127).correntePorFaseA
-  const ind = deltaG46(corr)
-  checar('G46.10', 'S3 §10.3', 'Balanceamento: A 1500, B 1300, C 1200 VA → 11,81 / 10,24 / 9,45 A; média 10,50 A; δ = 12,5%; zero carga → "sem carga"', quase(corr[0], 11.81, 0.01) && quase(corr[1], 10.24, 0.01) && quase(corr[2], 9.45, 0.01) && quase(ind.correnteMediaA, 10.5, 0.01) && quase(ind.deltaPercentual, 12.5, 0.1) && deltaG46([0, 0, 0]).semCarga === true && bal.circuitosComFase.every((c) => c.decisaoFase.manual), `correntes ${corr.map((i) => i.toFixed(2))}; média ${ind.correnteMediaA.toFixed(2)}; δ ${ind.deltaPercentual.toFixed(2)}%`, 'alto')
+  checar('G46.10', 'S3 §10.3 · §4.2.5.6', 'Balanceamento: A 1500, B 1300, C 1200 VA → 11,81 / 10,24 / 9,45 A (fases fixadas pelo projetista)', quase(corr[0], 11.81, 0.01) && quase(corr[1], 10.24, 0.01) && quase(corr[2], 9.45, 0.01) && bal.circuitosComFase.every((c) => c.decisaoFase.manual), `correntes ${corr.map((i) => i.toFixed(2))}`, 'alto')
 }
 
 // ---------------------------------------------------------------- Semana 4
@@ -4389,12 +4217,10 @@ function ampPvcSimples() { return obterAmpacidade({ isolacao: 'pvc', metodo: 'B1
 // ---------------------------------------------------------------- Semana 7
 {
   const serieOk = JSON.stringify(SERIE_G46) === JSON.stringify([4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125])
-  const dimLinha = (ib, linha) => escolherDisjuntor(ib, correntesLinhaG46(linha, 2))
-  checar('G46.27', 'S7 §3 e §7', 'Série de cadastro 4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125 A; IB = 21 A → In = 25 A (nunca 20); na linha DX-E (sem 25 e 40 A) → 32 A; DX-H 1P só 80 A; Icn: DX-E/DX 6000 6 kA, DX-H 10 kA', serieOk && escolherDisjuntor(21) === 25 && dimLinha(21, 'DX-E') === 32 && dimLinha(33, 'DX-E') === 50 && correntesLinhaG46('DX-H', 1).join() === '80' && correntesLinhaG46('DX-H', 2).join() === '80,100,125' && LINHAS_G46['DX-E'].icnKA === 6 && LINHAS_G46['DX-6000'].icnKA === 6 && LINHAS_G46['DX-H'].icnKA === 10, `série ok: ${serieOk}`, 'critico')
+  checar('G46.27', 'S7 §3 e §7', 'Série de correntes nominais 4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125 A (sem fabricante); IB = 21 A → In = 25 A (nunca 20)', serieOk && escolherDisjuntor(21) === 25, `série ok: ${serieOk}`, 'critico')
   const c25 = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 25 * 220, tensao: 220, ehFaseFase: true, cosPhi: 1, tipoCarga: 'resistiva' }, 0, { fatorTemperatura: 0.87, fatorAgrupamento: 0.7 })
-  const c25Dxe = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 25 * 220, tensao: 220, ehFaseFase: true, cosPhi: 1, tipoCarga: 'resistiva' }, 0, { fatorTemperatura: 0.87, fatorAgrupamento: 0.7, disjuntores: correntesLinhaG46('DX-E', 2) })
   const sobr = sobrecargaG46(25, 34.713)
-  checar('G46.28', 'S7 §6', 'Coordenação: IB 25 A, 10 mm² (Iz 34,713 A), DX 6000: In = 25 A, 25 ≤ 25 ≤ 34,713 e I₂ = 36,25 A ≤ 50,334 A; na DX-E: In = 32 A, I₂ = 46,4 A ≤ 50,334 A, e a seção de 10 mm² continua atendendo', c25.disjuntorA === 25 && c25.secaoMm2 === 10 && quase(sobr.i2A, 36.25, 1e-9) && quase(sobr.limiteA, 50.334, 1e-3) && c25Dxe.disjuntorA === 32 && c25Dxe.secaoMm2 === 10 && quase(sobrecargaG46(32, 34.713).i2A, 46.4, 1e-9) && sobrecargaG46(25, 24.969).conforme === false, `In ${c25.disjuntorA}, I₂ ${sobr.i2A}; DX-E In ${c25Dxe.disjuntorA}`, 'critico')
+  checar('G46.28', 'S7 §6', 'Coordenação: IB 25 A, 10 mm² (Iz 34,713 A): In = 25 A, 25 ≤ 25 ≤ 34,713 e I₂ = 36,25 A ≤ 50,334 A; I₂ de 32 A = 46,4 A', c25.disjuntorA === 25 && c25.secaoMm2 === 10 && quase(sobr.i2A, 36.25, 1e-9) && quase(sobr.limiteA, 50.334, 1e-3) && quase(sobrecargaG46(32, 34.713).i2A, 46.4, 1e-9) && sobrecargaG46(25, 24.969).conforme === false, `In ${c25.disjuntorA}, I₂ ${sobr.i2A}`, 'critico')
   const igual = dimensionarCircuito({ id: 'c', nome: 'c', tipo: 'tug', potenciaVA: 30 * 127, tensao: 127, ehFaseFase: false, cosPhi: 1, tipoCarga: 'resistiva' }, 0, {})
   const s20 = sobrecargaG46(20, 21)
   checar('G46.29', 'S7 §7', 'Igualdade: Cu/PVC/B1/2, 4 mm², 30 °C, IB = 30 A → In = 32 A = Iz, atende; alínea b: In = 20 A, Iz = 21 A → I₂ = 29 A ≤ 30,45 A; relação I₂/In ausente (outro dispositivo) → não verificável; sobrecarga prolongada compara com Iz', igual.disjuntorA === 32 && igual.secaoMm2 === 4 && igual.ampacidadeA === 32 && quase(s20.i2A, 29, 1e-9) && quase(s20.limiteA, 30.45, 1e-9) && s20.conforme === true && sobrecargaG46(20, 21, { relacaoI2In: null }).conforme === null && sobrecargaG46(20, 21, { prolongada: true }).conforme === false, `In ${igual.disjuntorA}, Iz ${igual.ampacidadeA}; I₂ ${s20.i2A} ≤ ${s20.limiteA}`, 'critico')
@@ -4489,6 +4315,86 @@ function ampPvcSimples() { return obterAmpacidade({ isolacao: 'pvc', metodo: 'B1
 const ORDEM_SEV = { critico: 0, alto: 1, medio: 2, baixo: 3 }
 const ROTULO_SEV = { critico: 'CRÍTICO', alto: 'ALTO', medio: 'MÉDIO', baixo: 'BAIXO' }
 
+// ---------------------------------------------------------------------------
+// G47 — Correções da auditoria do zero (24/11/2026, docs/PLANO_DE_CORRECAO_2026-11.md). Cada valor esperado foi
+// calculado à mão a partir do texto da NBR 5410; a versão com a leitura do PDF fica em
+// QA/auditoria-independente/testes.mjs.
+// ---------------------------------------------------------------------------
+grupo('G47', 'Auditoria do zero: DR, quadro, agrupamento por cômodo, curto-circuito, PEN e DPS')
+{
+  const { exigenciaDR: exigenciaDRG47 } = await import('../../frontend/src/calculations/exigenciaDR.js')
+  const { circuitosAgrupadosPorComodo } = await import('../../frontend/src/calculations/projeto.js')
+  const cfgG47 = resolverConfigInstalacao('bifasica', 127)
+  const casaG47 = casaModelo()
+  const calcG47 = { configInstalacao: cfgG47, ...calcularProjetoCompleto(casaG47, cfgG47) }
+
+  // S1 — piscina: todos os circuitos do local sob DR (§9.2.3.1.2 b, §9.2.4.3.3 b), no modo padrão.
+  const piscinaG47 = { ...ESTADO_G36, tipoInstalacao: 'monofasica', tensaoFaseNeutro: 220, comodos: [
+    { id: 'p', nome: 'Piscina', tipo: 'outro', area: '30', perimetro: '22', piscina: true, tue: [{ id: 'b', nome: 'Bomba', quantidade: 1, potenciaW: '750', ligacao: 'fase-neutro', tipoCarga: 'indutiva', cosPhi: 0.8 }] },
+  ] }
+  const calcPiscina = calcularProjetoCompleto(piscinaG47, resolverConfigInstalacao('monofasica', 220))
+  checar('G47.1', '§9.2.3.1.2 b · §9.2.4.3.3 b', 'Piscina no modo de DR padrão: todos os circuitos do local sob DR de 30 mA', calcPiscina.dimensionados.length >= 2 && calcPiscina.dimensionados.every((c) => c.sobDR), calcPiscina.dimensionados.map((c) => `${c.nome}: ${c.sobDR}`).join('; '), 'critico')
+
+  // S2/S3 — modo "exigidos": o DR calculado aparece no quadro e na lista; circuitos sem DR saem do barramento.
+  const quadroG47 = montarQuadro(calcG47)
+  const matG47 = listarMateriais(casaG47, calcG47, {})
+  const drQuadro = quadroG47.posicoes.filter((p) => p.tipo === 'dr')
+  const semDrG47 = quadroG47.grupos.find((g) => g.dr === null)
+  checar('G47.2', '§5.1.3.2.2 · §6.1.8.1', 'Modo padrão: DR do cálculo no quadro e na lista de materiais; o ar-condicionado (sem exigência) sai direto do barramento', drQuadro.length === 1 && drQuadro[0].rotulo.startsWith('63 A') && matG47.drs.length === 1 && semDrG47?.circuitos.map((c) => c.nome).join() === 'Ar-condicionado (Quarto 1)', `quadro: ${drQuadro.map((p) => p.rotulo).join(', ')}; lista: ${matG47.drs.map((d) => d.descricao).join(', ')}; sem DR: ${semDrG47?.circuitos.map((c) => c.nome).join(', ')}`, 'critico')
+
+  // TT — §5.1.2.2.4.3 a): DR em todo circuito.
+  const tt = exigenciaDRG47({ tipo: 'tug', comodoIds: ['s'] }, [{ id: 's', nome: 'Sala', tipo: 'social' }], { esquemaAterramento: 'TT' })
+  const calcTT = calcularProjetoCompleto({ ...casaG47, esquemaAterramento: 'TT' }, cfgG47)
+  checar('G47.3', '§5.1.2.2.4.3 a)', 'Esquema TT: todo circuito sob DR (inclusive sala e ar-condicionado)', tt.exige && calcTT.dimensionados.every((c) => c.sobDR), `sala: ${tt.motivos.join('; ')}; todos sob DR: ${calcTT.dimensionados.every((c) => c.sobDR)}`, 'critico')
+
+  // D1 — agrupamento por cômodo: banheiro com 3 circuitos (iluminação, tomadas, chuveiro) → FCA 0,70.
+  const porComodo = circuitosAgrupadosPorComodo(calcG47.circuitos)
+  const chuveiroG47 = calcG47.dimensionados.find((c) => c.nome.startsWith('Chuveiro'))
+  checar('G47.4', '§6.2.5.5 · §6.2.5.8 · Tabela 42', 'Agrupamento por cômodo: chuveiro (banheiro com 3 circuitos) FCA 0,70 → 4 mm² dá 22,4 A < 25 A → 6 mm² (28,7 A)', porComodo[chuveiroG47.id] === 3 && chuveiroG47.fatorAgrupamento === 0.7 && chuveiroG47.secaoMm2 === 6, `n=${porComodo[chuveiroG47.id]}, FCA ${chuveiroG47.fatorAgrupamento}, ${chuveiroG47.secaoMm2} mm²`, 'alto')
+  const globalG47 = calcularProjetoCompleto({ ...casaG47, numeroCircuitosAgrupadosManual: '1' }, cfgG47).dimensionados.find((c) => c.nome.startsWith('Chuveiro'))
+  checar('G47.5', 'Tabela 42', 'Número global informado prevalece sobre o padrão por cômodo (1 circuito → FCA 1,00 → chuveiro 4 mm²)', globalG47.fatorAgrupamento === 1 && globalG47.secaoMm2 === 4 && globalG47.agrupamento.origem === 'global', `FCA ${globalG47.fatorAgrupamento}, ${globalG47.secaoMm2} mm²`, 'medio')
+
+  // V1 — curto-circuito escolhe a seção: iluminação 1,5 mm² não suporta I²t no quadro (Icc 2,07 kA): S ≥ 2070·√0,01/115 = 1,80 → 2,5 mm².
+  const iluG47 = calcG47.dimensionados.find((c) => c.tipo === 'iluminacao')
+  checar('G47.6', '§6.2.6.1.2 c) · §5.3.5.5.2 · Tabela 30', 'Seção também atende I²t ≤ k²S²: iluminação sobe de 1,5 para 2,5 mm² (Smin = Icc·√t/k ≈ 1,80 mm²); todos os circuitos verificados e conformes', iluG47.secaoMm2 === 2.5 && iluG47.elevadaPorCurto === true && Math.abs(iluG47.secaoMinimaCurtoMm2 - 1.80) < 0.01 && calcG47.dimensionados.every((c) => c.curtoCircuito.verificado && c.curtoCircuito.conforme), `iluminação ${iluG47.secaoMm2} mm² (Smin ${iluG47.secaoMinimaCurtoMm2?.toFixed(3)}); curto: ${calcG47.dimensionados.map((c) => `${c.curtoCircuito.verificado}/${c.curtoCircuito.conforme}`).join(' ')}`, 'critico')
+
+  // PEN — §6.4.3.4.1: alimentador TN-C-S ≥ 10 mm²; fora do TN-C-S vale a Tabela 47.
+  const pequenaG47 = { ...casaG47, comodos: [{ id: 'q', nome: 'Quarto', tipo: 'social', area: '9', perimetro: '12', tue: [] }] }
+  const tncs = calcularProjetoCompleto(pequenaG47, cfgG47).protecaoGeral.condutorFase
+  const tns = calcularProjetoCompleto({ ...pequenaG47, esquemaAterramento: 'TN-S' }, cfgG47).protecaoGeral.condutorFase
+  checar('G47.7', '§6.4.3.4.1 · Tabela 47', 'Alimentador TN-C-S parte de 10 mm² (PEN); TN-S fica no que a corrente e a queda pedem', tncs.secaoMm2 === 10 && tncs.elevadaPeloPEN === true && tns.secaoMm2 < 10, `TN-C-S ${tncs.secaoMm2} mm²; TN-S ${tns.secaoMm2} mm²`, 'alto')
+
+  // DPS — §5.4.2.1.1 e §6.3.5.2.2: fora quando não exigido; exigido, quantidade pelo esquema de conexão.
+  const aereaG47 = { ...casaG47, alimentacaoAerea: true, classeAQ: 'AQ2' }
+  const calcAerea = { configInstalacao: cfgG47, ...calcularProjetoCompleto(aereaG47, cfgG47) }
+  const matAerea = listarMateriais(aereaG47, calcAerea, {})
+  const matAereaTT = listarMateriais({ ...aereaG47, esquemaAterramento: 'TT' }, { configInstalacao: cfgG47, ...calcularProjetoCompleto({ ...aereaG47, esquemaAterramento: 'TT' }, cfgG47) }, {})
+  checar('G47.8', '§5.4.2.1.1 · §6.3.5.2.2', 'DPS: fora da lista sem exigência; TN-C-S (esquema 1) = 2 fase–PEN; TT (esquema 2) = 2 fase–PE + 1 neutro–PE', matG47.dps.length === 0 && matAerea.dps.length === 1 && matAerea.dps[0].quantidade === 2 && matAereaTT.dps.map((d) => d.quantidade).join('+') === '2+1', `sem exigência ${matG47.dps.length}; TN-C-S ${matAerea.dps.map((d) => d.quantidade).join('+')}; TT ${matAereaTT.dps.map((d) => d.quantidade).join('+')}`, 'medio')
+
+  // D2 — garagem/área externa até 6 m²: 1 ponto (§9.5.2.2.1 e).
+  checar('G47.9', '§9.5.2.2.1 e)', 'Garagem de 5 m² e 9 m de perímetro: 1 ponto de tomada', previsaoG36([{ id: 'g', nome: 'Garagem', tipo: 'externa', area: 5, perimetro: 9 }]).porComodo[0].tugQuantidade === 1, `${previsaoG36([{ id: 'g', nome: 'Garagem', tipo: 'externa', area: 5, perimetro: 9 }]).porComodo[0].tugQuantidade} ponto(s)`, 'baixo')
+
+  // Existente sem DR não conta com DR no seccionamento (S5).
+  const acG47 = calcG47.dimensionados.find((c) => c.nome.startsWith('Ar-condicionado'))
+  const comExistente = calcularProjetoCompleto({ ...casaG47, existentes: { [acG47.id]: { secaoMm2: '2.5', disjuntorA: '6', peMm2: '2.5' } } }, cfgG47).dimensionados.find((c) => c.id === acG47.id)
+  const itemSecc = comExistente.existente.itens.find((i) => i.criterio === 'Seccionamento automático')
+  checar('G47.10', '§5.1.2.2.4.2', 'Instalação existente: circuito sem DR é conferido só pelo disjuntor', !comExistente.sobDR && /disjuntor/.test(itemSecc.detalhe) && !/DR/.test(itemSecc.detalhe), itemSecc.detalhe, 'alto')
+
+  // §6.4.3.4: no TN-C-S o ramal leva fases + PEN; um PE à parte só existe depois da separação, no quadro.
+  const casaPEN = casaModelo()
+  const cfgPEN = resolverConfigInstalacao(casaPEN.tipoInstalacao, casaPEN.tensaoFaseNeutro)
+  const eletroPEN = calcularProjetoCompleto({ ...casaPEN, esquemaAterramento: 'TN-C-S' }, cfgPEN).protecaoGeral.eletroduto
+  const eletroTNS = calcularProjetoCompleto({ ...casaPEN, esquemaAterramento: 'TN-S' }, cfgPEN).protecaoGeral.eletroduto
+  checar(
+    'G47.11',
+    '§6.4.3.4 / §6.2.11.1.6 a)',
+    'Eletroduto do ramal: TN-C-S com 2 fases + PEN (3 condutores); TN-S com 2 fases + N + PE (4)',
+    eletroPEN.numeroCondutores === 3 && eletroTNS.numeroCondutores === 4,
+    `TN-C-S: ${eletroPEN.numeroCondutores} condutores; TN-S: ${eletroTNS.numeroCondutores}`,
+    'medio',
+  )
+}
+
 const falhas = resultados.filter((r) => !r.ok)
 const passes = resultados.filter((r) => r.ok)
 
@@ -4500,6 +4406,7 @@ for (const r of resultados) {
 console.log('\n╔══════════════════════════════════════════════════════════════════════════╗')
 console.log('║  Verificação de conformidade — ABNT NBR 5410:2004                        ║')
 console.log('╚══════════════════════════════════════════════════════════════════════════╝')
+
 
 for (const g of gruposVistos) {
   const doGrupo = resultados.filter((r) => r.grupo.id === g.id)
