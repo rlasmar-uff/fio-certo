@@ -8,6 +8,7 @@ import { useProjeto } from '../context/useProjeto.js'
 import { ROUTES } from '../routes.js'
 import Campo from './Campo.jsx'
 import { validarNumero } from './validacao.js'
+import { num, decimal } from '../calculations/formatacao.js'
 
 export default function ComodoCard({ comodo, indice }) {
   const { projeto, updateComodo, removeComodo, addTue, updateTue, removeTue } = useProjeto()
@@ -38,7 +39,7 @@ export default function ComodoCard({ comodo, indice }) {
           <span className="cartao-cabecalho-titulo">{nome}</span>
           <span className="cartao-cabecalho-resumo">
             {config.label}
-            {comodo.area && ` · ${comodo.area} m²`} · {Math.round(carga.totalVA)} VA
+            {comodo.area && ` · ${decimal(comodo.area)} m²`} · {num(carga.totalVA, 0)} VA
           </span>
           {incompleto && <span className="etiqueta-status atencao">incompleto</span>}
         </button>
@@ -484,7 +485,7 @@ export default function ComodoCard({ comodo, indice }) {
                 · Equipamentos: <strong>{Math.round(carga.tueVA)} VA</strong>
               </>
             )}{' '}
-            · Total: <strong>{Math.round(carga.totalVA)} VA</strong>
+            · Total: <strong>{num(carga.totalVA, 0)} VA</strong>
           </p>
         </div>
       )}

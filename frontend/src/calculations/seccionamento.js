@@ -1,3 +1,4 @@
+import { num } from './formatacao.js'
 import {
   IDR_CORRENTES_PADRONIZADAS,
   IDR_SENSIBILIDADE_ALTA_MA,
@@ -52,15 +53,15 @@ export function verificarSeccionamentoTN({ zsOhm, tensaoFaseNeutroV, correnteDis
   const base = { zsOhm, correnteFaltaA, iaDisjuntorA, porDisjuntor, porDR, zsMaximaDrOhm }
   if (porDisjuntor || porDR) return { ...base, verificado: true, conforme: true, motivo: null }
   if (zsMaximaDrOhm !== null) {
-    return { ...base, verificado: true, conforme: false, motivo: `Zs = ${zsOhm.toFixed(2)} Ω acima até do limite com DR (${zsMaximaDrOhm.toFixed(0)} Ω).` }
+    return { ...base, verificado: true, conforme: false, motivo: `Zs = ${num(zsOhm, 2)} Ω acima até do limite com DR (${num(zsMaximaDrOhm, 0)} Ω).` }
   }
   return {
     ...base,
     verificado: false,
     conforme: null,
     motivo:
-      `Corrente de falta fase-PE (${correnteFaltaA.toFixed(0)} A) abaixo do disparo instantâneo garantido ` +
-      `(${iaDisjuntorA?.toFixed(0)} A) e sem DR neste trecho — o tempo depende da curva do fabricante.`,
+      `Corrente de falta fase-PE (${num(correnteFaltaA, 0)} A) abaixo do disparo instantâneo garantido ` +
+      `(${num(iaDisjuntorA, 0)} A) e sem DR neste trecho — o tempo depende da curva do fabricante.`,
   }
 }
 
@@ -68,7 +69,7 @@ export function verificarSeccionamentoTN({ zsOhm, tensaoFaseNeutroV, correnteDis
 export function verificarSeccionamentoTT({ resistenciaOhm, sensibilidadeDrMA, ulV }) {
   const raMaximaOhm = ulV / (sensibilidadeDrMA / 1000)
   if (resistenciaOhm === '' || resistenciaOhm === null || resistenciaOhm === undefined) {
-    return { verificado: false, conforme: null, raMaximaOhm, ulV, motivo: `Meça RA: precisa ser ≤ ${raMaximaOhm.toFixed(0)} Ω.` }
+    return { verificado: false, conforme: null, raMaximaOhm, ulV, motivo: `Meça RA: precisa ser ≤ ${num(raMaximaOhm, 0)} Ω.` }
   }
   const ra = Number(resistenciaOhm)
   const conforme = ra * (sensibilidadeDrMA / 1000) <= ulV
@@ -77,7 +78,7 @@ export function verificarSeccionamentoTT({ resistenciaOhm, sensibilidadeDrMA, ul
     conforme,
     raMaximaOhm,
     ulV,
-    motivo: conforme ? null : `RA = ${ra} Ω × ${sensibilidadeDrMA} mA = ${(ra * sensibilidadeDrMA / 1000).toFixed(1)} V > UL ${ulV} V.`,
+    motivo: conforme ? null : `RA = ${ra} Ω × ${sensibilidadeDrMA} mA = ${num((ra * sensibilidadeDrMA / 1000), 1)} V > UL ${ulV} V.`,
   }
 }
 

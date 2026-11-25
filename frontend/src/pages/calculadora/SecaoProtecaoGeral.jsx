@@ -4,6 +4,7 @@ import { useProjeto } from '../../context/useProjeto.js'
 import { ISOLACOES, METODOS_INSTALACAO } from '../../calculations/constantes.js'
 import { TIPOS_PONTO_BANHEIRO } from '../../calculations/locaisEspeciais.js'
 import { ClausulaInfo } from '../../components/RefNorma.jsx'
+import { num, decimal } from '../../calculations/formatacao.js'
 
 // Saída da proteção geral e do alimentador. As entradas (ramal, Icc, DPS, condições do
 // alimentador) ficam na etapa de Instalação.
@@ -42,7 +43,7 @@ export default function SecaoProtecaoGeral() {
             <tr>
               <td data-label="Dispositivo">Disjuntor geral</td>
               <td data-label="Corrente" className="numerico">{disjuntorGeralA ? `${disjuntorGeralA} A` : '—'}</td>
-              <td data-label="Características">Corrente de projeto (Ib): {correnteEntradaA.toFixed(2).replace('.', ',')} A</td>
+              <td data-label="Características">Corrente de projeto (Ib): {num(correnteEntradaA, 2)} A</td>
             </tr>
             {(drs.modo === 'geral' || idr) && (
               <tr>
@@ -133,7 +134,7 @@ export default function SecaoProtecaoGeral() {
                 <tr>
                   <td data-label="Condutor">Fase</td>
                   <td data-label="Seção adotada" className="numerico">
-                    <strong>{condutorFase.secaoMm2} mm²</strong>
+                    <strong>{decimal(condutorFase.secaoMm2)} mm²</strong>
                     {condutorFase.elevadaPeloPEN && (
                       <span className="etiqueta-status" title="Elevada para o mínimo do PEN (§6.4.3.4.1)">
                         {' '}
@@ -141,14 +142,14 @@ export default function SecaoProtecaoGeral() {
                       </span>
                     )}
                   </td>
-                  <td data-label="Capacidade corrigida (Iz)" className="numerico">{condutorFase.ampacidadeA.toFixed(1)} A</td>
+                  <td data-label="Capacidade corrigida (Iz)" className="numerico">{num(condutorFase.ampacidadeA, 1)} A</td>
                   <td data-label="Queda de tensão" className="numerico">
                     {condutorFase.quedaPercentual === null ? (
                       '—'
                     ) : condutorFase.naoVerificado ? (
                       <span className="etiqueta-status atencao">não verificado</span>
                     ) : (
-                      `${condutorFase.quedaPercentual.toFixed(2)}%`
+                      `${num(condutorFase.quedaPercentual, 2)}%`
                     )}
                   </td>
                   <td data-label="Corrente real (neutro)" className="numerico">—</td>
@@ -156,7 +157,7 @@ export default function SecaoProtecaoGeral() {
                 <tr>
                   <td data-label="Condutor">Neutro</td>
                   <td data-label="Seção adotada" className="numerico">
-                    <strong>{secaoNeutroMm2} mm²</strong>
+                    <strong>{decimal(secaoNeutroMm2)} mm²</strong>
                     {neutroReduzido && (
                       <span className="etiqueta-status ok" title="Reduzido pela Tabela 48, §6.2.6.2.6">
                         {' '}
@@ -165,7 +166,7 @@ export default function SecaoProtecaoGeral() {
                     )}
                   </td>
                   <td data-label="Capacidade corrigida (Iz)" className="numerico">
-                    {verificacaoNeutro.ampacidadeA === null ? '—' : `${verificacaoNeutro.ampacidadeA.toFixed(1)} A`}
+                    {verificacaoNeutro.ampacidadeA === null ? '—' : `${num(verificacaoNeutro.ampacidadeA, 1)} A`}
                   </td>
                   <td data-label="Queda de tensão" className="numerico">—</td>
                   <td data-label="Corrente real (neutro)" className="numerico">
@@ -176,7 +177,7 @@ export default function SecaoProtecaoGeral() {
                         className={`etiqueta-status ${verificacaoNeutro.conforme ? 'ok' : 'alerta'}`}
                         title="Corrente real do neutro, calculada por soma vetorial (§6.2.6.2)"
                       >
-                        {verificacaoNeutro.correnteA.toFixed(2)} A
+                        {num(verificacaoNeutro.correnteA, 2)} A
                       </span>
                     )}
                   </td>
@@ -184,7 +185,7 @@ export default function SecaoProtecaoGeral() {
                 <tr>
                   <td data-label="Condutor">Terra (PE)</td>
                   <td data-label="Seção adotada" className="numerico">
-                    <strong>{secaoTerraMm2} mm²</strong>
+                    <strong>{decimal(secaoTerraMm2)} mm²</strong>
                   </td>
                   <td data-label="Capacidade corrigida (Iz)" className="numerico">—</td>
                   <td data-label="Queda de tensão" className="numerico">—</td>
@@ -196,8 +197,8 @@ export default function SecaoProtecaoGeral() {
 
           {verificacaoNeutro.ampacidadeA !== null && !verificacaoNeutro.conforme && (
             <p className="texto-alerta">
-              Atenção: a corrente real do neutro, calculada por soma vetorial ({verificacaoNeutro.correnteA.toFixed(2)}{' '}
-              A), excede a capacidade do condutor adotado ({verificacaoNeutro.ampacidadeA.toFixed(1)} A) — reveja a
+              Atenção: a corrente real do neutro, calculada por soma vetorial ({num(verificacaoNeutro.correnteA, 2)}{' '}
+              A), excede a capacidade do condutor adotado ({num(verificacaoNeutro.ampacidadeA, 1)} A) — reveja a
               seção do neutro{neutroReduzido ? ' ou a declaração de redução (Tabela 48)' : ''}.
             </p>
           )}
@@ -272,8 +273,8 @@ export default function SecaoProtecaoGeral() {
                 Corrente de entrada (Ib): soma vetorial das correntes de cada circuito por fase
                 (considera o cosφ de cada circuito e o ângulo de 120° entre fases, não só a soma
                 de VA) — por fase:{' '}
-                {protecaoGeral.correntePorFaseA.map((corrente) => `${corrente.toFixed(2)} A`).join(' / ')}; a pior
-                fase dá <strong>{correnteEntradaA.toFixed(2)} A</strong>.
+                {protecaoGeral.correntePorFaseA.map((corrente) => `${num(corrente, 2)} A`).join(' / ')}; a pior
+                fase dá <strong>{num(correnteEntradaA, 2)} A</strong>.
               </li>
               <li>
                 Disjuntor geral (In): menor valor padronizado ≥ Ib → <strong>{disjuntorGeralA} A</strong>.
@@ -307,12 +308,12 @@ export default function SecaoProtecaoGeral() {
                 DPS: {dps.exigidaPelaNorma ? `exigido — ${dps.descricao}` : dps.motivoExigencia}.
               </li>
               <li>
-                Seção mínima do alimentador: <strong>{condutorFase.secaoMinimaNormativa} mm²</strong> (Tabela 47,
+                Seção mínima do alimentador: <strong>{decimal(condutorFase.secaoMinimaNormativa)} mm²</strong> (Tabela 47,
                 circuito de força, cabo isolado)
                 {condutorFase.secaoMinimaPenMm2 ? (
                   <>
                     ; no TN-C-S o neutro do alimentador é o PEN, com no mínimo{' '}
-                    <strong>{condutorFase.secaoMinimaPenMm2} mm²</strong> (§6.4.3.4.1), e a fase acompanha o neutro
+                    <strong>{decimal(condutorFase.secaoMinimaPenMm2)} mm²</strong> (§6.4.3.4.1), e a fase acompanha o neutro
                     (§6.2.6.2.2 e §6.2.6.2.4)
                   </>
                 ) : null}
@@ -330,8 +331,8 @@ export default function SecaoProtecaoGeral() {
                 , ou seja{' '}
                 <strong>{condutorFase.condutoresCarregados} condutores carregados</strong> (Tabela
                 46, §6.2.5.6) — o condutor de proteção nunca entra nessa contagem. Para{' '}
-                {condutorFase.secaoMm2} mm² no método {condutorFase.metodoInstalacao}, essa coluna
-                dá <strong>{condutorFase.ampacidadeTabelaA} A</strong> de ampacidade bruta.
+                {decimal(condutorFase.secaoMm2)} mm² no método {condutorFase.metodoInstalacao}, essa coluna
+                dá <strong>{decimal(condutorFase.ampacidadeTabelaA)} A</strong> de ampacidade bruta.
                 {condutorFase.neutroCarregado && (
                   <>
                     {' '}
@@ -342,16 +343,16 @@ export default function SecaoProtecaoGeral() {
                 )}
               </li>
               <li>
-                Fatores de correção aplicados à ampacidade: temperatura ×{condutorFase.fatorTemperatura.toFixed(2)}{' '}
+                Fatores de correção aplicados à ampacidade: temperatura ×{num(condutorFase.fatorTemperatura, 2)}{' '}
                 (Tabela 40{METODOS_INSTALACAO[condutorFase.metodoInstalacao]?.enterrado ? ', coluna do solo' : ''})
-                × agrupamento ×{condutorFase.fatorAgrupamento.toFixed(2)} (
+                × agrupamento ×{num(condutorFase.fatorAgrupamento, 2)} (
                 {METODOS_INSTALACAO[condutorFase.metodoInstalacao]?.referenciaAgrupamento === 'tabela45'
                   ? 'Tabela 45'
                   : METODOS_INSTALACAO[condutorFase.metodoInstalacao]?.referenciaAgrupamento === 'tabela42ref2'
                     ? 'Tabela 42, referência 2'
                     : 'Tabela 42, referência 1'}
                 ){condutorFase.fatorResistividadeSolo !== 1 && (
-                  <> × resistividade do solo ×{condutorFase.fatorResistividadeSolo.toFixed(2)} (Tabela 41)</>
+                  <> × resistividade do solo ×{num(condutorFase.fatorResistividadeSolo, 2)} (Tabela 41)</>
                 )}
                 .
               </li>
@@ -359,19 +360,19 @@ export default function SecaoProtecaoGeral() {
                 Seção da fase: a menor que atende simultaneamente à ampacidade corrigida do disjuntor
                 geral ({disjuntorGeralA} A) e à queda de tensão total disponível (
                 {condutorFase.limitePercentual}% — §6.2.7.1 c, o alimentador consome deste orçamento
-                antes dos circuitos terminais) → <strong>{condutorFase.secaoMm2} mm²</strong>, com
-                ampacidade corrigida de <strong>{condutorFase.ampacidadeA?.toFixed(1)} A</strong>.
+                antes dos circuitos terminais) → <strong>{decimal(condutorFase.secaoMm2)} mm²</strong>, com
+                ampacidade corrigida de <strong>{num(condutorFase.ampacidadeA, 1)} A</strong>.
               </li>
               <li>
                 Seção do neutro:{' '}
                 {neutroReduzido ? (
                   <>
-                    reduzida pela Tabela 48 (§6.2.6.2.6), já que a fase ({condutorFase.secaoMm2} mm²)
-                    passa de 25 mm² e as 3 condições da norma foram declaradas → <strong>{secaoNeutroMm2} mm²</strong>.
+                    reduzida pela Tabela 48 (§6.2.6.2.6), já que a fase ({decimal(condutorFase.secaoMm2)} mm²)
+                    passa de 25 mm² e as 3 condições da norma foram declaradas → <strong>{decimal(secaoNeutroMm2)} mm²</strong>.
                   </>
                 ) : (
                   <>
-                    igual à seção da fase (<strong>{secaoNeutroMm2} mm²</strong>) — critério padrão desta
+                    igual à seção da fase (<strong>{decimal(secaoNeutroMm2)} mm²</strong>) — critério padrão desta
                     ferramenta; só reduz num alimentador trifásico com fase acima de 25 mm² e com a
                     redução declarada explicitamente (etapa de Instalação, "Alimentador: condições
                     de instalação").
@@ -390,18 +391,18 @@ export default function SecaoProtecaoGeral() {
               )}
               <li>
                 Seção do terra (PE): pela Tabela 58 da NBR 5410, em função da seção de fase
-                ({condutorFase.secaoMm2} mm²) → <strong>{secaoTerraMm2} mm²</strong>.
+                ({decimal(condutorFase.secaoMm2)} mm²) → <strong>{decimal(secaoTerraMm2)} mm²</strong>.
               </li>
               <li>
                 Corrente real do neutro (§6.2.6.2): soma vetorial das 3 correntes de fase, não a
                 maior fase isolada (a soma vetorial cancela a contribuição de circuitos fase-fase,
                 que não usam o neutro, e captura o desequilíbrio real entre as fases fase-neutro) →{' '}
-                <strong>{verificacaoNeutro.correnteA.toFixed(2)} A</strong>
+                <strong>{num(verificacaoNeutro.correnteA, 2)} A</strong>
                 {verificacaoNeutro.ampacidadeA !== null && (
                   <>
                     {' '}
                     — {verificacaoNeutro.conforme ? 'dentro da' : 'ACIMA da'} capacidade do
-                    condutor adotado ({verificacaoNeutro.ampacidadeA.toFixed(1)} A).
+                    condutor adotado ({num(verificacaoNeutro.ampacidadeA, 1)} A).
                   </>
                 )}
               </li>
@@ -413,7 +414,7 @@ export default function SecaoProtecaoGeral() {
                     <>
                       Eletroduto: {protecaoGeral.eletroduto.numeroCondutores} condutores físicos no
                       trecho ({numeroFases} fase(s) + neutro + terra) ocupando{' '}
-                      {protecaoGeral.eletroduto.areaCondutoresMm2.toFixed(1)} mm² — no máximo{' '}
+                      {num(protecaoGeral.eletroduto.areaCondutoresMm2, 1)} mm² — no máximo{' '}
                       {protecaoGeral.eletroduto.taxaMaximaPercentual}% da área útil do eletroduto
                       (§6.2.11.1.6) →{' '}
                       <strong>
@@ -445,12 +446,12 @@ export default function SecaoProtecaoGeral() {
                   <tbody>
                     {condutorFase.trilha.map((linha) => (
                       <tr key={linha.secao}>
-                        <td className="numerico">{linha.secao} mm²</td>
-                        <td className="numerico">{linha.ampacidade} A</td>
-                        <td className="numerico">{linha.ampacidadeCorrigida.toFixed(1)} A</td>
+                        <td className="numerico">{decimal(linha.secao)} mm²</td>
+                        <td className="numerico">{decimal(linha.ampacidade)} A</td>
+                        <td className="numerico">{num(linha.ampacidadeCorrigida, 1)} A</td>
                         <td>{linha.atendeAmpacidade ? 'sim' : 'não'}</td>
                         <td className="numerico">
-                          {linha.quedaPercentual === null ? '—' : `${linha.quedaPercentual.toFixed(2)}%`}
+                          {linha.quedaPercentual === null ? '—' : `${num(linha.quedaPercentual, 2)}%`}
                         </td>
                         <td>{linha.atendeQueda ? 'sim' : 'não'}</td>
                         <td>
@@ -486,8 +487,8 @@ export default function SecaoProtecaoGeral() {
                         <td>
                           {linha.nominalMm} mm ({linha.referencia})
                         </td>
-                        <td className="numerico">{linha.areaInternaMm2.toFixed(0)} mm²</td>
-                        <td className="numerico">{linha.ocupacaoPercentual.toFixed(1)}%</td>
+                        <td className="numerico">{num(linha.areaInternaMm2, 0)} mm²</td>
+                        <td className="numerico">{num(linha.ocupacaoPercentual, 1)}%</td>
                         <td>
                           {linha.referencia === protecaoGeral.eletroduto.eletrodutoRecomendado?.referencia ? (
                             <span className="etiqueta-status ok">adotado</span>
@@ -511,7 +512,7 @@ export default function SecaoProtecaoGeral() {
         <p className={curtoCircuito.conforme ? 'texto-calculado' : 'texto-alerta'}>
           Curto-circuito no alimentador (§5.3.5.5.2):{' '}
           {curtoCircuito.conforme
-            ? `conforme — o condutor de ${condutorFase.secaoMm2} mm² suporta a energia de curto-circuito com a Icc informada.`
+            ? `conforme — o condutor de ${decimal(condutorFase.secaoMm2)} mm² suporta a energia de curto-circuito com a Icc informada.`
             : curtoCircuito.motivo}
         </p>
       ) : (

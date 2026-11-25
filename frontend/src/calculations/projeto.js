@@ -20,6 +20,7 @@ import { verificarExistente } from './existente.js'
 import { ID_PERCURSO_ALIMENTADOR, verificarPercurso } from './percurso.js'
 import { IDR_SENSIBILIDADE_ALTA_MA, LIMITE_QUEDA_TERMINAL_PERCENTUAL, limiteQuedaTotal } from './constantes.js'
 import { calcularQuedaPercentual } from './quedaDeTensao.js'
+import { num } from './formatacao.js'
 
 // Impedância informada (r e x em Ω/km): só vale com os dois campos numéricos preenchidos.
 function impedanciaValida(imp) {
@@ -246,7 +247,7 @@ export function calcularProjetoCompleto(projeto, configInstalacao) {
     for (const id of grupo.excluidos) {
       const c = dimensionadosBase.find((d) => d.id === id)
       if (c?.ampacidadeA && !(c.correnteProjetoA <= 0.3 * c.ampacidadeA)) {
-        grupo.problemas.push(`${c.nome}: corrente de projeto (${c.correnteProjetoA.toFixed(1)} A) acima de 30% da capacidade corrigida (${(0.3 * c.ampacidadeA).toFixed(1)} A) — não pode ser excluído do agrupamento`)
+        grupo.problemas.push(`${c.nome}: corrente de projeto (${num(c.correnteProjetoA, 1)} A) acima de 30% da capacidade corrigida (${num((0.3 * c.ampacidadeA), 1)} A) — não pode ser excluído do agrupamento`)
       }
     }
   }

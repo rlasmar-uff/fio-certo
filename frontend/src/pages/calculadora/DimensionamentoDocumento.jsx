@@ -8,6 +8,7 @@ import { ESPACAMENTOS_TAB44, ESPACAMENTOS_TAB45, FORMAS_AGRUPAMENTO } from '../.
 import { quantidadeMaximaCondutores, secoesComAreaCatalogada } from '../../calculations/eletroduto.js'
 import { CONVENCOES_RESISTIVIDADE, CONVENCAO_RESISTIVIDADE_PADRAO } from '../../calculations/quedaDeTensao.js'
 import { FORMACOES_EFG, capacidadeCorrigidaEFG } from '../../calculations/capacidadesEFG.js'
+import { num, decimal } from '../../calculations/formatacao.js'
 
 const numeroOuVazio = (texto) => (texto === '' ? '' : Number(texto))
 
@@ -117,7 +118,7 @@ export function Agrupamentos() {
             </fieldset>
             {resultado && (
               <p className="texto-calculado">
-                {resultado.n} circuito(s) contado(s) · fator de agrupamento K2 = {resultado.fator === null ? 'sem valor tabelado (fora da tabela)' : resultado.fator.toFixed(2)}
+                {resultado.n} circuito(s) contado(s) · fator de agrupamento K2 = {resultado.fator === null ? 'sem valor tabelado (fora da tabela)' : num(resultado.fator, 2)}
                 {!resultado.semelhante && ' (grupo não semelhante)'}
                 {resultado.eletrodutoCalculo?.eletrodutoRecomendado &&
                   ` · eletroduto: ${resultado.eletrodutoCalculo.numeroCondutores} condutores → ${resultado.eletrodutoCalculo.eletrodutoRecomendado.nominalMm} mm (${resultado.eletrodutoCalculo.eletrodutoRecomendado.referencia})`}
@@ -158,8 +159,8 @@ export function CatalogoEletroduto() {
         <p>Se o cabo comprado tem área externa diferente, informe-a por seção; vazio usa o valor da tabela 3.22 do Creder.</p>
         <div className="grade-campos">
           {SECOES_NOMINAIS_MM2.map((s) => (
-            <Campo key={s} label={`${s} mm²`} unidade="mm²">
-              <input type="number" min="0" step="any" className="campo" aria-label={`Área externa do cabo de ${s} mm²`} value={projeto.areasCabo?.[s] ?? ''} onChange={(evento) => setMapa('areasCabo', s, evento.target.value)} />
+            <Campo key={s} label={`${decimal(s)} mm²`} unidade="mm²">
+              <input type="number" min="0" step="any" className="campo" aria-label={`Área externa do cabo de ${decimal(s)} mm²`} value={projeto.areasCabo?.[s] ?? ''} onChange={(evento) => setMapa('areasCabo', s, evento.target.value)} />
             </Campo>
           ))}
         </div>
@@ -179,7 +180,7 @@ export function CatalogoEletroduto() {
             <tbody>
               {secoes.map((s) => (
                 <tr key={s}>
-                  <td>{s} mm²</td>
+                  <td>{decimal(s)} mm²</td>
                   {catalogo.itens.map((i) => (
                     <td key={i.dn} className="numerico">{quantidadeMaximaCondutores(s, i, { isolacao, areasCabo: projeto.areasCabo })}</td>
                   ))}
@@ -220,7 +221,7 @@ export function ExtrasCircuito({ circuito }) {
         <div>
           <dt>ΔU / admissível</dt>
           <dd>
-            {circuito.quedaVolts == null ? '—' : `${circuito.quedaVolts.toFixed(2)} V`} / {circuito.quedaAdmissivelVolts == null ? '—' : `${circuito.quedaAdmissivelVolts.toFixed(2)} V`}
+            {circuito.quedaVolts == null ? '—' : `${num(circuito.quedaVolts, 2)} V`} / {circuito.quedaAdmissivelVolts == null ? '—' : `${num(circuito.quedaAdmissivelVolts, 2)} V`}
           </dd>
         </div>
         <div>
@@ -242,7 +243,7 @@ export function ExtrasCircuito({ circuito }) {
             <dt>Partida do motor (≤ 10%)</dt>
             <dd>
               {partida.informada
-                ? `${partida.quedaTotalPercentual.toFixed(2)}% com ${partida.correnteA} A — ${partida.conforme ? 'conforme' : 'NÃO conforme'}`
+                ? `${num(partida.quedaTotalPercentual, 2)}% com ${partida.correnteA} A — ${partida.conforme ? 'conforme' : 'NÃO conforme'}`
                 : 'pendente: informe a corrente de partida e o comprimento'}
             </dd>
           </div>
@@ -310,7 +311,7 @@ export function ConsultaEFG() {
         <Campo label="Seção">
           <select className="campo" value={secao} onChange={(evento) => setSecao(Number(evento.target.value))}>
             {SECOES_NOMINAIS_MM2.filter((s) => s >= 1.5 && s <= 240).map((s) => (
-              <option key={s} value={s}>{s} mm²</option>
+              <option key={s} value={s}>{decimal(s)} mm²</option>
             ))}
           </select>
         </Campo>
@@ -330,7 +331,7 @@ export function ConsultaEFG() {
       </div>
       <p className="texto-calculado">
         {r
-          ? `Iz tabelado ${r.tabeladaA} A × K1 ${r.k1.toFixed(2)} × K2 ${Number(r.k2).toFixed(2)} = ${r.corrigidaA.toFixed(1)} A`
+          ? `Iz tabelado ${decimal(r.tabeladaA)} A × K1 ${num(r.k1, 2)} × K2 ${num(Number(r.k2), 2)} = ${num(r.corrigidaA, 1)} A`
           : 'Sem valor tabelado para esta combinação (a tabela só tem a seção para a formação escolhida, ou o K1 não existe para essa temperatura).'}
       </p>
       <Nota titulo="Alumínio e outras seções">Só cobre está implementado: o documento do grupo usa cobre. Para alumínio, consulte a norma.</Nota>

@@ -1,5 +1,6 @@
 import { TIPOS_COMODO } from './constantes.js'
 import { calcularPrevisaoDeCarga } from './previsaoDeCarga.js'
+import { num, decimal } from './formatacao.js'
 
 // Veredito geral do projeto: o que é não conforme (vermelho), o que ficou sem verificar por falta
 // de dado (âmbar) e, para cada item, a etapa onde se resolve. Nada aqui calcula norma — só reúne
@@ -29,11 +30,11 @@ export function destaquesProjeto(projeto, calculo) {
         ? `${idr.correnteA} A · ${idr.sensibilidadeMA} mA`
         : '—'
   return [
-    ['Carga prevista', `${Math.round(totais.totalVA)} VA`],
+    ['Carga prevista', `${num(totais.totalVA, 0)} VA`],
     ['Circuitos', String(dimensionados.length)],
     ['Disjuntor geral', disjuntorGeralA ? `${disjuntorGeralA} A` : '—'],
     ['Proteção diferencial', dr],
-    ['Alimentador (fase/neutro/PE)', condutorFase.secaoMm2 ? `${condutorFase.secaoMm2}/${secaoNeutroMm2}/${secaoTerraMm2} mm²` : '—'],
+    ['Alimentador (fase/neutro/PE)', condutorFase.secaoMm2 ? `${decimal(condutorFase.secaoMm2)}/${decimal(secaoNeutroMm2)}/${decimal(secaoTerraMm2)} mm²` : '—'],
   ]
 }
 
@@ -182,7 +183,7 @@ export function calcularVeredito(projeto, calculo) {
   // S7 e S8 — itens do compilado que o motor calcula e o veredito precisa expor.
   for (const grupo of calculo.agrupamentos ?? []) grupo.problemas.forEach((texto) => problemas.push({ texto: `Agrupamento ${grupo.nome || grupo.id}: ${texto}`, etapa: 'dimensionamento' }))
   for (const c of dimensionados) {
-    if (c.partida?.informada && c.partida.conforme === false) problemas.push({ texto: `${c.nome}: queda na partida do motor ${c.partida.quedaTotalPercentual.toFixed(2)}% acima de 10% (6.5.1.3.3)`, etapa: 'dimensionamento' })
+    if (c.partida?.informada && c.partida.conforme === false) problemas.push({ texto: `${c.nome}: queda na partida do motor ${num(c.partida.quedaTotalPercentual, 2)}% acima de 10% (6.5.1.3.3)`, etapa: 'dimensionamento' })
     if (c.sobrecarga && c.sobrecarga.conforme === null) pendencias.push({ texto: `${c.nome}: relação I₂/In do dispositivo não informada — sobrecarga (b) não verificada`, etapa: 'instalacao' })
   }
   if (complementares.capacidadeInterrupcao?.conforme === false) problemas.push({ texto: 'Capacidade de interrupção do disjuntor menor que a Icc presumida (5.3.5.5.1)', etapa: 'instalacao' })
@@ -190,7 +191,7 @@ export function calcularVeredito(projeto, calculo) {
   if (protecaoGeral.peDetalhe?.pendencia) pendencias.push({ texto: protecaoGeral.peDetalhe.pendencia, etapa: 'instalacao' })
   if (projeto.neutroReduzidoDeclarado && protecaoGeral.correntePorFaseA.length === 3 && !(projeto.neutroEquilibrado && projeto.neutroProtegido))
     pendencias.push({ texto: 'Neutro reduzido pedido, mas faltam confirmar o circuito equilibrado e o neutro protegido contra sobrecorrentes (6.2.6.2.6): o neutro não foi reduzido', etapa: 'instalacao' })
-  if (protecaoGeral.neutroHarmonicas?.aplicavel) pendencias.push({ texto: `Neutro com 3ª harmônica acima de 33%: corrente de neutro estimada ${protecaoGeral.neutroHarmonicas.correnteNeutroA.toFixed(1)} A (anexo F) — verificação complementar, a seção do neutro não foi dimensionada`, etapa: 'instalacao' })
+  if (protecaoGeral.neutroHarmonicas?.aplicavel) pendencias.push({ texto: `Neutro com 3ª harmônica acima de 33%: corrente de neutro estimada ${num(protecaoGeral.neutroHarmonicas.correnteNeutroA, 1)} A (anexo F) — verificação complementar, a seção do neutro não foi dimensionada`, etapa: 'instalacao' })
   if (calculo.complementares?.dps && protecaoGeral.dps?.exigidaPelaNorma && !projeto.esquemaAterramento) pendencias.push({ texto: 'DPS exigido pela norma: declare o esquema de aterramento para definir o esquema de conexão e a tensão Uc', etapa: 'instalacao' })
   if (complementares.motores.length) pendencias.push({ texto: `${complementares.motores.length} motor(es) acima de 3,7 kW: consultar a distribuidora`, etapa: 'comodos' })
 

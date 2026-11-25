@@ -4,6 +4,7 @@ import ComodoCard from '../../components/ComodoCard.jsx'
 import { useProjeto } from '../../context/useProjeto.js'
 import { calcularPrevisaoDeCarga, contarPontos600VA } from '../../calculations/previsaoDeCarga.js'
 import { ROUTES } from '../../routes.js'
+import { decimal } from '../../calculations/formatacao.js'
 
 export default function Comodos() {
   const { projeto, addComodo, setAplicarAlternativa600VA } = useProjeto()
@@ -68,7 +69,7 @@ export default function Comodos() {
               {porComodo.map((item) => (
                 <tr key={item.comodoId}>
                   <td data-label="Cômodo">{item.nome || '(sem nome)'}</td>
-                  <td data-label="Área" className="numerico">{item.area} m²</td>
+                  <td data-label="Área" className="numerico">{decimal(item.area)} m²</td>
                   <td data-label="Iluminação" className="numerico">{item.iluminacaoVA} VA</td>
                   <td data-label="Tomadas (TUG)" className="numerico">
                     {item.tugQuantidade} pt · {item.tugVA} VA

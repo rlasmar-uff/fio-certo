@@ -16,6 +16,7 @@ import {
 import { ROUTES } from '../../routes.js'
 import { Agrupamentos, CatalogoEletroduto, ConsultaEFG, ExtrasCircuito } from './DimensionamentoDocumento.jsx'
 import { ID_PERCURSO_ALIMENTADOR } from '../../calculations/percurso.js'
+import { num, decimal } from '../../calculations/formatacao.js'
 
 function nomeReferenciaAgrupamento(metodo) {
   const referencia = METODOS_INSTALACAO[metodo]?.referenciaAgrupamento
@@ -143,7 +144,7 @@ function PercursoEletroduto({ percurso, titulo = 'Percurso do eletroduto', Titul
                 <span className={`etiqueta-status ${resultado.conforme ? 'ok' : 'alerta'}`}>
                   {resultado.conforme ? 'conforme' : 'não conforme'}
                 </span>{' '}
-                limite {resultado.limiteM} m para {resultado.curvas} curva(s)
+                limite {decimal(resultado.limiteM)} m para {resultado.curvas} curva(s)
                 {!resultado.curvasConforme && ' — mais de 3 curvas: ponha uma caixa no meio (§6.2.11.1.7)'}
                 {resultado.curvasConforme && resultado.excessoM > 0 &&
                   ` — passa ${resultado.excessoM.toLocaleString('pt-BR')} m: ponha uma caixa intermediária; se não for possível, a NOTA de §6.2.11.1.6 b) admite eletroduto ${resultado.degrausAlternativa} tamanho(s) acima${resultado.eletrodutoAlternativa ? ` (${resultado.eletrodutoAlternativa})` : ''}`}
@@ -202,8 +203,8 @@ export default function Dimensionamento() {
           <p>
             Cada circuito recebe a menor seção que atende <strong>ao mesmo tempo</strong> à corrente do
             disjuntor e à queda de tensão. O alimentador já consome{' '}
-            <strong>{quedaAlimentadorPercentual.toFixed(2)}%</strong> dos {limiteTotal} totais (§6.2.7.1), então cada circuito
-            tem até <strong>{limiteQuedaTerminalDisponivel.toFixed(2)}%</strong> (nunca mais que 4%, §6.2.7.2).
+            <strong>{num(quedaAlimentadorPercentual, 2)}%</strong> dos {limiteTotal} totais (§6.2.7.1), então cada circuito
+            tem até <strong>{num(limiteQuedaTerminalDisponivel, 2)}%</strong> (nunca mais que 4%, §6.2.7.2).
           </p>
           <p className="texto-fraco">
             Agrupamento (Tabelas 42 a 45): sem grupo nem número informado, cada circuito é corrigido pelo número de circuitos que
@@ -259,12 +260,12 @@ export default function Dimensionamento() {
                         {circuito.erro ? '—' : `${circuito.disjuntorA} A${circuito.polos === 2 ? ' (2P)' : ''}`}
                       </td>
                       <td data-label="Seção" className="numerico">
-                        {circuito.erro ? '—' : <strong>{circuito.secaoMm2} mm²</strong>}
+                        {circuito.erro ? '—' : <strong>{decimal(circuito.secaoMm2)} mm²</strong>}
                       </td>
                       <td data-label="Queda de tensão" className="numerico">
                         {circuito.quedaPercentual === null || circuito.naoVerificado
                           ? '—'
-                          : `${circuito.quedaPercentual.toFixed(2)}%`}
+                          : `${num(circuito.quedaPercentual, 2)}%`}
                       </td>
                       <td data-label="Situação">
                         <span className={`etiqueta-status ${variante}`}>{texto}</span>
@@ -294,7 +295,7 @@ export default function Dimensionamento() {
                   <dl className="fatos">
                     <div>
                       <dt>Corrente de projeto (<Termo sigla="Ib" />)</dt>
-                      <dd>{circuito.correnteProjetoA.toFixed(2)} A</dd>
+                      <dd>{num(circuito.correnteProjetoA, 2)} A</dd>
                     </div>
                     <div>
                       <dt>Disjuntor (<Termo sigla="In" />)</dt>
@@ -305,17 +306,17 @@ export default function Dimensionamento() {
                     <div>
                       <dt>Seção adotada</dt>
                       <dd>
-                        {circuito.secaoMm2 ? `${circuito.secaoMm2} mm²` : '—'}
-                        {circuito.elevadaPorQuedaDeTensao && ` (só pela corrente: ${circuito.secaoPorAmpacidade} mm²)`}
+                        {circuito.secaoMm2 ? `${decimal(circuito.secaoMm2)} mm²` : '—'}
+                        {circuito.elevadaPorQuedaDeTensao && ` (só pela corrente: ${decimal(circuito.secaoPorAmpacidade)} mm²)`}
                       </dd>
                     </div>
                     <div>
                       <dt>Capacidade corrigida (<Termo sigla="Iz" />)</dt>
-                      <dd>{circuito.erro ? '—' : `${circuito.ampacidadeA.toFixed(1)} A`}</dd>
+                      <dd>{circuito.erro ? '—' : `${num(circuito.ampacidadeA, 1)} A`}</dd>
                     </div>
                     <div>
                       <dt>Terra (<Termo sigla="PE" />)</dt>
-                      <dd>{circuito.secaoTerraMm2 ? `${circuito.secaoTerraMm2} mm²` : '—'}</dd>
+                      <dd>{circuito.secaoTerraMm2 ? `${decimal(circuito.secaoTerraMm2)} mm²` : '—'}</dd>
                     </div>
                     <div>
                       <dt>Eletroduto</dt>
@@ -323,13 +324,13 @@ export default function Dimensionamento() {
                     </div>
                     <div>
                       <dt>Comprimento</dt>
-                      <dd>{circuito.comprimentoInformado ? `${circuito.comprimentoM} m` : 'não informado'}</dd>
+                      <dd>{circuito.comprimentoInformado ? `${decimal(circuito.comprimentoM)} m` : 'não informado'}</dd>
                     </div>
                     <div>
                       <dt>Sobrecarga: <Termo sigla="I₂" /> ≤ {circuito.sobrecarga?.prolongada ? 'Iz' : '1,45·Iz'}</dt>
                       <dd>
                         {circuito.sobrecarga
-                          ? `${circuito.sobrecarga.i2A.toFixed(1)} A ≤ ${circuito.sobrecarga.limiteA.toFixed(1)} A`
+                          ? `${num(circuito.sobrecarga.i2A, 1)} A ≤ ${num(circuito.sobrecarga.limiteA, 1)} A`
                           : '—'}
                       </dd>
                     </div>
@@ -337,8 +338,8 @@ export default function Dimensionamento() {
                       <div>
                         <dt><Termo sigla="Icc" /> no quadro / na ponta</dt>
                         <dd>
-                          {(circuito.iccQuadroA / 1000).toFixed(2)} kA /{' '}
-                          {circuito.iccPontaA ? `${(circuito.iccPontaA / 1000).toFixed(2)} kA` : 'falta comprimento'}
+                          {num((circuito.iccQuadroA / 1000), 2)} kA /{' '}
+                          {circuito.iccPontaA ? `${num((circuito.iccPontaA / 1000), 2)} kA` : 'falta comprimento'}
                         </dd>
                       </div>
                     )}
@@ -347,7 +348,7 @@ export default function Dimensionamento() {
                         <dt>Seccionamento automático</dt>
                         <dd>
                           {circuito.seccionamento.zsOhm !== undefined
-                            ? `Zs ${circuito.seccionamento.zsOhm.toFixed(3)} Ω · ${
+                            ? `Zs ${num(circuito.seccionamento.zsOhm, 3)} Ω · ${
                                 circuito.seccionamento.porDisjuntor && circuito.seccionamento.porDR
                                   ? 'pelo disjuntor e pelo DR'
                                   : circuito.seccionamento.porDisjuntor
@@ -359,7 +360,7 @@ export default function Dimensionamento() {
                                         : 'não verificado'
                               }`
                             : circuito.seccionamento.raMaximaOhm
-                              ? `TT: RA ≤ ${circuito.seccionamento.raMaximaOhm.toFixed(0)} Ω`
+                              ? `TT: RA ≤ ${num(circuito.seccionamento.raMaximaOhm, 0)} Ω`
                               : 'não verificado'}
                         </dd>
                       </div>
@@ -369,8 +370,8 @@ export default function Dimensionamento() {
                       <dd>
                         {circuito.quedaPercentual === null || circuito.naoVerificado
                           ? '—'
-                          : `${circuito.quedaPercentual.toFixed(2)}%`}{' '}
-                        / {circuito.limitePercentual.toFixed(2)}%
+                          : `${num(circuito.quedaPercentual, 2)}%`}{' '}
+                        / {num(circuito.limitePercentual, 2)}%
                       </dd>
                     </div>
                   </dl>
@@ -397,16 +398,16 @@ export default function Dimensionamento() {
                     <li>
                       {circuito.cosPhi < 1 ? (
                         <>
-                          potência ativa {potenciaAtivaW.toFixed(0)}W ÷ cosφ {circuito.cosPhi.toFixed(2)} ={' '}
-                          {circuito.potenciaVA.toFixed(0)} VA de potência aparente.
+                          potência ativa {num(potenciaAtivaW, 0)}W ÷ cosφ {num(circuito.cosPhi, 2)} ={' '}
+                          {num(circuito.potenciaVA, 0)} VA de potência aparente.
                         </>
                       ) : (
-                        <>carga resistiva (cosφ = 1) → potência aparente = potência ativa = {circuito.potenciaVA.toFixed(0)} VA.</>
+                        <>carga resistiva (cosφ = 1) → potência aparente = potência ativa = {num(circuito.potenciaVA, 0)} VA.</>
                       )}
                     </li>
                     <li>
-                      corrente de projeto (Ib) = {circuito.potenciaVA.toFixed(0)} VA ÷ {circuito.tensao} V ={' '}
-                      <strong>{circuito.correnteProjetoA.toFixed(2)} A</strong>.
+                      corrente de projeto (Ib) = {num(circuito.potenciaVA, 0)} VA ÷ {circuito.tensao} V ={' '}
+                      <strong>{num(circuito.correnteProjetoA, 2)} A</strong>.
                     </li>
                     <li>
                       disjuntor (In): menor valor padronizado ≥ Ib →{' '}
@@ -415,7 +416,7 @@ export default function Dimensionamento() {
                     <li>
                       seção mínima normativa para{' '}
                       {circuito.tipo === 'iluminacao' ? 'iluminação' : circuito.tipo === 'tug' ? 'tomadas (TUG)' : 'uso específico (TUE)'}:{' '}
-                      <strong>{circuito.secaoMinimaNormativa} mm²</strong> (§6.2.6.1.1).
+                      <strong>{decimal(circuito.secaoMinimaNormativa)} mm²</strong> (§6.2.6.1.1).
                     </li>
                     <li>
                       método de instalação: <strong>{METODOS_INSTALACAO[circuito.metodoInstalacao].label}</strong> —{' '}
@@ -424,7 +425,7 @@ export default function Dimensionamento() {
                     <li>
                       isolação: <strong>{ISOLACOES[circuito.isolacao]?.label ?? circuito.isolacao}</strong> —{' '}
                       {circuito.condutoresCarregados} condutores carregados (Tabela 46, §6.2.5.6) →{' '}
-                      {circuito.ampacidadeTabelaA === null ? '—' : `${circuito.ampacidadeTabelaA} A`} de ampacidade
+                      {circuito.ampacidadeTabelaA === null ? '—' : `${decimal(circuito.ampacidadeTabelaA)} A`} de ampacidade
                       bruta na seção adotada.
                     </li>
                     <li>
@@ -432,19 +433,19 @@ export default function Dimensionamento() {
                         <span className="texto-alerta">{circuito.erro}</span>
                       ) : (
                         <>
-                          fatores de correção: temperatura ×{circuito.fatorTemperatura.toFixed(2)} (Tabela 40) ×
-                          agrupamento ×{circuito.fatorAgrupamento.toFixed(2)} (
+                          fatores de correção: temperatura ×{num(circuito.fatorTemperatura, 2)} (Tabela 40) ×
+                          agrupamento ×{num(circuito.fatorAgrupamento, 2)} (
                           {circuito.agrupamento?.origem === 'grupo' ? 'grupo informado' : nomeReferenciaAgrupamento(circuito.metodoInstalacao)},{' '}
                           {textoAgrupamento(circuito.agrupamento)})
                           {circuito.fatorResistividadeSolo != null && circuito.fatorResistividadeSolo !== 1 && (
-                            <> × resistividade do solo ×{circuito.fatorResistividadeSolo.toFixed(2)} (Tabela 41)</>
+                            <> × resistividade do solo ×{num(circuito.fatorResistividadeSolo, 2)} (Tabela 41)</>
                           )}
                           .
                         </>
                       )}
                     </li>
                     <li>
-                      queda de tensão: até <strong>{circuito.limitePercentual.toFixed(2)}%</strong> neste circuito
+                      queda de tensão: até <strong>{num(circuito.limitePercentual, 2)}%</strong> neste circuito
                       (§6.2.7.2 permite 4% no trecho terminal, dentro dos {limiteTotal} totais do §6.2.7.1).
                     </li>
                     {circuito.eletroduto && (
@@ -453,9 +454,9 @@ export default function Dimensionamento() {
                           <span className="texto-atencao">{circuito.eletroduto.erro}</span>
                         ) : (
                           <>
-                            eletroduto: {circuito.eletroduto.numeroCondutores} condutores (2× {circuito.secaoMm2} mm² + 1×{' '}
-                            {circuito.secaoTerraMm2} mm² de terra) ocupando{' '}
-                            {circuito.eletroduto.areaCondutoresMm2.toFixed(1)} mm² — no máximo{' '}
+                            eletroduto: {circuito.eletroduto.numeroCondutores} condutores (2× {decimal(circuito.secaoMm2)} mm² + 1×{' '}
+                            {decimal(circuito.secaoTerraMm2)} mm² de terra) ocupando{' '}
+                            {num(circuito.eletroduto.areaCondutoresMm2, 1)} mm² — no máximo{' '}
                             {circuito.eletroduto.taxaMaximaPercentual}% da área útil (§6.2.11.1.6) →{' '}
                             <strong>{textoEletroduto(circuito.eletroduto)}</strong>.
                           </>
@@ -470,7 +471,7 @@ export default function Dimensionamento() {
                         {circuito.curtoCircuito.verificado ? (
                           <span className={circuito.curtoCircuito.conforme ? undefined : 'texto-alerta'}>
                             {circuito.curtoCircuito.conforme
-                              ? `conforme — o condutor de ${circuito.secaoMm2} mm² suporta a energia de curto-circuito (§5.3.5.5.2).`
+                              ? `conforme — o condutor de ${decimal(circuito.secaoMm2)} mm² suporta a energia de curto-circuito (§5.3.5.5.2).`
                               : circuito.curtoCircuito.motivo}
                           </span>
                         ) : (
@@ -490,19 +491,19 @@ export default function Dimensionamento() {
                             <th className="numerico">Iz corrigido</th>
                             <th>Atende In ≤ Iz?</th>
                             <th className="numerico">Queda de tensão</th>
-                            <th>Atende ao limite ({circuito.limitePercentual.toFixed(2)}%)?</th>
+                            <th>Atende ao limite ({num(circuito.limitePercentual, 2)}%)?</th>
                             <th>Resultado</th>
                           </tr>
                         </thead>
                         <tbody>
                           {circuito.trilhaSecao.map((linha) => (
                             <tr key={linha.secao}>
-                              <td className="numerico">{linha.secao} mm²</td>
-                              <td className="numerico">{linha.ampacidade} A</td>
-                              <td className="numerico">{linha.ampacidadeCorrigida.toFixed(1)} A</td>
+                              <td className="numerico">{decimal(linha.secao)} mm²</td>
+                              <td className="numerico">{decimal(linha.ampacidade)} A</td>
+                              <td className="numerico">{num(linha.ampacidadeCorrigida, 1)} A</td>
                               <td>{linha.atendeAmpacidade ? 'sim' : 'não'}</td>
                               <td className="numerico">
-                                {linha.quedaPercentual === null ? '—' : `${linha.quedaPercentual.toFixed(2)}%`}
+                                {linha.quedaPercentual === null ? '—' : `${num(linha.quedaPercentual, 2)}%`}
                               </td>
                               <td>{linha.atendeQueda ? 'sim' : 'não'}</td>
                               <td>
@@ -538,8 +539,8 @@ export default function Dimensionamento() {
                               <td>
                                 {linha.nominalMm} mm ({linha.referencia})
                               </td>
-                              <td className="numerico">{linha.areaInternaMm2.toFixed(0)} mm²</td>
-                              <td className="numerico">{linha.ocupacaoPercentual.toFixed(1)}%</td>
+                              <td className="numerico">{num(linha.areaInternaMm2, 0)} mm²</td>
+                              <td className="numerico">{num(linha.ocupacaoPercentual, 1)}%</td>
                               <td>
                                 {linha.referencia === circuito.eletroduto.eletrodutoRecomendado?.referencia ? (
                                   <span className="etiqueta-status ok">adotado</span>

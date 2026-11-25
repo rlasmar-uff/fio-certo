@@ -1,3 +1,4 @@
+import { num, decimal, cientifico } from './formatacao.js'
 import {
   ISOLACAO_PADRAO,
   ISOLACOES,
@@ -66,8 +67,8 @@ export function verificarCurtoCircuito({
       conforme: null,
       limiarInstantaneoA,
       motivo:
-        `Icc ${noPontoDistante ? 'mínima, no ponto mais distante' : 'informada'} (${iccMinimaA.toFixed(0)} A) fica abaixo do ` +
-        `disparo instantâneo garantido da curva ${curvaDisjuntor} (${limiarInstantaneoA.toFixed(0)} A = ${curva.max}×In) — ` +
+        `Icc ${noPontoDistante ? 'mínima, no ponto mais distante' : 'informada'} (${num(iccMinimaA, 0)} A) fica abaixo do ` +
+        `disparo instantâneo garantido da curva ${curvaDisjuntor} (${num(limiarInstantaneoA, 0)} A = ${curva.max}×In) — ` +
         'a atuação cairia na faixa térmica/tempo-corrente do disjuntor, que só a curva do fabricante define (§6.3.4.3.2 a).',
     }
   }
@@ -88,8 +89,8 @@ export function verificarCurtoCircuito({
     energiaSuportadaA2s,
     motivo: conforme
       ? null
-      : `I²t (${energiaPassanteA2s.toExponential(2)} A²s, em ${(TEMPO_DISPARO_INSTANTANEO_S * 1000).toFixed(0)} ms) ` +
-        `excede k²S² (${energiaSuportadaA2s.toExponential(2)} A²s) — o condutor de ${secaoMm2} mm² não suporta ` +
+      : `I²t (${cientifico(energiaPassanteA2s)} A²s, em ${num(TEMPO_DISPARO_INSTANTANEO_S * 1000, 0)} ms) ` +
+        `excede k²S² (${cientifico(energiaSuportadaA2s)} A²s) — o condutor de ${decimal(secaoMm2)} mm² não suporta ` +
         'essa energia de curto-circuito; considere uma seção maior ou um disjuntor mais rápido.',
   }
 }

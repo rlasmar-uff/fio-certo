@@ -1,5 +1,6 @@
 import { calcularPrevisaoDeCarga } from './previsaoDeCarga.js'
 import { montarQuadro } from './quadro.js'
+import { decimal } from './formatacao.js'
 
 // Lista de materiais derivada do resultado — nada aqui é número novo: seções, disjuntores, DRs e
 // eletrodutos são os já dimensionados; comprimentos são os informados. A folga (perdas, subidas,
@@ -26,7 +27,6 @@ export const ESPECIFICACAO_CABO = {
 // norma de produto, fonte externa à NBR 5410). A mínima calculada vira a próxima padronizada.
 export const ICN_PADRONIZADAS_KA = [1.5, 3, 4.5, 6, 10, 15, 20, 25]
 
-const decimal = (valor) => String(valor).replace('.', ',')
 
 function informado(valor) {
   return valor !== undefined && valor !== null && valor !== '' && Number(valor) > 0
@@ -137,9 +137,9 @@ export function listarMateriais(projeto, calculo, { folgaPercentual } = {}) {
   const dispositivosDPS = !pg.dps?.exigidaPelaNorma
     ? []
     : esquemaDPS === 1
-      ? [{ descricao: `DPS fase–PE${projeto.esquemaAterramento === 'TN-C-S' ? 'N' : ''}: Uc ≥ ${Math.ceil(dps.ucMinimoFaseV)} V, In ≥ ${dps.inMinimoKA} kA${iimp(dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: numeroFases }]
+      ? [{ descricao: `DPS fase–PE${projeto.esquemaAterramento === 'TN-C-S' ? 'N' : ''}: Uc ≥ ${Math.ceil(dps.ucMinimoFaseV)} V, In ≥ ${decimal(dps.inMinimoKA)} kA${iimp(dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: numeroFases }]
       : [
-          { descricao: `DPS fase–${esquemaDPS === 3 ? 'neutro' : 'PE'}: Uc ≥ ${Math.ceil(dps.ucMinimoFaseV)} V, In ≥ ${dps.inMinimoKA} kA${iimp(dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: numeroFases },
+          { descricao: `DPS fase–${esquemaDPS === 3 ? 'neutro' : 'PE'}: Uc ≥ ${Math.ceil(dps.ucMinimoFaseV)} V, In ≥ ${decimal(dps.inMinimoKA)} kA${iimp(dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`, quantidade: numeroFases },
           {
             descricao: `DPS neutro–PE: Uc ≥ ${dps.ucMinimoNeutroPeV} V, In ≥ ${esquemaDPS === 3 ? dps.inMinimoNeutroPeKA : dps.inMinimoKA} kA${iimp(esquemaDPS === 3 ? dps.iimpMinimoNeutroPeKA : dps.iimpMinimoKA)}, Up ≤ ${decimal(dps.upMaximoKV)} kV`,
             quantidade: 1,

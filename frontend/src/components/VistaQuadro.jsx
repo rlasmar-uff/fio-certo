@@ -1,5 +1,6 @@
 import { montarQuadro } from '../calculations/quadro.js'
 import { ClausulaInfo } from './RefNorma.jsx'
+import { decimal } from '../calculations/formatacao.js'
 
 const mm2 = (valor) => `${valor.toLocaleString('pt-BR')} mm²`
 
@@ -19,7 +20,7 @@ export default function VistaQuadro({ calculo }) {
 
   return (
     <div className="vista-quadro">
-      <ol className="trilho" aria-label={`Quadro com ${modulos} módulos`}>
+      <ol className="trilho" aria-label={`Quadro com ${decimal(modulos)} módulos`}>
         {posicoes.map((posicao, indice) => (
           <li
             key={`${posicao.tipo}-${indice}`}
@@ -33,7 +34,7 @@ export default function VistaQuadro({ calculo }) {
         ))}
       </ol>
       <p className="texto-fraco">
-        {modulos} módulos DIN (1 por polo). Ordem: geral, DPS (quando exigido), cada DR com seus circuitos, circuitos sem DR,
+        {decimal(modulos)} módulos DIN (1 por polo). Ordem: geral, DPS (quando exigido), cada DR com seus circuitos, circuitos sem DR,
         reserva.
       </p>
 

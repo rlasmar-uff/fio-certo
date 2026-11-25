@@ -3,6 +3,7 @@ import { useProjeto } from '../../context/useProjeto.js'
 import { ESQUEMAS_ATERRAMENTO } from '../../calculations/constantes.js'
 import { ROUTES } from '../../routes.js'
 import { ClausulaInfo } from '../../components/RefNorma.jsx'
+import { num, decimal } from '../../calculations/formatacao.js'
 
 const kA = (valor) => `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kA`
 
@@ -77,7 +78,7 @@ export default function SecaoComplementares() {
                 rotulo={secc.tt.verificado ? (secc.tt.conforme ? 'conforme' : 'não conforme') : 'medir RA'}
               >
                 RA·IΔn ≤ UL: com DR de 30 mA e UL {secc.ulV} V{secc.ulV === 25 ? ' (banheiro = situação 2)' : ''}, RA ≤{' '}
-                <strong>{secc.tt.raMaximaOhm.toFixed(0)} Ω</strong>.{secc.tt.motivo && ` ${secc.tt.motivo}`}
+                <strong>{num(secc.tt.raMaximaOhm, 0)} Ω</strong>.{secc.tt.motivo && ` ${secc.tt.motivo}`}
               </Linha>
             )}
 
@@ -91,11 +92,11 @@ export default function SecaoComplementares() {
                 Zs·Ia ≤ Uo no ponto mais distante. Circuitos: {tn.conformes} conforme(s)
                 {tn.naoVerificados > 0 && `, ${tn.naoVerificados} não verificado(s)`}
                 {tn.naoConformes > 0 && `, ${tn.naoConformes} não conforme(s)`} — pelo DR de 30 mA (Zs ≤{' '}
-                {(calculo.configInstalacao.tensaoFaseNeutro / 0.03).toFixed(0)} Ω) ou pelo disjuntor. Alimentador (só o
+                {num((calculo.configInstalacao.tensaoFaseNeutro / 0.03), 0)} Ω) ou pelo disjuntor. Alimentador (só o
                 disjuntor geral):{' '}
                 {secc.alimentador.verificado
                   ? secc.alimentador.conforme
-                    ? `conforme, falta de ${secc.alimentador.correnteFaltaA.toFixed(0)} A ≥ ${secc.alimentador.iaDisjuntorA} A.`
+                    ? `conforme, falta de ${num(secc.alimentador.correnteFaltaA, 0)} A ≥ ${secc.alimentador.iaDisjuntorA} A.`
                     : secc.alimentador.motivo
                   : secc.alimentador.motivo}
               </Linha>
@@ -103,7 +104,7 @@ export default function SecaoComplementares() {
 
             {c.pen && (
               <Linha item="Condutor PEN" clausula="§6.4.3.4.1" status={c.pen.conforme ? 'ok' : 'alerta'} rotulo={c.pen.conforme ? 'conforme' : 'não conforme'}>
-                Trecho PEN (alimentador) com {c.pen.secaoMm2} mm² — mínimo {c.pen.secaoMinimaMm2} mm² em cobre. Depois da
+                Trecho PEN (alimentador) com {decimal(c.pen.secaoMm2)} mm² — mínimo {decimal(c.pen.secaoMinimaMm2)} mm² em cobre. Depois da
                 separação, o neutro não pode ser religado ao terra (§6.4.3.4.3).
               </Linha>
             )}
@@ -151,8 +152,8 @@ export default function SecaoComplementares() {
             <Linha item="Equipotencialização principal" clausula="§6.4.4.1.1" status="" rotulo="especificar">
               {c.equipotencializacao.principalMm2 ? (
                 <>
-                  Condutores ligados ao BEP: ≥ <strong>{c.equipotencializacao.principalMm2} mm²</strong> (metade do maior PE,{' '}
-                  {c.equipotencializacao.maiorPeMm2} mm²; mínimo 6, limite 25).
+                  Condutores ligados ao BEP: ≥ <strong>{decimal(c.equipotencializacao.principalMm2)} mm²</strong> (metade do maior PE,{' '}
+                  {decimal(c.equipotencializacao.maiorPeMm2)} mm²; mínimo 6, limite 25).
                 </>
               ) : (
                 '—'
@@ -161,9 +162,9 @@ export default function SecaoComplementares() {
 
             {c.equipotencializacao.suplementar && (
               <Linha item="Equipotencialização suplementar (banheiro)" clausula="§6.4.4.1.2" status="" rotulo="especificar">
-                Massa × elemento condutivo (tubulação, box metálico): ≥ <strong>{c.equipotencializacao.suplementar.massaElementoMm2} mm²</strong>
+                Massa × elemento condutivo (tubulação, box metálico): ≥ <strong>{decimal(c.equipotencializacao.suplementar.massaElementoMm2)} mm²</strong>
                 {c.equipotencializacao.suplementar.semProtecaoMecanicaMm2 > c.equipotencializacao.suplementar.massaElementoMm2
-                  ? ` com proteção mecânica, ≥ ${c.equipotencializacao.suplementar.semProtecaoMecanicaMm2} mm² sem`
+                  ? ` com proteção mecânica, ≥ ${decimal(c.equipotencializacao.suplementar.semProtecaoMecanicaMm2)} mm² sem`
                   : ''}
                 . Massa × massa: ≥ o menor PE das duas.
               </Linha>
@@ -207,8 +208,8 @@ export default function SecaoComplementares() {
             >
               {c.condutorAterramento?.condicao ? (
                 <>
-                  ≥ <strong>{c.condutorAterramento.secaoMm2} mm²</strong> em cobre ({c.condutorAterramento.condicao.label.toLowerCase()}; nunca
-                  abaixo do PE do alimentador, {c.condutorAterramento.secaoPeAlimentadorMm2} mm²).
+                  ≥ <strong>{decimal(c.condutorAterramento.secaoMm2)} mm²</strong> em cobre ({c.condutorAterramento.condicao.label.toLowerCase()}; nunca
+                  abaixo do PE do alimentador, {decimal(c.condutorAterramento.secaoPeAlimentadorMm2)} mm²).
                 </>
               ) : (
                 <>
@@ -225,14 +226,14 @@ export default function SecaoComplementares() {
             <Linha item="DPS — especificação mínima" clausula="§6.3.5.2.4 · §6.3.5.2.9" status="" rotulo="especificar">
               Up ≤ <strong>{c.dps.upMaximoKV.toLocaleString('pt-BR')} kV</strong> · Uc ≥{' '}
               <strong>{Math.ceil(c.dps.ucMinimoFaseV)} V</strong> (fase-neutro/PE; neutro-PE ≥ {c.dps.ucMinimoNeutroPeV} V) · In ≥{' '}
-              <strong>{c.dps.inMinimoKA} kA</strong> por modo{c.dps.esquema3 ? ` (${c.dps.inMinimoNeutroPeKA} kA no neutro-PE, esquema de conexão 3)` : ''}
+              <strong>{decimal(c.dps.inMinimoKA)} kA</strong> por modo{c.dps.esquema3 ? ` (${decimal(c.dps.inMinimoNeutroPeKA)} kA no neutro-PE, esquema de conexão 3)` : ''}
               {c.dps.iimpMinimoKA && (
                 <>
                   {' '}
                   · Iimp ≥ <strong>{c.dps.iimpMinimoKA.toLocaleString('pt-BR')} kA</strong> por modo
                 </>
               )}{' '}
-              · condutor DPS-PE ≥ <strong>{c.dps.secaoCondutorPeMm2} mm²</strong> · ligações de preferência ≤{' '}
+              · condutor DPS-PE ≥ <strong>{decimal(c.dps.secaoCondutorPeMm2)} mm²</strong> · ligações de preferência ≤{' '}
               {c.dps.comprimentoLigacoesM.toLocaleString('pt-BR')} m no total.
             </Linha>
 

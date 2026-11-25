@@ -8,6 +8,7 @@ import { MANEIRAS_INSTALAR, MANEIRA_PADRAO } from '../../calculations/agrupament
 import { CORRENTE_MAXIMA_CIRCUITO_PADRAO_A, CORRENTE_MAXIMA_CIRCUITO_MISTO_A } from '../../calculations/constantes.js'
 import { DRS_MONTANTE } from '../../calculations/seccionamento.js'
 import { ROUTES } from '../../routes.js'
+import { num } from '../../calculations/formatacao.js'
 
 export default function Circuitos() {
   const { projeto, calculo, setComprimento, setManeiraInstalacao, setMapa, setModoDR, setGrupoDR, setDrMontante } = useProjeto()
@@ -90,7 +91,7 @@ export default function Circuitos() {
                       <td data-label="Cômodos" className="celula-quebra">
                         {circuito.comodos.join(', ')}
                       </td>
-                      <td data-label="Potência" className="numerico">{circuito.potenciaVA.toFixed(0)} VA</td>
+                      <td data-label="Potência" className="numerico">{num(circuito.potenciaVA, 0)} VA</td>
                       <td data-label="Tensão" className="numerico">
                         {circuito.tensao} V{circuito.ehFaseFase ? ' (F-F)' : ''}
                       </td>
@@ -214,7 +215,7 @@ export default function Circuitos() {
                           <tr key={nome}>
                             <td>{nome}</td>
                             {c.correntesA.map((i, k) => (
-                              <td key={k} className="numerico">{i.toFixed(1)} A</td>
+                              <td key={k} className="numerico">{num(i, 1)} A</td>
                             ))}
                           </tr>
                         ))}
@@ -240,7 +241,7 @@ export default function Circuitos() {
                       .join(', ')
                     return (
                       <li key={circuito.id}>
-                        <strong>{circuito.nome}</strong> ({circuito.potenciaVA.toFixed(0)} VA
+                        <strong>{circuito.nome}</strong> ({num(circuito.potenciaVA, 0)} VA
                         {circuito.ehFaseFase ? ', fase-fase' : ''}) — processado nesta ordem porque é a
                         {circuito.decisaoFase.ordem === 1 ? ' maior' : `${circuito.decisaoFase.ordem}ª maior`}{' '}
                         carga da lista. Cargas acumuladas antes desta atribuição: {cargasAntesTexto}.

@@ -1,3 +1,4 @@
+import { num } from './formatacao.js'
 // Listas de verificação da NBR 5410 que não são cálculo: prática de execução, comissionamento e
 // entrega. Cada item cita a cláusula; os itens condicionais só entram quando se aplicam ao projeto
 // (esquema de aterramento, banheiro, circuitos em duas tensões, DR). Texto conferido no PDF.
@@ -36,7 +37,7 @@ export function montarChecklists(projeto, calculo) {
     item('Resistência de isolamento entre condutores vivos dois a dois e entre cada vivo e a terra, com os equipamentos desconectados: 500 V cc e ≥ 0,5 MΩ (circuitos até 500 V); SELV 250 V cc e ≥ 0,25 MΩ. Com eletrônicos no circuito, medir só entre a terra e os demais condutores interligados; DPS incompatíveis com a tensão de ensaio podem ser desconectados.', '§7.3.3, Tab. 60, §6.3.5.2.7'),
   ]
   if (esquema === 'TT') {
-    comissionamento.push(item(`Medir a resistência de aterramento das massas (RA ≤ ${calculo.seccionamento.tt.raMaximaOhm.toFixed(0)} Ω) e ensaiar os DR.`, '§7.3.5.2'))
+    comissionamento.push(item(`Medir a resistência de aterramento das massas (RA ≤ ${num(calculo.seccionamento.tt.raMaximaOhm, 0)} Ω) e ensaiar os DR.`, '§7.3.5.2'))
   } else if (esquema) {
     comissionamento.push(
       item(

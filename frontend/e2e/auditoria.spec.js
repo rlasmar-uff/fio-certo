@@ -60,6 +60,6 @@ test('rendimento do motor aumenta a corrente do circuito de equipamento', async 
   await expect(page.getByLabel(/Rendimento η/)).toBeVisible()
   await page.getByLabel(/Rendimento η/).fill('0.8')
   await page.goto('/#/calculadora/circuitos')
-  // 736 W / 0,8 / 0,85 = 1082 VA (sem rendimento seriam 866 VA)
-  await expect(page.getByText(/1082 VA|1 082 VA/).first()).toBeVisible()
+  // 736 W / 0,8 / 0,85 = 1.082 VA (sem rendimento seriam 866 VA)
+  await expect(page.getByText(/1\.082 VA/).first()).toBeVisible()
 })

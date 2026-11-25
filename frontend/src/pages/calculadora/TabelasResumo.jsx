@@ -1,6 +1,7 @@
 import { useProjeto } from '../../context/useProjeto.js'
 import { situacaoCircuito } from '../../calculations/veredito.js'
 import { calcularPrevisaoDeCarga } from '../../calculations/previsaoDeCarga.js'
+import { num, decimal } from '../../calculations/formatacao.js'
 
 // Tabelas de resumo do Resultado e do Memorial: circuitos e previsão de carga por cômodo.
 export default function TabelasResumo() {
@@ -33,13 +34,13 @@ export default function TabelasResumo() {
                   <td data-label="Circuito">
                     <strong>{circuito.nome}</strong>
                   </td>
-                  <td data-label="Potência" className="numerico">{circuito.potenciaVA.toFixed(0)} VA</td>
+                  <td data-label="Potência" className="numerico">{num(circuito.potenciaVA, 0)} VA</td>
                   <td data-label="Disjuntor" className="numerico">
                     {circuito.erro ? '—' : `${circuito.disjuntorA} A ${circuito.polos === 2 ? '2P' : '1P'}`}
                   </td>
-                  <td data-label="Condutor" className="numerico">{circuito.erro ? '—' : `${circuito.secaoMm2} mm²`}</td>
+                  <td data-label="Condutor" className="numerico">{circuito.erro ? '—' : `${decimal(circuito.secaoMm2)} mm²`}</td>
                   <td data-label="Terra (PE)" className="numerico">
-                    {circuito.secaoTerraMm2 ? `${circuito.secaoTerraMm2} mm²` : '—'}
+                    {circuito.secaoTerraMm2 ? `${decimal(circuito.secaoTerraMm2)} mm²` : '—'}
                   </td>
                   <td data-label="Eletroduto" className="numerico">
                     {circuito.eletroduto?.eletrodutoRecomendado
@@ -49,7 +50,7 @@ export default function TabelasResumo() {
                   <td data-label="Queda de tensão" className="numerico">
                     {circuito.quedaPercentual === null || circuito.naoVerificado
                       ? '—'
-                      : `${circuito.quedaPercentual.toFixed(2)}%`}
+                      : `${num(circuito.quedaPercentual, 2)}%`}
                   </td>
                   <td data-label="Situação">
                     <span className={`etiqueta-status ${variante}`}>{texto}</span>
@@ -78,7 +79,7 @@ export default function TabelasResumo() {
             {porComodo.map((item) => (
               <tr key={item.comodoId}>
                 <td data-label="Cômodo">{item.nome || '(sem nome)'}</td>
-                <td data-label="Área" className="numerico">{item.area} m²</td>
+                <td data-label="Área" className="numerico">{decimal(item.area)} m²</td>
                 <td data-label="Iluminação" className="numerico">{item.iluminacaoVA} VA</td>
                 <td data-label="Tomadas" className="numerico">{item.tugVA} VA</td>
                 <td data-label="Equipamentos" className="numerico">{Math.round(item.tueVA)} VA</td>

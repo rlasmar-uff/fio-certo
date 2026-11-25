@@ -1,5 +1,6 @@
 import Nota from '../../components/Nota.jsx'
 import { useProjeto } from '../../context/useProjeto.js'
+import { num, decimal } from '../../calculations/formatacao.js'
 
 // Blocos de resultado: DR por circuito, esquema de conexão do DPS, Icn, neutro pelo Anexo F, condutor de proteção
 // e reserva do quadro. Cada bloco só aparece com dados.
@@ -41,9 +42,9 @@ export default function ResultadoDocumento() {
         <>
           <h2>Capacidade de interrupção (§5.3.5.5.1)</h2>
           <p className={comp.capacidadeInterrupcao.conforme === false ? 'texto-alerta' : 'texto-calculado'}>
-            Icc presumida: {comp.capacidadeInterrupcao.geralKA.toFixed(2)} kA na origem
-            {comp.capacidadeInterrupcao.terminaisKA !== null && ` e ${comp.capacidadeInterrupcao.terminaisKA.toFixed(2)} kA nos terminais`} · Icn do disjuntor:{' '}
-            {comp.capacidadeInterrupcao.icnKA === null ? 'não informada (etapa de Instalação)' : `${comp.capacidadeInterrupcao.icnKA} kA`}
+            Icc presumida: {num(comp.capacidadeInterrupcao.geralKA, 2)} kA na origem
+            {comp.capacidadeInterrupcao.terminaisKA !== null && ` e ${num(comp.capacidadeInterrupcao.terminaisKA, 2)} kA nos terminais`} · Icn do disjuntor:{' '}
+            {comp.capacidadeInterrupcao.icnKA === null ? 'não informada (etapa de Instalação)' : `${decimal(comp.capacidadeInterrupcao.icnKA)} kA`}
             {comp.capacidadeInterrupcao.conforme === true && ' — conforme.'}
             {comp.capacidadeInterrupcao.conforme === false && ' — NÃO conforme: use disjuntor de maior capacidade de interrupção.'}
           </p>
@@ -65,10 +66,10 @@ export default function ResultadoDocumento() {
             <p className="texto-atencao">Esquema de aterramento não declarado: o esquema de conexão do DPS fica pendente.</p>
           )}
           <ul>
-            <li>Up ≤ {comp.dps.upMaximoKV} kV; Uc ≥ {comp.dps.ucMinimoFaseV.toFixed(0)} V (fase) e ≥ {comp.dps.ucMinimoNeutroPeV} V (neutro-PE); In ≥ {comp.dps.inMinimoKA} kA por modo.</li>
-            {comp.dps.esquema3 && <li>Esquema 3, neutro-PE: In ≥ {comp.dps.inMinimoNeutroPeKA} kA{comp.dps.iimpMinimoNeutroPeKA ? ` e Iimp ≥ ${comp.dps.iimpMinimoNeutroPeKA} kA` : ''}.</li>}
-            {comp.dps.iimpMinimoKA && <li>Exposição direta: Iimp ≥ {comp.dps.iimpMinimoKA} kA por modo.</li>}
-            <li>Condutor DPS-PE ≥ {comp.dps.secaoCondutorPeMm2} mm², ligações com até {comp.dps.comprimentoLigacoesM} m; corrente subsequente ≥ {comp.dps.correnteSubsequenteMinimaA} A.</li>
+            <li>Up ≤ {decimal(comp.dps.upMaximoKV)} kV; Uc ≥ {num(comp.dps.ucMinimoFaseV, 0)} V (fase) e ≥ {comp.dps.ucMinimoNeutroPeV} V (neutro-PE); In ≥ {decimal(comp.dps.inMinimoKA)} kA por modo.</li>
+            {comp.dps.esquema3 && <li>Esquema 3, neutro-PE: In ≥ {decimal(comp.dps.inMinimoNeutroPeKA)} kA{comp.dps.iimpMinimoNeutroPeKA ? ` e Iimp ≥ ${decimal(comp.dps.iimpMinimoNeutroPeKA)} kA` : ''}.</li>}
+            {comp.dps.iimpMinimoKA && <li>Exposição direta: Iimp ≥ {decimal(comp.dps.iimpMinimoKA)} kA por modo.</li>}
+            <li>Condutor DPS-PE ≥ {decimal(comp.dps.secaoCondutorPeMm2)} mm², ligações com até {decimal(comp.dps.comprimentoLigacoesM)} m; corrente subsequente ≥ {comp.dps.correnteSubsequenteMinimaA} A.</li>
             {comp.dps.drDeveSuportar3kA && <li>DPS a jusante de DR: o DR deve suportar surtos de pelo menos 3 kA (8/20 µs), como o tipo S.</li>}
           </ul>
         </>
@@ -78,7 +79,7 @@ export default function ResultadoDocumento() {
         <>
           <h2>Neutro com 3ª harmônica (Anexo F)</h2>
           <p>
-            f<sub>h</sub> = {pg.neutroHarmonicas.fh.toFixed(2)} → I<sub>N</sub> = {pg.neutroHarmonicas.correnteNeutroA.toFixed(1)} A.
+            f<sub>h</sub> = {num(pg.neutroHarmonicas.fh, 2)} → I<sub>N</sub> = {num(pg.neutroHarmonicas.correnteNeutroA, 1)} A.
           </p>
           <Nota titulo="Verificação complementar">{pg.neutroHarmonicas.nota}</Nota>
         </>
@@ -88,9 +89,9 @@ export default function ResultadoDocumento() {
         <>
           <h2>Condutor de proteção do alimentador (PE)</h2>
           <p>
-            {pg.peDetalhe.secaoMm2} mm² — {pg.peDetalhe.metodo}. Tabela 58: {pg.peDetalhe.tabela58Mm2} mm²
-            {pg.peDetalhe.calculoMm2 !== null && `; cálculo (S ≥ √(I²t)/k, k = ${pg.peDetalhe.kUsado}): ${pg.peDetalhe.calculoMm2} mm²`}
-            {pg.peDetalhe.minimoMm2 !== null && `; mínimo fora do cabo: ${pg.peDetalhe.minimoMm2} mm²`}.
+            {decimal(pg.peDetalhe.secaoMm2)} mm² — {pg.peDetalhe.metodo}. Tabela 58: {decimal(pg.peDetalhe.tabela58Mm2)} mm²
+            {pg.peDetalhe.calculoMm2 !== null && `; cálculo (S ≥ √(I²t)/k, k = ${pg.peDetalhe.kUsado}): ${decimal(pg.peDetalhe.calculoMm2)} mm²`}
+            {pg.peDetalhe.minimoMm2 !== null && `; mínimo fora do cabo: ${decimal(pg.peDetalhe.minimoMm2)} mm²`}.
           </p>
         </>
       )}

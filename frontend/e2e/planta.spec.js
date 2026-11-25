@@ -100,6 +100,6 @@ test('planta: escala, detecção automática, aceitar e criar os cômodos', asyn
   await expect(page.getByRole('heading', { level: 1, name: 'Cômodos e previsão de carga' })).toBeVisible()
   // 264 × 291 px a 9 m / 540 px = 4,4 × 4,85 m ≈ 21,3 m² (o clique pode desviar uma fração de pixel)
   const cartao = (nome) => page.locator('.cartao-comodo', { has: page.locator('.cartao-cabecalho-titulo', { hasText: nome }) })
-  await expect(cartao('Sala').locator('.cartao-cabecalho-resumo')).toContainText(/· 21\.\d+ m²/)
-  await expect(cartao('Quarto').locator('.cartao-cabecalho-resumo')).toContainText(/· 2[01]\.\d+ m²/)
+  await expect(cartao('Sala').locator('.cartao-cabecalho-resumo')).toContainText(/· 21,\d+ m²/)
+  await expect(cartao('Quarto').locator('.cartao-cabecalho-resumo')).toContainText(/· 2[01],\d+ m²/)
 })

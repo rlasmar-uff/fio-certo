@@ -4,6 +4,7 @@ import Campo from '../../components/Campo.jsx'
 import Nota from '../../components/Nota.jsx'
 import { validarNumero } from '../../components/validacao.js'
 import { ClausulaInfo } from '../../components/RefNorma.jsx'
+import { decimal } from '../../calculations/formatacao.js'
 
 const numero = (valor) => valor.toLocaleString('pt-BR')
 const COLUNAS_NUMERICAS = new Set(['Seção', 'Metros', 'Quantidade'])
@@ -81,7 +82,7 @@ export default function SecaoMateriais({ editavel = true }) {
       </h3>
       <Tabela
         colunas={['Função', 'Cor (§6.1.5.3)', 'Especificação', 'Seção', 'Metros']}
-        linhas={m.cabos.map((cabo) => [cabo.label, cabo.cor, cabo.especificacao, `${numero(cabo.secaoMm2)} mm²`, `${cabo.metros} m`])}
+        linhas={m.cabos.map((cabo) => [cabo.label, cabo.cor, cabo.especificacao, `${numero(cabo.secaoMm2)} mm²`, `${decimal(cabo.metros)} m`])}
       />
 
       {m.eletrodutos.length > 0 && (
@@ -89,7 +90,7 @@ export default function SecaoMateriais({ editavel = true }) {
           <h3>Eletrodutos</h3>
           <Tabela
             colunas={['Diâmetro', 'Metros']}
-            linhas={m.eletrodutos.map((eletroduto) => [`${eletroduto.referencia} (DN ${eletroduto.nominalMm})`, `${eletroduto.metros} m`])}
+            linhas={m.eletrodutos.map((eletroduto) => [`${eletroduto.referencia} (DN ${eletroduto.nominalMm})`, `${decimal(eletroduto.metros)} m`])}
           />
           <Nota aberta={!editavel}>
             Conta um eletroduto por circuito, do quadro ao ponto mais distante. Na obra, circuitos que dividem o mesmo trecho
@@ -111,7 +112,7 @@ export default function SecaoMateriais({ editavel = true }) {
           ...m.drs.map((d) => [`${d.descricao} (IEC 61008-2-1 / 61009-2-1)`, d.quantidade]),
           ...m.dps.map((d) => [`${d.descricao} · IEC 61643-1 (§6.3.5.2.4)`, d.quantidade]),
           [`Espaço de reserva (Tabela 59)`, `${m.quadro.reserva} circuitos`],
-          [`Largura estimada do quadro`, `≥ ${m.quadro.modulos} módulos DIN`],
+          [`Largura estimada do quadro`, `≥ ${decimal(m.quadro.modulos)} módulos DIN`],
         ]}
       />
       <Nota aberta={!editavel}>

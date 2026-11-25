@@ -19,6 +19,7 @@ import {
 import { CampoMarcar, CampoTexto } from '../../components/CamposProjeto.jsx'
 import { ROUTES } from '../../routes.js'
 import InstalacaoDocumento from './InstalacaoDocumento.jsx'
+import { num } from '../../calculations/formatacao.js'
 
 export default function Instalacao() {
   const {
@@ -165,7 +166,7 @@ export default function Instalacao() {
           <Campo
             label="Resistência de aterramento medida (RA)"
             unidade="Ω"
-            ajuda={`Opcional. Precisa ser ≤ ${calculo.seccionamento.tt?.raMaximaOhm.toFixed(0)} Ω com DR de 30 mA (UL ${calculo.seccionamento.ulV} V).`}
+            ajuda={`Opcional. Precisa ser ≤ ${num(calculo.seccionamento.tt?.raMaximaOhm, 0)} Ω com DR de 30 mA (UL ${calculo.seccionamento.ulV} V).`}
             erro={validarNumero(projeto.resistenciaAterramentoOhm)}
           >
             <input

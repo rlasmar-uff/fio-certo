@@ -2735,9 +2735,9 @@ checar(
     comPe4.existente.falhas.length === 0 &&
     itemDe(comPe4, 'Curto-circuito').ok === true &&
     Math.abs(comPe4.seccionamento.zsOhm - 0.2482) < 0.0001 &&
-    /Zs 0\.25/.test(itemDe(comPe4, 'Seccionamento automático').detalhe) &&
+    /Zs 0,25/.test(itemDe(comPe4, 'Seccionamento automático').detalhe) &&
     comPe25.existente.falhas.includes('Condutor de proteção (PE)') &&
-    /Zs 0\.31/.test(itemDe(comPe25, 'Seccionamento automático').detalhe) &&
+    /Zs 0,31/.test(itemDe(comPe25, 'Seccionamento automático').detalhe) &&
     semPe.existente.conforme === null,
   `PE 4: conforme=${comPe4.existente.conforme}, falhas=${comPe4.existente.falhas.join(', ') || 'nenhuma'} (${itemDe(comPe4, 'Seccionamento automático').detalhe}); PE 2,5: ${comPe25.existente.falhas.join(', ')} (${itemDe(comPe25, 'Seccionamento automático').detalhe}); sem PE: ${semPe.existente.conforme}`,
   'alto',
