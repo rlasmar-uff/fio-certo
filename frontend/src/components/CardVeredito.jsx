@@ -3,7 +3,7 @@ import { ETAPAS_CALCULADORA } from '../routes.js'
 
 const TITULO = {
   alerta: 'Há não conformidades',
-  atencao: 'Faltam dados para verificar tudo',
+  atencao: 'Conforme no que foi verificado; há itens a conferir',
   ok: 'Tudo o que a ferramenta verifica está conforme',
 }
 const ICONE = {

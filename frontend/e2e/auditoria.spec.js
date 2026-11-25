@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 // A casa-modelo sai sem não conformidade; a única pendência é a conferência em obra da fuga somada
 // no DR que protege vários circuitos (§6.3.3.2.6), que não é calculável.
-const VEREDITO_EXEMPLO = 'Faltam dados para verificar tudo'
+const VEREDITO_EXEMPLO = 'Conforme no que foi verificado; há itens a conferir'
 
 test('veredito sempre lista o que a ferramenta não verifica, também no memorial', async ({ page }) => {
   await page.goto('/')

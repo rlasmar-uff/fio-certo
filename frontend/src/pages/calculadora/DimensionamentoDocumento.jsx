@@ -6,6 +6,7 @@ import { useProjeto } from '../../context/useProjeto.js'
 import { CATALOGOS_ELETRODUTO, ISOLACOES, SECOES_NOMINAIS_MM2 } from '../../calculations/constantes.js'
 import { ESPACAMENTOS_TAB44, ESPACAMENTOS_TAB45, FORMAS_AGRUPAMENTO } from '../../calculations/agrupamento.js'
 import { quantidadeMaximaCondutores, secoesComAreaCatalogada } from '../../calculations/eletroduto.js'
+import { CONVENCOES_RESISTIVIDADE, CONVENCAO_RESISTIVIDADE_PADRAO } from '../../calculations/quedaDeTensao.js'
 import { FORMACOES_EFG, capacidadeCorrigidaEFG } from '../../calculations/capacidadesEFG.js'
 
 const numeroOuVazio = (texto) => (texto === '' ? '' : Number(texto))
@@ -213,7 +214,8 @@ export function ExtrasCircuito({ circuito }) {
       <dl className="fatos">
         <div>
           <dt>Modo de cálculo</dt>
-          <dd>{circuito.modoQueda === 'impedancia' ? 'por impedância informada (r, x)' : 'por resistividade'} · {circuito.convencaoResistividade ?? 'operacao'}</dd>
+          <dd>{circuito.modoQueda === 'impedancia' ? 'por impedância informada (r, x)' : 'por resistividade'} ·{' '}
+            {CONVENCOES_RESISTIVIDADE[circuito.convencaoResistividade ?? CONVENCAO_RESISTIVIDADE_PADRAO]?.label}</dd>
         </div>
         <div>
           <dt>ΔU / admissível</dt>

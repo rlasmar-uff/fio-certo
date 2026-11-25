@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
 // Casa-modelo: sem não conformidade; única pendência é a fuga somada no DR (§6.3.3.2.6, conferência em obra).
-const VEREDITO_OK = 'Faltam dados para verificar tudo'
+const VEREDITO_OK = 'Conforme no que foi verificado; há itens a conferir'
 
 test('ver exemplo abre a casa-modelo com tudo verificado', async ({ page }) => {
   await page.goto('/')

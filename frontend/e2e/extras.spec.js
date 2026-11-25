@@ -36,7 +36,7 @@ test('comparar cenários a partir do exemplo; consumo e distribuidora não exist
 test('volumes do banheiro: ponto marcado no volume errado aparece como não conforme no veredito', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
-  await expect(page.getByRole('heading', { name: 'Faltam dados para verificar tudo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Conforme no que foi verificado; há itens a conferir' })).toBeVisible()
 
   await page.getByRole('link', { name: 'Cômodos' }).click()
   await page.getByRole('button', { name: /^Banheiro/ }).click()

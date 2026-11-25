@@ -74,7 +74,7 @@ test('memorial: veredito, advertência do quadro e listas abertas', async ({ pag
   await page.getByLabel('Área (m²)').fill('12')
   await page.getByLabel('Perímetro (m)').fill('14')
   await page.locator('.stepper a', { hasText: 'Proteção e resultado' }).click()
-  await expect(page.getByRole('heading', { name: 'Faltam dados para verificar tudo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Conforme no que foi verificado; há itens a conferir' })).toBeVisible()
   await page.getByRole('link', { name: 'Memorial para imprimir / PDF →' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Memorial técnico da instalação elétrica' })).toBeVisible()
   await expect(page.getByText('ADVERTÊNCIA', { exact: true })).toBeVisible()

@@ -18,7 +18,7 @@ test('M1: sem nenhum comprimento, o resultado não declara conformidade', async 
   await page.goto('/#/calculadora/comodos')
   await novoComodo(page, { nome: 'Sala', tipo: 'social', area: '12', perimetro: '14' })
   await etapa(page, 'Proteção e resultado').click()
-  await expect(page.getByRole('heading', { name: 'Faltam dados para verificar tudo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Conforme no que foi verificado; há itens a conferir' })).toBeVisible()
   await expect(page.getByText(/sem comprimento \(queda de tensão\)/)).toBeVisible()
 })
 
@@ -116,6 +116,6 @@ test('PWA: depois da primeira visita, abre sem internet', async ({ page, context
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: /Dimensionamento elétrico residencial/ })).toBeVisible()
   await page.getByRole('button', { name: 'Ver exemplo' }).click()
-  await expect(page.getByRole('heading', { name: 'Faltam dados para verificar tudo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Conforme no que foi verificado; há itens a conferir' })).toBeVisible()
   await context.setOffline(false)
 })

@@ -126,7 +126,7 @@ export default function DiagramaUnifilar({ projeto, calculo }) {
           <g key={grupo.numero ?? 'sem-dr'}>
             {grupo.dr === null && grupo.numero === null ? (
               // Circuitos sem DR (modo "exigidos"): saem direto do barramento principal.
-              <text x={centro} y={Y_DR + 14} textAnchor="middle" className="unifilar-texto">
+              <text x={centro + 8} y={Y_DR + 14} className="unifilar-texto">
                 sem DR
               </text>
             ) : (

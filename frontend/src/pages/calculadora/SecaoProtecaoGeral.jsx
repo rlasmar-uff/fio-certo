@@ -42,7 +42,7 @@ export default function SecaoProtecaoGeral() {
             <tr>
               <td data-label="Dispositivo">Disjuntor geral</td>
               <td data-label="Corrente" className="numerico">{disjuntorGeralA ? `${disjuntorGeralA} A` : '—'}</td>
-              <td data-label="Características">Corrente de projeto (Ib): {correnteEntradaA.toFixed(2)} A</td>
+              <td data-label="Características">Corrente de projeto (Ib): {correnteEntradaA.toFixed(2).replace('.', ',')} A</td>
             </tr>
             {(drs.modo === 'geral' || idr) && (
               <tr>
