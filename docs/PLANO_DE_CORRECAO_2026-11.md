@@ -216,20 +216,22 @@ que passava pode quebrar.
 
 ### Fase 6 — Novo relatório final (memorial PDF) · ver seção 4
 
-- [ ] Componente próprio `pages/relatorio/` (não reaproveitar as seções de tela, que têm
-  `<details>`, links "resolver em" e botões).
-- [ ] CSS de impressão A4 com `@page`, cabeçalho e rodapé, "página X de Y", cabeçalho de tabela
-  repetido e quebras de página controladas.
-- [ ] Seções conforme o modelo: capa, sumário, dados de entrada, premissas, previsão de carga com
-  a regra aplicada, circuitos e fases, uma ficha por circuito, alimentador, proteções,
-  aterramento, locais especiais, unifilar em página própria, materiais, matriz de conformidade,
-  pendências, checklists, referências e campo de assinatura e ART.
-- [ ] Campos novos no projeto: cliente, endereço, responsável técnico, registro (CREA/CFT), nº da
-  ART, revisão. Todos opcionais; sem eles a capa mostra "não informado".
-- **Pronto:**
-  - teste Playwright que gera o PDF da casa-modelo e confere que todas as seções existem, que
-    nenhum `<details>` fica fechado e que o PDF tem número de página;
-  - revisão visual pelo grupo.
+- [x] Componente próprio (`pages/calculadora/Memorial.jsx`, com fichas, passos e matriz próprios).
+  Reaproveita só o unifilar, o quadro, a lista de materiais (sem o campo de folga, notas abertas) e
+  os checklists (abertos, sem `<details>`).
+- [x] CSS de impressão A4 com `@page` (margens 20/18/22 mm), cabeçalho com projeto · revisão ·
+  data, rodapé "Fio Certo · versão (commit e data do build) · Página N de M", capa sem cabeçalho e
+  rodapé, cabeçalho de tabela repetido e quebras de página controladas.
+- [x] Seções conforme o modelo, com unifilar em página paisagem e o quadro na seguinte.
+- [x] Campos novos no projeto: cliente, endereço, responsável técnico, registro, ART, revisão.
+- [x] Teste Playwright (`e2e/documento.spec.js`) que gera o PDF da casa-modelo e confere seções,
+  numeração em todas as páginas menos a capa, cabeçalho, unifilar em paisagem e nada recolhido.
+- [ ] **Não atendido:** número de página no sumário. Exige `target-counter()`, que o Chrome não
+  implementa na impressão; o sumário lista as seções numeradas, sem página.
+- [ ] Revisão visual pelo grupo (exemplo em `docs/modelo-relatorio/memorial-casa-modelo.pdf`).
+- Divergências do modelo decididas depois dele (critério "só a norma"): sem demanda na capa e no
+  alimentador, sem distribuidora nos dados de entrada, sem δ na divisão de fases e sem linha de
+  disjuntores nas premissas.
 
 ### Fase 7 — Validação final
 

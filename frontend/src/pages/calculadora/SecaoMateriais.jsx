@@ -43,7 +43,7 @@ export default function SecaoMateriais({ editavel = true }) {
 
   return (
     <section className="secao-materiais">
-      <h2>Lista de materiais</h2>
+      {editavel && <h2>Lista de materiais</h2>}
       <p className="texto-fraco">
         Quantidades tiradas do dimensionamento e dos comprimentos informados, sem marca e sem preço; a especificação cita a norma de produto.
         {m.folgaPercentual > 0 ? ` Cabos e eletrodutos com ${numero(m.folgaPercentual)}% de folga.` : ' Sem folga nos comprimentos.'}

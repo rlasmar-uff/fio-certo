@@ -23,24 +23,14 @@ import {
   obterReatanciaOhmMetro,
 } from '../../calculations/constantes.js'
 import { ROUTES } from '../../routes.js'
+import { num, decimal, cientifico } from '../../calculations/formatacao.js'
 
 // Memorial técnico (§6.1.8.1): documento para imprimir ou salvar em PDF pelo navegador. Componentes próprios,
 // sem <details>, botões nem links de navegação no corpo; cada número tem a fórmula, os valores e a cláusula.
 // Modelo: docs/modelo-relatorio/modelo-memorial.html.
 
-const num = (valor, casas = 2) =>
-  valor === null || valor === undefined || Number.isNaN(Number(valor))
-    ? '—'
-    : Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })
-const inteiro = (valor) => (valor === null || valor === undefined ? '—' : Math.round(valor).toLocaleString('pt-BR'))
-const mm2 = (valor) => (valor ? `${String(valor).replace('.', ',')} mm²` : '—')
-// 81400 → "8,14 × 10⁴" (notação científica legível no papel).
-const SOBRESCRITO = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' }
-const cientifico = (valor) => {
-  if (!valor) return '—'
-  const expoente = Math.floor(Math.log10(Math.abs(valor)))
-  return `${num(valor / 10 ** expoente)} × 10${String(expoente).split('').map((d) => SOBRESCRITO[d]).join('')}`
-}
+const inteiro = (valor) => num(valor, 0)
+const mm2 = (valor) => (valor ? `${decimal(valor)} mm²` : '—')
 const ou = (texto) => (texto && String(texto).trim() ? texto : 'não informado')
 
 function Selo({ estado, children }) {
@@ -76,7 +66,19 @@ function Passo({ indice, titulo, clausula, children }) {
   )
 }
 
-const Formula = ({ children }) => <div className="relatorio-formula">{children}</div>
+// Fórmula em monoespaçada. Número e unidade ficam presos por espaço não separável, para a quebra de
+// linha nunca deixar "1,69" numa linha e "%" na outra.
+const ANTES_DA_UNIDADE = /(\d) (?=(?:%|A²s|kA|kV|mm²|mΩ\/m|Ω|VA|A|V|W|s|m)(?=[\s.,;:)→·]|$))/g
+const Formula = ({ children }) => {
+  const partes = Array.isArray(children) ? children : [children]
+  const soTexto = partes.every((p) => typeof p === 'string' || typeof p === 'number' || p === false || p === null)
+  const conteudo = soTexto ? partes.filter((p) => p !== false && p !== null).join('').replace(ANTES_DA_UNIDADE, '$1 ') : children
+  return <div className="relatorio-formula">{conteudo}</div>
+}
+
+const VERSAO = import.meta.env.VITE_VERSAO ?? 'desenvolvimento'
+// Texto para `content: "..."` de CSS: escapa barra invertida e aspas.
+const textoCss = (texto) => String(texto).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
 // Regra de previsão de carga aplicada a cada cômodo, em texto (§9.5.2.1.2 e §9.5.2.2).
 function regraIluminacao(carga) {
@@ -105,6 +107,29 @@ function regraTomadas(comodo, carga, limite600VA) {
   }
   const base = `${quantidade} × 100`
   return config.tugPotenciaMinimaVA && carga.tugVA > carga.tugQuantidade * 100 ? `${base} (mínimo de ${config.tugPotenciaMinimaVA} VA)` : base
+}
+
+// Luminárias e tomadas que o usuário informou no cômodo; sem nada informado, vale o mínimo da norma.
+function pontosInformados(comodo) {
+  const informado = (v) => v !== '' && v !== undefined && v !== null
+  const partes = []
+  if (informado(comodo.iluminacaoQuantidade))
+    partes.push(`${comodo.iluminacaoQuantidade} luminária(s)${informado(comodo.iluminacaoPotenciaUnitariaW) ? ` × ${decimal(comodo.iluminacaoPotenciaUnitariaW)} W` : ''}`)
+  if (informado(comodo.tugPontos)) partes.push(`${comodo.tugPontos} tomada(s)`)
+  return partes.length ? partes.join('; ') : 'mínimo da norma'
+}
+
+// Cláusulas que exigem DR nos circuitos de um grupo, tiradas dos motivos de cada circuito ("… (5.1.3.2.2 a)").
+function clausulasDoGrupo(grupo, dimensionados) {
+  const clausulas = new Set()
+  for (const { id } of grupo.circuitos) {
+    const circuito = dimensionados.find((c) => c.id === id)
+    for (const motivo of circuito?.exigenciaDR?.motivos ?? []) {
+      const achada = motivo.match(/\(([^()]*\d[^()]*)\)\s*$/)
+      if (achada) clausulas.add(achada[1].startsWith('§') ? achada[1] : `§${achada[1]}`)
+    }
+  }
+  return clausulas.size ? `exigido por ${[...clausulas].join(', ')}` : 'escolha do projetista'
 }
 
 const textoAgrupamento = (a) =>
@@ -194,14 +219,15 @@ function FichaCircuito({ circuito, numero, projeto }) {
             </p>
           ) : c.modoQueda === 'impedancia' ? (
             <Formula>
-              ΔU = 2·L·Ib·(r·cosφ + x·senφ) com r e x informados ={' '}
-              {num(c.quedaVolts)} V → {num(c.quedaPercentual)} % (limite {num(c.limitePercentual)} %)
+              ΔU = 2·L·Ib·(r·cosφ + x·senφ) com r e x informados = {num(c.quedaVolts)} V
+              {'\n'}ΔU% = ΔU / U × 100 = {num(c.quedaVolts)} / {c.tensao} × 100 = {num(c.quedaPercentual)} % (limite {num(c.limitePercentual)} %)
             </Formula>
           ) : (
             <Formula>
               R = 1/(σ·S) = 1/({num(sigma, 1)} × {String(c.secaoMm2).replace('.', ',')}) = {num(rOhmM * 1000, 3)} mΩ/m{xOhmM ? ` · X = ${num(xOhmM * 1000, 3)} mΩ/m` : ''}
               {'\n'}ΔU = 2 · L · Ib · (R·cosφ{xOhmM && senPhi ? ' + X·senφ' : ''}) = 2 × {num(c.comprimentoM, 1)} × {num(c.correnteProjetoA)} × ({num(rOhmM * 1000, 3)}×{num(c.cosPhi)}
-              {xOhmM && senPhi ? ` + ${num(xOhmM * 1000, 3)}×${num(senPhi)}` : ''}) mΩ = {num(c.quedaVolts)} V → {num(c.quedaPercentual)} %
+              {xOhmM && senPhi ? ` + ${num(xOhmM * 1000, 3)}×${num(senPhi)}` : ''}) mΩ = {num(c.quedaVolts)} V
+              {'\n'}ΔU% = ΔU / U × 100 = {num(c.quedaVolts)} / {c.tensao} × 100 = {num(c.quedaPercentual)} %
               {'\n'}Disponível no circuito: {num(c.limitePercentual)} % (mín. de 4 % e do que sobra do total depois do alimentador)
             </Formula>
           )}
@@ -347,7 +373,9 @@ export default function Memorial() {
   const cabecalho = `${projetoAtivo.nome} · Memorial técnico · ${ou(projeto.revisao)} · ${data}`
 
   return (
-    <article className="relatorio" data-cabecalho={cabecalho}>
+    <article className="relatorio">
+      {/* Cabeçalho e rodapé de cada página impressa (margin boxes; a capa fica sem eles). */}
+      <style>{`@media print { @page { @top-left { content: "${textoCss(cabecalho)}"; } @bottom-left { content: "Fio Certo · versão ${textoCss(VERSAO)} · ABNT NBR 5410:2004"; } } @page :first { @top-left { content: none; } @bottom-left { content: none; } } }`}</style>
       <div className="etapa-acoes memorial-acoes">
         <Link className="botao-secundario" to={ROUTES.resultado}>
           ← Voltar ao resultado
@@ -371,7 +399,7 @@ export default function Memorial() {
             <tr><td>Cliente</td><td>{ou(projeto.cliente)}</td></tr>
             <tr><td>Responsável técnico</td><td>{ou(projeto.responsavelTecnico)} · registro: {ou(projeto.registroProfissional)} · ART/TRT: {ou(projeto.numeroART)}</td></tr>
             <tr><td>Revisão / data</td><td>{ou(projeto.revisao)} · {data}</td></tr>
-            <tr><td>Gerado por</td><td>Fio Certo (rlasmar-uff.github.io/fio-certo)</td></tr>
+            <tr><td>Gerado por</td><td>Fio Certo, versão {VERSAO} (rlasmar-uff.github.io/fio-certo)</td></tr>
           </tbody>
         </table>
         <dl className="relatorio-fatos">
@@ -451,7 +479,7 @@ export default function Memorial() {
         <h3>Cômodos</h3>
         <table className="relatorio-tabela">
           <thead>
-            <tr><th>Cômodo</th><th>Tipo</th><th className="n">Área</th><th className="n">Perímetro</th><th>Equipamentos de uso específico</th></tr>
+            <tr><th>Cômodo</th><th>Tipo</th><th className="n">Área</th><th className="n">Perímetro</th><th>Luminárias e tomadas informadas</th><th>Equipamentos de uso específico</th></tr>
           </thead>
           <tbody>
             {projeto.comodos.map((comodo) => (
@@ -460,6 +488,7 @@ export default function Memorial() {
                 <td>{TIPOS_COMODO[comodo.tipo]?.label}{comodo.piscina ? ' · piscina' : ''}</td>
                 <td className="n">{num(comodo.area, 2)} m²</td>
                 <td className="n">{comodo.perimetro ? `${num(comodo.perimetro, 2)} m` : '—'}</td>
+                <td>{pontosInformados(comodo)}</td>
                 <td>
                   {(comodo.tue ?? []).length
                     ? comodo.tue.map((e) => `${e.quantidade > 1 ? `${e.quantidade}× ` : ''}${e.nome || 'equipamento'} ${e.potenciaW} W ${e.ligacao === 'fase-fase' ? 'F-F' : 'F-N'}${e.cosPhi && Number(e.cosPhi) < 1 ? ` cosφ ${num(e.cosPhi)}` : ''}`).join('; ')
@@ -659,7 +688,7 @@ export default function Memorial() {
                 {pg.drs.modo === 'geral'
                   ? `DR geral ${pg.idr?.correnteA ?? '—'} A, ${pg.idr?.polos} polos, 30 mA, tipo ${projeto.tipoDR}`
                   : pg.drs.grupos.length
-                    ? pg.drs.grupos.map((g) => `DR ${g.numero}: ${g.correnteA ?? '—'} A, ${g.polos} polos, 30 mA, tipo ${projeto.tipoDR} (${g.circuitos.map((x) => `C${numero.get(x.id)}`).join(', ')})`).join(' · ')
+                    ? pg.drs.grupos.map((g) => `DR ${g.numero}: ${g.correnteA ?? '—'} A, ${g.polos} polos, 30 mA, tipo ${projeto.tipoDR} — ${g.circuitos.map((x) => `C${numero.get(x.id)}`).join(', ')}; ${clausulasDoGrupo(g, calculo.dimensionados)}`).join(' · ')
                     : 'nenhum circuito exige DR'}
                 {pg.drs.montante ? ` · a montante: DR ${pg.idr?.correnteA ?? '—'} A, ${pg.drs.montante.sensibilidadeMA} mA, tipo S (seletividade, §6.3.6.3.2)` : ''}
               </td>

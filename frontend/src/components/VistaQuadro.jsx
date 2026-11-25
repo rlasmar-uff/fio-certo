@@ -28,7 +28,7 @@ export default function VistaQuadro({ calculo }) {
             style={{ '--modulos': posicao.modulos }}
             title={posicao.detalhe}
           >
-            <span className="modulo-topo">{posicao.numero ? `C${posicao.numero}` : posicao.tipo === 'reserva' ? 'Res.' : posicao.detalhe}</span>
+            <span className="modulo-topo">{posicao.numero ? `C${posicao.numero}` : posicao.tipo === 'reserva' ? 'Res.' : posicao.tipo === 'geral' ? 'Geral' : posicao.detalhe}</span>
             <span className="modulo-valor">{posicao.tipo === 'reserva' ? '—' : posicao.rotulo}</span>
           </li>
         ))}

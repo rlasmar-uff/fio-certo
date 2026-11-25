@@ -1744,6 +1744,31 @@ label.botao-secundario:focus-within {
   line-height: 1.5;
 }
 
+/* Plano §4.1: texto corrido em serifada; títulos, tabelas e selos em sem serifa; fórmulas em
+   monoespaçada. */
+.relatorio p,
+.relatorio li:not(.trilho > li),
+.relatorio-id td,
+.relatorio-referencias {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+}
+
+.relatorio .checklist-aberto {
+  margin: 0.8rem 0;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--rel-linha);
+  border-radius: 6px;
+}
+
+.relatorio .checklist-aberto h3 {
+  margin: 0.3rem 0;
+}
+
+.relatorio .checklist-aberto ul {
+  padding-left: 0;
+  list-style: none;
+}
+
 .relatorio h2 {
   display: flex;
   align-items: baseline;
@@ -2132,24 +2157,36 @@ label.botao-secundario:focus-within {
   }
 
   /* Relatório: A4, numeração, cabeçalho de tabela repetido, uma seção grande por página. */
+  /* Plano §4.3: A4, margens 20/18/22 mm; cabeçalho (projeto · revisão · data) e rodapé
+     (Fio Certo versão · página N de M). O texto do cabeçalho e o da versão vêm do <style> do Memorial. */
   @page {
     size: A4;
-    margin: 18mm 16mm 18mm 16mm;
+    margin: 20mm 18mm 22mm;
 
-    @bottom-right {
-      content: 'Página ' counter(page) ' de ' counter(pages);
-      font-size: 8pt;
+    @top-left {
+      content: 'Fio Certo · memorial técnico';
+      font: 8pt 'Segoe UI', system-ui, sans-serif;
       color: #5b6472;
     }
 
     @bottom-left {
-      content: 'Fio Certo · memorial técnico · ABNT NBR 5410:2004';
-      font-size: 8pt;
+      content: 'Fio Certo · ABNT NBR 5410:2004';
+      font: 8pt 'Segoe UI', system-ui, sans-serif;
+      color: #5b6472;
+    }
+
+    @bottom-right {
+      content: 'Página ' counter(page) ' de ' counter(pages);
+      font: 8pt 'Segoe UI', system-ui, sans-serif;
       color: #5b6472;
     }
   }
 
   @page :first {
+    @top-left {
+      content: none;
+    }
+
     @bottom-left {
       content: none;
     }
@@ -2157,6 +2194,26 @@ label.botao-secundario:focus-within {
     @bottom-right {
       content: none;
     }
+  }
+
+  /* Unifilar e quadro em página paisagem (plano §4.3). */
+  @page paisagem {
+    size: A4 landscape;
+    margin: 15mm 18mm 18mm;
+  }
+
+  .relatorio-paisagem {
+    page: paisagem;
+  }
+
+  /* O unifilar ocupa a página paisagem; o quadro segue na página seguinte, com a identificação. */
+  .relatorio-paisagem .unifilar {
+    max-height: 150mm;
+    width: auto;
+  }
+
+  .relatorio-paisagem .trilho {
+    break-before: page;
   }
 
   .relatorio {
